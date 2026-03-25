@@ -16,7 +16,7 @@ export default async function LoginPage() {
         <section className="card-surface rounded-[34px] p-8 sm:p-10">
           <div className="max-w-2xl space-y-5">
             <span className="inline-flex rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
-              HostLedger
+              HomeXperience
             </span>
             <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               Secure hosting finance, now tied to your Google account.

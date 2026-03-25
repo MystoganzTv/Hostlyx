@@ -19,7 +19,7 @@ const monthOptions = [
   { value: "12", label: "December" },
 ];
 
-const filterStorageKey = "hostledger:filters";
+const filterStorageKey = "homexperience:filters";
 
 function selectClassName() {
   return "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-teal-300/60 focus:bg-white/8";

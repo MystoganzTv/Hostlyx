@@ -1,4 +1,4 @@
-# HostLedger
+# HomeXperience
 
 Accounting dashboard for a short-term rental business built with Next.js, Tailwind CSS, Recharts, Google login, and Postgres-ready persistence.
 
@@ -54,7 +54,7 @@ Use those values in:
 
 ## Persistence
 
-- Local development without `DATABASE_URL` uses SQLite in `/data/hostledger.sqlite`
+- Local development without `DATABASE_URL` uses SQLite in `/data/homexperience.sqlite`
 - Production on Netlify should use `DATABASE_URL` so imported and manual data persist across deploys and sessions
 
 ## Netlify Deployment
@@ -89,7 +89,7 @@ Suggested first push flow:
 ```bash
 git init
 git add .
-git commit -m "Initial HostLedger app"
+git commit -m "Initial HomeXperience app"
 ```
 
 Then create a GitHub repo and connect it to Netlify.

@@ -27,7 +27,7 @@ function hasColumn(db: Database.Database, tableName: string, columnName: string)
 function getSQLiteDatabasePath() {
   const directory = path.join(process.cwd(), "data");
   mkdirSync(directory, { recursive: true });
-  return path.join(directory, "hostledger.sqlite");
+  return path.join(directory, "homexperience.sqlite");
 }
 
 function initializeSQLiteSchema(db: Database.Database) {

@@ -131,7 +131,7 @@ export function DashboardShell({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
-                  HostLedger
+                  HomeXperience
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-300">
                   {latestImport?.fileName ?? "No workbook imported"}
