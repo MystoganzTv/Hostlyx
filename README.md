@@ -1,0 +1,95 @@
+# HostLedger
+
+Accounting dashboard for a short-term rental business built with Next.js, Tailwind CSS, Recharts, Google login, and Postgres-ready persistence.
+
+## Features
+
+- Google sign-in with optional email allowlist
+- Excel import for `Bookings` and `Expenses`
+- Manual booking and expense entry
+- Year, month, and channel filters with remembered selections
+- KPI cards, charts, and activity views
+- Per-user data separation so each Google account sees only its own records
+- Postgres-ready storage for Netlify production, SQLite fallback for local development
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy the environment template:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Fill in:
+
+- `NEXTAUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `DATABASE_URL` if you want Postgres locally
+- `ADMIN_EMAILS` if you want to restrict access
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+## Google Auth Setup
+
+Create Google OAuth credentials and add these callback URLs:
+
+- `http://localhost:3000/api/auth/callback/google`
+- `https://your-netlify-site.netlify.app/api/auth/callback/google`
+
+Use those values in:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+## Persistence
+
+- Local development without `DATABASE_URL` uses SQLite in `/data/hostledger.sqlite`
+- Production on Netlify should use `DATABASE_URL` so imported and manual data persist across deploys and sessions
+
+## Netlify Deployment
+
+This project includes `netlify.toml` with the build command.
+
+Set these environment variables in Netlify:
+
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `DATABASE_URL`
+- `ADMIN_EMAILS` if needed
+
+Then deploy with:
+
+```bash
+npm run build
+```
+
+or with Netlify CLI:
+
+```bash
+npx netlify deploy --prod
+```
+
+## GitHub
+
+Suggested first push flow:
+
+```bash
+git init
+git add .
+git commit -m "Initial HostLedger app"
+```
+
+Then create a GitHub repo and connect it to Netlify.
