@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Building2, ShieldCheck } from "lucide-react";
 import { SignInButton } from "@/components/auth-buttons";
-import { getAuthSession } from "@/lib/auth";
+import { getAuthSession, hasGoogleAuthConfig } from "@/lib/auth";
 
 export default async function LoginPage() {
   const session = await getAuthSession();
@@ -42,7 +42,13 @@ export default async function LoginPage() {
                 only approved addresses will be able to enter.
               </p>
             </div>
-            <SignInButton />
+            {!hasGoogleAuthConfig ? (
+              <div className="rounded-[24px] border border-amber-400/25 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+                Google login is not configured in production yet. Add
+                `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Netlify, then redeploy.
+              </div>
+            ) : null}
+            <SignInButton disabled={!hasGoogleAuthConfig} />
           </div>
 
           <div className="mt-8 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">

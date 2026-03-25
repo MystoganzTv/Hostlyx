@@ -2,14 +2,25 @@
 
 import { signIn, signOut } from "next-auth/react";
 
-export function SignInButton() {
+type SignInButtonProps = {
+  disabled?: boolean;
+};
+
+export function SignInButton({ disabled = false }: SignInButtonProps) {
   return (
     <button
       type="button"
-      onClick={() => void signIn("google", { callbackUrl: "/" })}
-      className="rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+      onClick={() => {
+        if (disabled) {
+          return;
+        }
+
+        void signIn("google", { callbackUrl: "/" });
+      }}
+      disabled={disabled}
+      className="rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
     >
-      Continue with Google
+      {disabled ? "Google login not configured" : "Continue with Google"}
     </button>
   );
 }

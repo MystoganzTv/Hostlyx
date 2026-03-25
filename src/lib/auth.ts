@@ -2,18 +2,25 @@ import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
+
+export const hasGoogleAuthConfig = Boolean(googleClientId && googleClientSecret);
+
 const allowedEmails = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
 export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-  ],
+  providers: hasGoogleAuthConfig
+    ? [
+        GoogleProvider({
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+        }),
+      ]
+    : [],
   pages: {
     signIn: "/login",
   },
