@@ -40,7 +40,11 @@ declare global {
 }
 
 function isPostgresConfigured() {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(getDatabaseConnectionString());
+}
+
+function getDatabaseConnectionString() {
+  return process.env.DATABASE_URL ?? process.env.NETLIFY_DATABASE_URL ?? "";
 }
 
 function shouldUseSQLiteFallback() {
@@ -179,7 +183,7 @@ function getSQLiteDatabase() {
 function getPostgresPool() {
   if (!postgresPool) {
     postgresPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: getDatabaseConnectionString(),
       ssl:
         process.env.NODE_ENV === "production"
           ? { rejectUnauthorized: false }

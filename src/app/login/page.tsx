@@ -57,8 +57,8 @@ export default async function LoginPage() {
               Ready for Netlify
             </div>
             <p className="mt-2 text-slate-400">
-              Production data should use `DATABASE_URL` so uploads and entries persist
-              across deploys and sessions.
+              Production data persists automatically when Netlify DB or
+              `DATABASE_URL` is configured for the site.
             </p>
           </div>
         </section>

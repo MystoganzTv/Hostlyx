@@ -10,7 +10,7 @@ Accounting dashboard for a short-term rental business built with Next.js, Tailwi
 - Year, month, and channel filters with remembered selections
 - KPI cards, charts, and activity views
 - Per-user data separation so each Google account sees only its own records
-- Postgres-ready storage for Netlify production, SQLite fallback for local development
+- Netlify DB / Postgres-ready storage for production, SQLite fallback for local development
 
 ## Local Setup
 
@@ -55,7 +55,8 @@ Use those values in:
 ## Persistence
 
 - Local development without `DATABASE_URL` uses SQLite in `/data/homexperience.sqlite`
-- Production on Netlify should use `DATABASE_URL` so imported and manual data persist across deploys and sessions
+- Production can use either `DATABASE_URL` or Netlify DB's `NETLIFY_DATABASE_URL`
+- This repo is already compatible with Netlify DB / Neon and will use that connection automatically when available
 
 ## Netlify Deployment
 
@@ -67,8 +68,10 @@ Set these environment variables in Netlify:
 - `NEXTAUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `DATABASE_URL`
+- `DATABASE_URL` if you are bringing your own Postgres
 - `ADMIN_EMAILS` if needed
+
+If you use Netlify DB, Netlify will provision and manage `NETLIFY_DATABASE_URL` for you automatically.
 
 Then deploy with:
 
