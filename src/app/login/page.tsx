@@ -52,7 +52,7 @@ export default async function LoginPage() {
               href="/"
               className="inline-flex text-sm font-medium text-slate-400 transition hover:text-slate-100"
             >
-              Back to landing page
+              Back to Hostlyx
             </Link>
           </div>
 
