@@ -82,11 +82,13 @@ export function WorkspaceShell({
     <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-4 sm:px-6 xl:px-8">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 lg:flex-row lg:items-start">
         <aside
-          className={`flex w-full flex-col gap-5 rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] p-5 shadow-[0_20px_40px_rgba(15,23,42,0.16)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:shrink-0 lg:self-start ${isCollapsed ? "lg:w-[96px]" : "lg:w-[272px]"}`}
+          className={`flex w-full flex-col gap-5 overflow-hidden rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_20px_40px_rgba(15,23,42,0.16)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:shrink-0 lg:self-start ${isCollapsed ? "p-4 lg:w-[104px]" : "p-5 lg:w-[272px]"}`}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="border-b border-white/8 pb-5">
-              <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} gap-3`}>
+              <div
+                className={`flex ${isCollapsed ? "flex-col items-center justify-center" : "items-center justify-between"} gap-3`}
+              >
                 <BrandLogo href="/dashboard" compact hideWordmark={isCollapsed} />
                 <button
                   type="button"

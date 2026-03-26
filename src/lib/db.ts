@@ -640,6 +640,161 @@ function buildPropertyDefinition(
   };
 }
 
+async function syncPropertyDefinitionsFromRecords(ownerEmail: string) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const fallbackCountryCode: CountryCode = "US";
+  const createdAt = new Date().toISOString();
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const [propertiesResult, bookingResult, expenseResult, importResult] = await Promise.all([
+      pool.query("SELECT name FROM properties WHERE owner_email = $1", [normalizedEmail]),
+      pool.query(
+        "SELECT DISTINCT property_name AS propertyName FROM bookings WHERE owner_email = $1 AND property_name <> ''",
+        [normalizedEmail],
+      ),
+      pool.query(
+        "SELECT DISTINCT property_name AS propertyName FROM expenses WHERE owner_email = $1 AND property_name <> ''",
+        [normalizedEmail],
+      ),
+      pool.query(
+        "SELECT DISTINCT property_name AS propertyName FROM imports WHERE owner_email = $1 AND property_name <> ''",
+        [normalizedEmail],
+      ),
+    ]);
+
+    const existingNames = new Set(
+      propertiesResult.rows.map((row) =>
+        String(getRowValue(row as Record<string, unknown>, "name")).trim().toLowerCase(),
+      ),
+    );
+    const discoveredNames = new Set<string>();
+
+    for (const row of [...bookingResult.rows, ...expenseResult.rows, ...importResult.rows]) {
+      const name = String(
+        getRowValue(row as Record<string, unknown>, "propertyName", "propertyname") ?? "",
+      ).trim();
+
+      if (name) {
+        discoveredNames.add(name);
+      }
+    }
+
+    for (const discoveredName of discoveredNames) {
+      const normalizedName = discoveredName.toLowerCase();
+      if (existingNames.has(normalizedName)) {
+        continue;
+      }
+
+      await pool.query(
+        `
+          INSERT INTO properties (owner_email, name, country_code, created_at)
+          VALUES ($1, $2, $3, $4)
+        `,
+        [normalizedEmail, discoveredName, fallbackCountryCode, createdAt],
+      );
+      existingNames.add(normalizedName);
+    }
+
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const existingNames = new Set(
+      store.properties
+        .filter((property) => property.ownerEmail === normalizedEmail)
+        .map((property) => property.name.trim().toLowerCase()),
+    );
+    const discoveredNames = new Set<string>();
+
+    for (const booking of store.bookings) {
+      if (booking.ownerEmail === normalizedEmail && booking.propertyName.trim()) {
+        discoveredNames.add(booking.propertyName.trim());
+      }
+    }
+
+    for (const expense of store.expenses) {
+      if (expense.ownerEmail === normalizedEmail && expense.propertyName.trim()) {
+        discoveredNames.add(expense.propertyName.trim());
+      }
+    }
+
+    for (const importSummary of store.imports) {
+      if (importSummary.ownerEmail === normalizedEmail && importSummary.propertyName.trim()) {
+        discoveredNames.add(importSummary.propertyName.trim());
+      }
+    }
+
+    for (const discoveredName of discoveredNames) {
+      const normalizedName = discoveredName.toLowerCase();
+      if (existingNames.has(normalizedName)) {
+        continue;
+      }
+
+      store.properties.push({
+        id: store.nextPropertyId++,
+        ownerEmail: normalizedEmail,
+        name: discoveredName,
+        countryCode: fallbackCountryCode,
+      });
+      existingNames.add(normalizedName);
+    }
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  const propertyRows = db
+    .prepare("SELECT name FROM properties WHERE owner_email = ?")
+    .all(normalizedEmail) as Array<Record<string, unknown>>;
+  const bookingRows = db
+    .prepare(
+      "SELECT DISTINCT property_name AS propertyName FROM bookings WHERE owner_email = ? AND property_name <> ''",
+    )
+    .all(normalizedEmail) as Array<Record<string, unknown>>;
+  const expenseRows = db
+    .prepare(
+      "SELECT DISTINCT property_name AS propertyName FROM expenses WHERE owner_email = ? AND property_name <> ''",
+    )
+    .all(normalizedEmail) as Array<Record<string, unknown>>;
+  const importRows = db
+    .prepare(
+      "SELECT DISTINCT property_name AS propertyName FROM imports WHERE owner_email = ? AND property_name <> ''",
+    )
+    .all(normalizedEmail) as Array<Record<string, unknown>>;
+
+  const existingNames = new Set(
+    propertyRows.map((row) => String(getRowValue(row, "name") ?? "").trim().toLowerCase()),
+  );
+  const discoveredNames = new Set<string>();
+
+  for (const row of [...bookingRows, ...expenseRows, ...importRows]) {
+    const name = String(getRowValue(row, "propertyName", "propertyname") ?? "").trim();
+    if (name) {
+      discoveredNames.add(name);
+    }
+  }
+
+  const insertProperty = db.prepare(
+    `
+      INSERT INTO properties (owner_email, name, country_code, created_at)
+      VALUES (?, ?, ?, ?)
+    `,
+  );
+
+  for (const discoveredName of discoveredNames) {
+    const normalizedName = discoveredName.toLowerCase();
+    if (existingNames.has(normalizedName)) {
+      continue;
+    }
+
+    insertProperty.run(normalizedEmail, discoveredName, fallbackCountryCode, createdAt);
+    existingNames.add(normalizedName);
+  }
+}
+
 function normalizeFingerprintValue(value: string) {
   return value.trim().toLowerCase();
 }
@@ -1376,7 +1531,7 @@ export async function getExpenses(ownerEmail: string): Promise<ExpenseRecord[]> 
 export async function getPropertyDefinitions(
   ownerEmail: string,
 ): Promise<PropertyDefinition[]> {
-  await ensureDatabase();
+  await syncPropertyDefinitionsFromRecords(ownerEmail);
   const normalizedEmail = normalizeOwnerEmail(ownerEmail);
 
   if (isPostgresConfigured()) {

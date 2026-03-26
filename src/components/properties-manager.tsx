@@ -34,6 +34,7 @@ export function PropertiesManager({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [propertyName, setPropertyName] = useState("");
   const [propertyCountryCode, setPropertyCountryCode] = useState<CountryCode>("US");
   const [propertyMode, setPropertyMode] = useState<"single" | "multi">("single");
@@ -45,6 +46,13 @@ export function PropertiesManager({
   const [editingPropertyCountryCode, setEditingPropertyCountryCode] = useState<CountryCode>("US");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function resetCreateState() {
+    setPropertyName("");
+    setPropertyCountryCode("US");
+    setPropertyMode("single");
+    setUnitCount("2");
+  }
 
   function createProperty(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,10 +111,8 @@ export function PropertiesManager({
             }
           }
 
-          setPropertyName("");
-          setPropertyCountryCode("US");
-          setPropertyMode("single");
-          setUnitCount("2");
+          resetCreateState();
+          setIsCreateOpen(false);
           setMessage(
             propertyMode === "multi"
               ? `${normalizedName} created with ${normalizedUnitCount} units.`
@@ -237,131 +243,40 @@ export function PropertiesManager({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 xl:grid-cols-[0.62fr_1.38fr]">
-        <form
-          onSubmit={createProperty}
-          className="workspace-card rounded-[26px] p-5"
-        >
+        <div className="workspace-card rounded-[26px] p-5">
           <div className="flex items-center gap-3">
             <div className="workspace-icon-chip rounded-2xl p-3">
               <Building2 className="h-5 w-5" />
             </div>
             <div>
               <p className="text-base font-semibold text-[var(--workspace-text)]">
-                {properties.length === 0 ? "Create your first property" : "Create property"}
+                {properties.length === 0 ? "Create your first property" : "Add another property"}
               </p>
               <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                Start with the way this listing is rented, then decide whether units are needed.
+                Keep the setup cleaner here, then choose region, property type, and units inside a focused modal.
               </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-3">
-            <input
-              className={inputClassName()}
-              value={propertyName}
-              onChange={(event) => setPropertyName(event.target.value)}
-              placeholder="Villa Sol, PinarSabroso, Downtown Lofts..."
-            />
-
-            <div className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                Market
-              </span>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {marketDefinitions.map((market) => {
-                  const isSelected = propertyCountryCode === market.countryCode;
-
-                  return (
-                    <button
-                      key={market.countryCode}
-                      type="button"
-                      onClick={() => setPropertyCountryCode(market.countryCode)}
-                      className={`rounded-[22px] border px-4 py-4 text-left transition ${
-                        isSelected
-                          ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
-                          : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Globe2 className="h-4 w-4" />
-                        <span className="text-sm font-semibold">{market.shortLabel}</span>
-                      </div>
-                      <p className="mt-2 text-xs leading-5">
-                        {market.countryName} • {market.currencyCode}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
+              Create properties from a modal so region, rental structure, and units are handled in one compact flow instead of sitting permanently on the page.
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setPropertyMode("single")}
-                className={`rounded-[22px] border px-4 py-4 text-left transition ${
-                  propertyMode === "single"
-                    ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
-                    : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <House className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Single house</span>
-                </div>
-                <p className="mt-2 text-xs leading-5">
-                  Rent the entire home as one listing. No units are necessary.
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPropertyMode("multi")}
-                className={`rounded-[22px] border px-4 py-4 text-left transition ${
-                  propertyMode === "multi"
-                    ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
-                    : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Layers3 className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Multi-unit</span>
-                </div>
-                <p className="mt-2 text-xs leading-5">
-                  Apartments, rooms, suites, or several rentable units inside one property.
-                </p>
-              </button>
-            </div>
-
-            {propertyMode === "multi" ? (
-              <label className="space-y-2">
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                  How many units does it have?
-                </span>
-                <input
-                  className={inputClassName()}
-                  type="number"
-                  min="2"
-                  max="50"
-                  value={unitCount}
-                  onChange={(event) => setUnitCount(event.target.value)}
-                />
-              </label>
-            ) : (
-              <div className="workspace-soft-card rounded-[22px] px-4 py-3 text-sm text-[var(--workspace-muted)]">
-                This property will be treated as one full-home listing. You can still add units later if needed.
-              </div>
-            )}
 
             <button
-              type="submit"
-              disabled={isPending}
+              type="button"
+              onClick={() => {
+                setMessage(null);
+                setError(null);
+                setIsCreateOpen(true);
+              }}
               className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
-              Add property
+              {properties.length === 0 ? "Create first property" : "Open property modal"}
             </button>
           </div>
-        </form>
+        </div>
 
         <div className="workspace-card rounded-[26px] p-5">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -527,6 +442,128 @@ export function PropertiesManager({
           );
         })}
       </div>
+
+      <Modal
+        open={isCreateOpen}
+        title={properties.length === 0 ? "Create your first property" : "Add property"}
+        onClose={() => {
+          setIsCreateOpen(false);
+          resetCreateState();
+        }}
+      >
+        <form onSubmit={createProperty} className="space-y-5">
+          <label className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+              Property name
+            </span>
+            <input
+              className={inputClassName()}
+              value={propertyName}
+              onChange={(event) => setPropertyName(event.target.value)}
+              placeholder="Villa Sol, PinarSabroso, Downtown Lofts..."
+              required
+            />
+          </label>
+
+          <div className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+              Market
+            </span>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {marketDefinitions.map((market) => {
+                const isSelected = propertyCountryCode === market.countryCode;
+
+                return (
+                  <button
+                    key={market.countryCode}
+                    type="button"
+                    onClick={() => setPropertyCountryCode(market.countryCode)}
+                    className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                      isSelected
+                        ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
+                        : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Globe2 className="h-4 w-4" />
+                      <span className="text-sm font-semibold">{market.shortLabel}</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5">
+                      {market.countryName} • {market.currencyCode}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setPropertyMode("single")}
+              className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                propertyMode === "single"
+                  ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
+                  : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <House className="h-4 w-4" />
+                <span className="text-sm font-semibold">Single house</span>
+              </div>
+              <p className="mt-2 text-xs leading-5">
+                Rent the entire home as one listing. No units are necessary.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPropertyMode("multi")}
+              className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                propertyMode === "multi"
+                  ? "border-[var(--workspace-accent)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-text)]"
+                  : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Layers3 className="h-4 w-4" />
+                <span className="text-sm font-semibold">Multi-unit</span>
+              </div>
+              <p className="mt-2 text-xs leading-5">
+                Apartments, rooms, suites, or several rentable units inside one property.
+              </p>
+            </button>
+          </div>
+
+          {propertyMode === "multi" ? (
+            <label className="space-y-2">
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                How many units does it have?
+              </span>
+              <input
+                className={inputClassName()}
+                type="number"
+                min="2"
+                max="50"
+                value={unitCount}
+                onChange={(event) => setUnitCount(event.target.value)}
+              />
+            </label>
+          ) : (
+            <div className="workspace-soft-card rounded-[22px] px-4 py-3 text-sm text-[var(--workspace-muted)]">
+              This property will be treated as one full-home listing. You can still add units later if needed.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" />
+            {isPending ? "Creating property..." : "Save property"}
+          </button>
+        </form>
+      </Modal>
 
       <Modal
         open={Boolean(editingProperty)}
