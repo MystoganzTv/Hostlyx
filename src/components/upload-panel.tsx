@@ -30,7 +30,7 @@ export function UploadPanel({
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedPropertyName, setSelectedPropertyName] = useState(properties[0]?.name ?? "");
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -38,9 +38,9 @@ export function UploadPanel({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!selectedFile) {
+    if (selectedFiles.length === 0) {
       setUploadState("error");
-      setMessage("Choose an .xlsx workbook before importing.");
+      setMessage("Choose at least one .xlsx workbook before importing.");
       return;
     }
 
@@ -51,11 +51,17 @@ export function UploadPanel({
     }
 
     setUploadState("uploading");
-    setMessage(`Uploading ${selectedFile.name} into ${selectedPropertyName}...`);
+    setMessage(
+      selectedFiles.length === 1
+        ? `Uploading ${selectedFiles[0].name} into ${selectedPropertyName}...`
+        : `Uploading ${selectedFiles.length} workbooks into ${selectedPropertyName}...`,
+    );
 
     try {
       const upload = new FormData();
-      upload.set("file", selectedFile);
+      for (const file of selectedFiles) {
+        upload.append("files", file);
+      }
       upload.set("propertyName", selectedPropertyName);
 
       const response = await fetch("/api/import", {
@@ -77,7 +83,12 @@ export function UploadPanel({
       }
 
       setUploadState("success");
-      setMessage(payload.message ?? `${selectedFile.name} imported successfully.`);
+      setMessage(
+        payload.message ??
+          (selectedFiles.length === 1
+            ? `${selectedFiles[0].name} imported successfully.`
+            : `${selectedFiles.length} workbooks imported successfully.`),
+      );
       router.refresh();
     } catch {
       setUploadState("error");
@@ -86,17 +97,21 @@ export function UploadPanel({
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null;
-    setSelectedFile(nextFile);
+    const nextFiles = Array.from(event.target.files ?? []);
+    setSelectedFiles(nextFiles);
 
-    if (!nextFile) {
+    if (nextFiles.length === 0) {
       setUploadState("idle");
       setMessage(null);
       return;
     }
 
     setUploadState("idle");
-    setMessage(`${nextFile.name} selected and ready to import.`);
+    setMessage(
+      nextFiles.length === 1
+        ? `${nextFiles[0].name} selected and ready to import.`
+        : `${nextFiles.length} workbooks selected and ready to import.`,
+    );
   }
 
   const statusTone =
@@ -111,10 +126,10 @@ export function UploadPanel({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--workspace-muted)]">
-            Import Workbook
+            Spreadsheet Intake
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-            Reads only `Bookings` and `Expenses`. New uploads are saved to the system and exact duplicates are skipped.
+            Use Excel only to bring legacy `Bookings` and `Expenses` into Hostlyx. Once imported, the records live in the app as normal data and the workbook stays in Import History as backup traceability. Exact duplicates are skipped automatically.
           </p>
         </div>
         <div className="workspace-icon-chip rounded-3xl p-3">
@@ -126,8 +141,9 @@ export function UploadPanel({
         <input
           ref={inputRef}
           type="file"
-          name="file"
+          name="files"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          multiple
           className="sr-only"
           onChange={handleFileChange}
         />
@@ -155,19 +171,21 @@ export function UploadPanel({
               </div>
             )}
             <p className="text-xs text-[var(--workspace-muted)]">
-              Imported bookings and expenses will be assigned to this property.
+              Imported bookings and expenses will be assigned to this property, then managed inside Hostlyx like any other saved record.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <span className="block text-sm font-medium text-[var(--workspace-text)]">
-                Excel workbook
+                Excel workbooks
               </span>
               <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                {selectedFile
-                  ? "File selected and ready to import."
-                  : "Choose your .xlsx file to start the import."}
+                {selectedFiles.length > 0
+                  ? selectedFiles.length === 1
+                    ? "1 file selected and ready to import."
+                    : `${selectedFiles.length} files selected and ready to import.`
+                  : "Choose one or more .xlsx workbooks to migrate legacy data in."}
               </p>
             </div>
 
@@ -181,7 +199,7 @@ export function UploadPanel({
               disabled={uploadState === "uploading"}
               className="workspace-button-secondary inline-flex shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {selectedFile ? "Choose another file" : "Choose file"}
+              {selectedFiles.length > 0 ? "Add more files" : "Select files"}
             </button>
           </div>
 
@@ -191,12 +209,34 @@ export function UploadPanel({
                 <FileSpreadsheet className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
-                  {selectedFile ? selectedFile.name : "No file selected yet"}
-                </p>
-                <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                  {selectedFile ? formatFileSize(selectedFile.size) : "Only .xlsx workbooks are supported."}
-                </p>
+                {selectedFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedFiles.slice(0, 4).map((file) => (
+                      <div key={`${file.name}-${file.size}`} className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
+                          {file.name}
+                        </p>
+                        <p className="shrink-0 text-xs text-[var(--workspace-muted)]">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+                    ))}
+                    {selectedFiles.length > 4 ? (
+                      <p className="text-xs text-[var(--workspace-muted)]">
+                        +{selectedFiles.length - 4} more files selected
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
+                      No file selected yet
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--workspace-muted)]">
+                      Only .xlsx workbooks are supported.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -204,16 +244,16 @@ export function UploadPanel({
 
         <button
           type="submit"
-          disabled={uploadState === "uploading" || !selectedFile}
+          disabled={uploadState === "uploading" || selectedFiles.length === 0}
           className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploadState === "uploading" ? (
             <>
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              Importing workbook...
+              Moving data into Hostlyx...
             </>
           ) : (
-            "Import workbook"
+            selectedFiles.length > 1 ? "Import into Hostlyx" : "Import into Hostlyx"
           )}
         </button>
       </form>
@@ -229,7 +269,7 @@ export function UploadPanel({
           )}
           <p>
             {message ??
-              "Pick a workbook first. After import, this panel will confirm whether it succeeded or failed."}
+              "Pick one or more workbooks first. After import, Hostlyx will confirm the result and keep the batch in Import History while the records stay editable inside the app."}
           </p>
         </div>
       </div>

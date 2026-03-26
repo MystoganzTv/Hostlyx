@@ -23,25 +23,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const file = formData.get("file");
+    const files = formData
+      .getAll("files")
+      .filter((value): value is File => value instanceof File && value.size > 0);
+    const fallbackFile = formData.get("file");
     const requestedPropertyName = String(formData.get("propertyName") ?? "").trim();
+    const workbookFiles =
+      files.length > 0
+        ? files
+        : fallbackFile instanceof File && fallbackFile.size > 0
+          ? [fallbackFile]
+          : [];
 
-    if (!(file instanceof File)) {
+    if (workbookFiles.length === 0) {
       return NextResponse.json(
         { error: "Attach a valid .xlsx file to import." },
         { status: 400 },
       );
     }
 
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      return NextResponse.json(
-        { error: "Only .xlsx workbooks are supported." },
-        { status: 400 },
-      );
-    }
-
-    const buffer = await file.arrayBuffer();
-    const { bookings, expenses } = parseWorkbook(buffer);
     const targetPropertyName = requestedPropertyName || propertyDefinitions[0]?.name || "";
 
     if (
@@ -56,30 +56,58 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await appendImportData({
-      ownerEmail,
-      fileName: file.name,
-      propertyName: targetPropertyName,
-      source: "upload",
-      bookings: bookings.map((booking) => ({
-        ...booking,
+    let totalBookings = 0;
+    let totalExpenses = 0;
+    let totalSkippedBookings = 0;
+    let totalSkippedExpenses = 0;
+    const importedFiles: string[] = [];
+
+    for (const file of workbookFiles) {
+      if (!file.name.toLowerCase().endsWith(".xlsx")) {
+        return NextResponse.json(
+          { error: `Only .xlsx workbooks are supported. "${file.name}" is not valid.` },
+          { status: 400 },
+        );
+      }
+
+      const buffer = await file.arrayBuffer();
+      const { bookings, expenses } = parseWorkbook(buffer);
+
+      const result = await appendImportData({
+        ownerEmail,
+        fileName: file.name,
         propertyName: targetPropertyName,
-        unitName: "",
-      })),
-      expenses: expenses.map((expense) => ({
-        ...expense,
-        propertyName: targetPropertyName,
-        unitName: "",
-      })),
-    });
+        source: "upload",
+        bookings: bookings.map((booking) => ({
+          ...booking,
+          propertyName: targetPropertyName,
+          unitName: "",
+        })),
+        expenses: expenses.map((expense) => ({
+          ...expense,
+          propertyName: targetPropertyName,
+          unitName: "",
+        })),
+      });
+
+      totalBookings += result.bookingsCount;
+      totalExpenses += result.expensesCount;
+      totalSkippedBookings += result.skippedBookingsCount;
+      totalSkippedExpenses += result.skippedExpensesCount;
+      importedFiles.push(file.name);
+    }
 
     const duplicateNotice =
-      result.skippedBookingsCount > 0 || result.skippedExpensesCount > 0
-        ? ` Skipped ${result.skippedBookingsCount} duplicate bookings and ${result.skippedExpensesCount} duplicate expenses already saved in Hostlyx.`
+      totalSkippedBookings > 0 || totalSkippedExpenses > 0
+        ? ` Skipped ${totalSkippedBookings} duplicate bookings and ${totalSkippedExpenses} duplicate expenses already saved in Hostlyx.`
         : "";
+    const fileLabel =
+      importedFiles.length === 1
+        ? importedFiles[0]
+        : `${importedFiles.length} workbooks`;
 
     return NextResponse.json({
-      message: `Added ${result.bookingsCount} bookings and ${result.expensesCount} expenses from ${file.name} into ${targetPropertyName}.${duplicateNotice}`,
+      message: `Added ${totalBookings} bookings and ${totalExpenses} expenses from ${fileLabel} into ${targetPropertyName}. The records now live inside Hostlyx and the upload stays in Import History.${duplicateNotice}`,
     });
   } catch (error) {
     return NextResponse.json(

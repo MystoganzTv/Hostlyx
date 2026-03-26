@@ -7,6 +7,7 @@ import {
   Building2,
   ChevronsLeft,
   ChevronsRight,
+  DatabaseZap,
   LayoutDashboard,
   LogOut,
   ReceiptText,
@@ -17,7 +18,7 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { formatDateLabel } from "@/lib/format";
 import type { CurrencyCode, ImportSummary } from "@/lib/types";
 
-type ActivePage = "dashboard" | "bookings" | "expenses" | "properties" | "profile";
+type ActivePage = "dashboard" | "bookings" | "expenses" | "imports" | "properties" | "profile";
 const sidebarStorageKey = "hostlyx:sidebar-collapsed";
 
 const navItems: Array<{
@@ -29,6 +30,7 @@ const navItems: Array<{
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
+  { id: "imports", label: "Import History", href: "/dashboard/imports", icon: DatabaseZap },
   { id: "properties", label: "Properties", href: "/dashboard/properties", icon: Building2 },
   { id: "profile", label: "Profile", href: "/profile", icon: UserCircle2 },
 ];
@@ -143,7 +145,7 @@ export function WorkspaceShell({
                   <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
                     {latestImport
                       ? `${latestImport.propertyName} • ${formatDateLabel(latestImport.importedAt.slice(0, 10))}`
-                      : "Upload your first file to start"}
+                      : "Import a workbook if you need to bring old data in"}
                   </p>
                 </div>
 

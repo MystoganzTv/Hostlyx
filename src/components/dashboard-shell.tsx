@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
+  ArrowRight,
   BarChart3,
   CalendarDays,
   LayoutDashboard,
@@ -146,7 +148,7 @@ export function DashboardShell({
       <WorkspaceShell
         activePage="dashboard"
         pageTitle="Dashboard"
-        pageSubtitle="Your financial overview at a glance"
+        pageSubtitle="Your saved business data at a glance"
         businessName={businessName}
         userName={userName}
         userEmail={userEmail}
@@ -159,7 +161,7 @@ export function DashboardShell({
               onClick={() => setIsUploadOpen(true)}
               className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
             >
-              Import Excel
+              Import Data
             </button>
             <button
               type="button"
@@ -183,6 +185,24 @@ export function DashboardShell({
               selectedCountryCode={view.filters.countryCode}
             />
           </div>
+
+          <SectionCard
+            title="Hostlyx Is The Source Of Truth"
+            subtitle="Use manual entry for day-to-day work. Bring old spreadsheets in only when you need to migrate legacy records into the app."
+            action={
+              <Link
+                href="/dashboard/imports"
+                className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition"
+              >
+                Open Import History
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            }
+          >
+            <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
+              Every imported workbook is kept in <span className="font-medium text-[var(--workspace-text)]">Import History</span> for audit trail and reference, but the records themselves become normal Hostlyx data that you can filter, edit, and report on inside the product.
+            </div>
+          </SectionCard>
 
           {view.mixedCurrencyMode ? (
             <div className="workspace-soft-card rounded-[22px] px-4 py-3 text-sm text-[var(--workspace-muted)]">
@@ -288,7 +308,7 @@ export function DashboardShell({
               <div className="space-y-3">
                 {view.recentBookings.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No bookings yet. Import your Excel file to start populating this view.
+                    No bookings yet. Add one manually or import legacy spreadsheet data to start populating this view.
                   </div>
                 ) : (
                   view.recentBookings.map((booking, index) => (
@@ -350,7 +370,7 @@ export function DashboardShell({
               <div className="space-y-3">
                 {view.recentExpenses.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No expenses yet. Import your Excel file to populate expense reporting.
+                    No expenses yet. Add them inside Hostlyx or import a prior workbook to populate expense reporting.
                   </div>
                 ) : (
                   view.recentExpenses.map((expense, index) => (
@@ -425,7 +445,7 @@ export function DashboardShell({
 
       <Modal
         open={isUploadOpen}
-        title="Import Excel Workbook"
+        title="Import Spreadsheet Data"
         onClose={() => setIsUploadOpen(false)}
       >
         <UploadPanel properties={properties} />
