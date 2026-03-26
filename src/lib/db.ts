@@ -1510,6 +1510,255 @@ export async function createPropertyUnit({
   return Number(result.lastInsertRowid);
 }
 
+export async function updatePropertyDefinition({
+  ownerEmail,
+  propertyId,
+  name,
+}: {
+  ownerEmail: string;
+  propertyId: number;
+  name: string;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new Error("Enter a property name.");
+  }
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const propertyResult = await pool.query(
+      "SELECT id, name FROM properties WHERE id = $1 AND owner_email = $2 LIMIT 1",
+      [propertyId, normalizedEmail],
+    );
+    const propertyRow = propertyResult.rows[0] as Record<string, unknown> | undefined;
+
+    if (!propertyRow) {
+      throw new Error("Property not found.");
+    }
+
+    const currentName = String(getRowValue(propertyRow, "name"));
+    const duplicate = await pool.query(
+      "SELECT id FROM properties WHERE owner_email = $1 AND LOWER(name) = LOWER($2) AND id <> $3 LIMIT 1",
+      [normalizedEmail, normalizedName, propertyId],
+    );
+
+    if (duplicate.rows[0]) {
+      throw new Error("That property already exists.");
+    }
+
+    await pool.query("UPDATE properties SET name = $1 WHERE id = $2 AND owner_email = $3", [
+      normalizedName,
+      propertyId,
+      normalizedEmail,
+    ]);
+    await pool.query(
+      "UPDATE bookings SET property_name = $1 WHERE owner_email = $2 AND property_name = $3",
+      [normalizedName, normalizedEmail, currentName],
+    );
+    await pool.query(
+      "UPDATE expenses SET property_name = $1 WHERE owner_email = $2 AND property_name = $3",
+      [normalizedName, normalizedEmail, currentName],
+    );
+
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const property = store.properties.find(
+      (entry) => entry.id === propertyId && entry.ownerEmail === normalizedEmail,
+    );
+
+    if (!property) {
+      throw new Error("Property not found.");
+    }
+
+    const duplicate = store.properties.find(
+      (entry) =>
+        entry.ownerEmail === normalizedEmail &&
+        entry.id !== propertyId &&
+        entry.name.toLowerCase() === normalizedName.toLowerCase(),
+    );
+
+    if (duplicate) {
+      throw new Error("That property already exists.");
+    }
+
+    const currentName = property.name;
+    property.name = normalizedName;
+
+    for (const booking of store.bookings) {
+      if (booking.ownerEmail === normalizedEmail && booking.propertyName === currentName) {
+        booking.propertyName = normalizedName;
+      }
+    }
+
+    for (const expense of store.expenses) {
+      if (expense.ownerEmail === normalizedEmail && expense.propertyName === currentName) {
+        expense.propertyName = normalizedName;
+      }
+    }
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  const property = db
+    .prepare("SELECT id, name FROM properties WHERE id = ? AND owner_email = ? LIMIT 1")
+    .get(propertyId, normalizedEmail) as { id?: number; name?: string } | undefined;
+
+  if (!property?.id || !property.name) {
+    throw new Error("Property not found.");
+  }
+
+  const duplicate = db
+    .prepare(
+      "SELECT id FROM properties WHERE owner_email = ? AND LOWER(name) = LOWER(?) AND id <> ? LIMIT 1",
+    )
+    .get(normalizedEmail, normalizedName, propertyId) as { id?: number } | undefined;
+
+  if (duplicate?.id) {
+    throw new Error("That property already exists.");
+  }
+
+  db.prepare("UPDATE properties SET name = ? WHERE id = ? AND owner_email = ?").run(
+    normalizedName,
+    propertyId,
+    normalizedEmail,
+  );
+  db.prepare("UPDATE bookings SET property_name = ? WHERE owner_email = ? AND property_name = ?").run(
+    normalizedName,
+    normalizedEmail,
+    property.name,
+  );
+  db.prepare("UPDATE expenses SET property_name = ? WHERE owner_email = ? AND property_name = ?").run(
+    normalizedName,
+    normalizedEmail,
+    property.name,
+  );
+}
+
+export async function deletePropertyDefinition({
+  ownerEmail,
+  propertyId,
+}: {
+  ownerEmail: string;
+  propertyId: number;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const propertyResult = await pool.query(
+      "SELECT id, name FROM properties WHERE id = $1 AND owner_email = $2 LIMIT 1",
+      [propertyId, normalizedEmail],
+    );
+    const propertyRow = propertyResult.rows[0] as Record<string, unknown> | undefined;
+
+    if (!propertyRow) {
+      throw new Error("Property not found.");
+    }
+
+    const propertyName = String(getRowValue(propertyRow, "name"));
+    const [bookingUsage, expenseUsage] = await Promise.all([
+      pool.query(
+        "SELECT COUNT(*) AS count FROM bookings WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      ),
+      pool.query(
+        "SELECT COUNT(*) AS count FROM expenses WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      ),
+    ]);
+
+    const bookingCount = Number(
+      getRowValue(bookingUsage.rows[0] as Record<string, unknown>, "count"),
+    );
+    const expenseCount = Number(
+      getRowValue(expenseUsage.rows[0] as Record<string, unknown>, "count"),
+    );
+
+    if (bookingCount > 0 || expenseCount > 0) {
+      throw new Error("Move or delete the linked bookings and expenses before deleting this property.");
+    }
+
+    await pool.query("DELETE FROM property_units WHERE property_id = $1 AND owner_email = $2", [
+      propertyId,
+      normalizedEmail,
+    ]);
+    await pool.query("DELETE FROM properties WHERE id = $1 AND owner_email = $2", [
+      propertyId,
+      normalizedEmail,
+    ]);
+
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const property = store.properties.find(
+      (entry) => entry.id === propertyId && entry.ownerEmail === normalizedEmail,
+    );
+
+    if (!property) {
+      throw new Error("Property not found.");
+    }
+
+    const bookingCount = store.bookings.filter(
+      (booking) => booking.ownerEmail === normalizedEmail && booking.propertyName === property.name,
+    ).length;
+    const expenseCount = store.expenses.filter(
+      (expense) => expense.ownerEmail === normalizedEmail && expense.propertyName === property.name,
+    ).length;
+
+    if (bookingCount > 0 || expenseCount > 0) {
+      throw new Error("Move or delete the linked bookings and expenses before deleting this property.");
+    }
+
+    store.propertyUnits = store.propertyUnits.filter(
+      (unit) => !(unit.ownerEmail === normalizedEmail && unit.propertyId === propertyId),
+    );
+    store.properties = store.properties.filter(
+      (entry) => !(entry.ownerEmail === normalizedEmail && entry.id === propertyId),
+    );
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  const property = db
+    .prepare("SELECT id, name FROM properties WHERE id = ? AND owner_email = ? LIMIT 1")
+    .get(propertyId, normalizedEmail) as { id?: number; name?: string } | undefined;
+
+  if (!property?.id || !property.name) {
+    throw new Error("Property not found.");
+  }
+
+  const bookingUsage = db
+    .prepare("SELECT COUNT(*) AS count FROM bookings WHERE owner_email = ? AND property_name = ?")
+    .get(normalizedEmail, property.name) as { count?: number } | undefined;
+  const expenseUsage = db
+    .prepare("SELECT COUNT(*) AS count FROM expenses WHERE owner_email = ? AND property_name = ?")
+    .get(normalizedEmail, property.name) as { count?: number } | undefined;
+
+  if ((bookingUsage?.count ?? 0) > 0 || (expenseUsage?.count ?? 0) > 0) {
+    throw new Error("Move or delete the linked bookings and expenses before deleting this property.");
+  }
+
+  db.prepare("DELETE FROM property_units WHERE property_id = ? AND owner_email = ?").run(
+    propertyId,
+    normalizedEmail,
+  );
+  db.prepare("DELETE FROM properties WHERE id = ? AND owner_email = ?").run(
+    propertyId,
+    normalizedEmail,
+  );
+}
+
 export async function insertManualBooking({
   ownerEmail,
   booking,

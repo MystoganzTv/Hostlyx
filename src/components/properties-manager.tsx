@@ -2,11 +2,13 @@
 
 import { type FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, House, Layers3, Plus } from "lucide-react";
+import { Building2, Edit3, House, Layers3, Plus, Trash2 } from "lucide-react";
+import { Modal } from "@/components/modal";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { CurrencyCode, PropertyDefinition } from "@/lib/types";
 
 type PropertySummary = {
+  id?: number;
   name: string;
   units: string[];
   bookings: number;
@@ -34,6 +36,9 @@ export function PropertiesManager({
   const [propertyMode, setPropertyMode] = useState<"single" | "multi">("single");
   const [unitCount, setUnitCount] = useState("2");
   const [unitDrafts, setUnitDrafts] = useState<Record<number, string>>({});
+  const [editingProperty, setEditingProperty] = useState<PropertySummary | null>(null);
+  const [propertyToDelete, setPropertyToDelete] = useState<PropertySummary | null>(null);
+  const [editingPropertyName, setEditingPropertyName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,6 +141,82 @@ export function PropertiesManager({
           router.refresh();
         } catch {
           setError("The unit could not be created.");
+        }
+      })();
+    });
+  }
+
+  function openEditProperty(summary: PropertySummary) {
+    setEditingProperty(summary);
+    setEditingPropertyName(summary.name);
+    setMessage(null);
+    setError(null);
+  }
+
+  function submitPropertyUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingProperty?.id) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+
+    startTransition(() => {
+      void (async () => {
+        try {
+          const formData = new FormData();
+          formData.set("name", editingPropertyName);
+
+          const response = await fetch(`/api/properties/${editingProperty.id}`, {
+            method: "PATCH",
+            body: formData,
+          });
+          const payload = (await response.json()) as { error?: string; message?: string };
+
+          if (!response.ok) {
+            setError(payload.error ?? "The property could not be updated.");
+            return;
+          }
+
+          setMessage(payload.message ?? "Property updated.");
+          setEditingProperty(null);
+          setEditingPropertyName("");
+          router.refresh();
+        } catch {
+          setError("The property could not be updated.");
+        }
+      })();
+    });
+  }
+
+  function confirmDeleteProperty() {
+    if (!propertyToDelete?.id) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+
+    startTransition(() => {
+      void (async () => {
+        try {
+          const response = await fetch(`/api/properties/${propertyToDelete.id}`, {
+            method: "DELETE",
+          });
+          const payload = (await response.json()) as { error?: string; message?: string };
+
+          if (!response.ok) {
+            setError(payload.error ?? "The property could not be deleted.");
+            return;
+          }
+
+          setMessage(payload.message ?? "Property deleted.");
+          setPropertyToDelete(null);
+          router.refresh();
+        } catch {
+          setError("The property could not be deleted.");
         }
       })();
     });
@@ -271,6 +352,10 @@ export function PropertiesManager({
         {summaries.map((summary) => {
           const property = properties.find((entry) => entry.name === summary.name);
           const propertyId = property?.id ?? 0;
+          const propertySummary: PropertySummary = {
+            ...summary,
+            id: propertyId,
+          };
 
           return (
             <article
@@ -289,6 +374,27 @@ export function PropertiesManager({
                 <div className="workspace-icon-chip rounded-2xl p-3">
                   <Layers3 className="h-5 w-5" />
                 </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEditProperty(propertySummary)}
+                  disabled={!propertyId || isPending}
+                  className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPropertyToDelete(propertySummary)}
+                  disabled={!propertyId || isPending}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -363,6 +469,99 @@ export function PropertiesManager({
           );
         })}
       </div>
+
+      <Modal
+        open={Boolean(editingProperty)}
+        title={editingProperty ? `Edit ${editingProperty.name}` : "Edit property"}
+        onClose={() => {
+          setEditingProperty(null);
+          setEditingPropertyName("");
+        }}
+      >
+        {editingProperty ? (
+          <form onSubmit={submitPropertyUpdate} className="space-y-5">
+            <label className="space-y-2">
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                Property name
+              </span>
+              <input
+                className={inputClassName()}
+                value={editingPropertyName}
+                onChange={(event) => setEditingPropertyName(event.target.value)}
+                placeholder="Enter property name"
+                required
+              />
+            </label>
+
+            <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
+              Renaming a property updates the property name across existing bookings and expenses in this workspace.
+            </div>
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="workspace-button-primary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? "Saving property..." : "Save property"}
+            </button>
+          </form>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(propertyToDelete)}
+        title={propertyToDelete ? `Delete ${propertyToDelete.name}?` : "Delete property"}
+        onClose={() => setPropertyToDelete(null)}
+      >
+        {propertyToDelete ? (
+          <div className="space-y-5">
+            <div className="rounded-[22px] border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700">
+              {propertyToDelete.bookings > 0 || propertyToDelete.expenses > 0
+                ? "This property still has linked bookings or expenses. Move or delete those records first."
+                : "This will delete the property and any saved units under it."}
+            </div>
+
+            <div className="workspace-soft-card grid gap-3 rounded-[22px] p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Bookings</p>
+                <p className="mt-1 text-sm text-[var(--workspace-text)]">
+                  {formatNumber(propertyToDelete.bookings)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Expenses</p>
+                <p className="mt-1 text-sm text-[var(--workspace-text)]">
+                  {formatCurrency(propertyToDelete.expenses, false, currencyCode)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Units</p>
+                <p className="mt-1 text-sm text-[var(--workspace-text)]">
+                  {formatNumber(propertyToDelete.units.length)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPropertyToDelete(null)}
+                className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteProperty}
+                disabled={isPending || propertyToDelete.bookings > 0 || propertyToDelete.expenses > 0}
+                className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPending ? "Deleting property..." : "Delete property"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
