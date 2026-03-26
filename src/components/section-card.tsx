@@ -15,15 +15,15 @@ export function SectionCard({
 }) {
   return (
     <section
-      className={`card-surface soft-ring rounded-[28px] p-5 sm:p-6 ${className}`}
+      className={`workspace-card rounded-[28px] p-5 sm:p-6 ${className}`}
     >
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-slate-50">
+          <h2 className="text-lg font-semibold tracking-tight text-[var(--workspace-text)]">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-1 max-w-2xl text-sm text-slate-400">{subtitle}</p>
+            <p className="mt-1 max-w-2xl text-sm text-[var(--workspace-muted)]">{subtitle}</p>
           ) : null}
         </div>
         {action ? <div>{action}</div> : null}

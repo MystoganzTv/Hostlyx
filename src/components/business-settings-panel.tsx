@@ -60,17 +60,17 @@ export function BusinessSettingsPanel({
   }
 
   return (
-    <div className="rounded-[30px] border border-white/8 bg-white/[0.02] p-5 sm:p-6">
+    <div className="workspace-card rounded-[30px] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--workspace-muted)]">
             Business Settings
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
             Each account keeps its own business name, currency, imports, and manual entries.
           </p>
         </div>
-        <div className="brand-icon rounded-3xl p-3">
+        <div className="workspace-icon-chip rounded-3xl p-3">
           <Settings2 className="h-6 w-6" />
         </div>
       </div>
@@ -112,15 +112,15 @@ export function BusinessSettingsPanel({
         <button
           type="submit"
           disabled={isPending}
-          className="brand-button inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+          className="workspace-button-primary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending ? "Saving settings..." : "Save settings"}
         </button>
       </form>
 
       <div className="mt-4 min-h-6">
-        {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+        {error ? <p className="text-sm text-rose-500">{error}</p> : null}
       </div>
     </div>
   );

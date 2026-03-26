@@ -84,23 +84,23 @@ export function UploadPanel() {
 
   const statusTone =
     uploadState === "success"
-      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : uploadState === "error"
-        ? "border-rose-400/30 bg-rose-400/10 text-rose-200"
-        : "border-white/10 bg-white/[0.03] text-slate-300";
+        ? "border-rose-200 bg-rose-50 text-rose-600"
+        : "border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] text-[var(--workspace-muted)]";
 
   return (
-    <div className="rounded-[30px] border border-white/8 bg-white/[0.02] p-5 sm:p-6">
+    <div className="workspace-card rounded-[30px] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--workspace-muted)]">
             Import Workbook
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
             Reads only `Bookings` and `Expenses`. New uploads are saved to the system and exact duplicates are skipped.
           </p>
         </div>
-        <div className="brand-icon rounded-3xl p-3">
+        <div className="workspace-icon-chip rounded-3xl p-3">
           <UploadCloud className="h-6 w-6" />
         </div>
       </div>
@@ -115,13 +115,13 @@ export function UploadPanel() {
           onChange={handleFileChange}
         />
 
-        <div className="rounded-[22px] border border-dashed border-white/15 bg-white/[0.03] p-4">
+        <div className="workspace-soft-card rounded-[22px] border border-dashed p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <span className="block text-sm font-medium text-slate-200">
+              <span className="block text-sm font-medium text-[var(--workspace-text)]">
                 Excel workbook
               </span>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-[var(--workspace-muted)]">
                 {selectedFile
                   ? "File selected and ready to import."
                   : "Choose your .xlsx file to start the import."}
@@ -132,27 +132,26 @@ export function UploadPanel() {
               type="button"
               onClick={() => {
                 if (inputRef.current) {
-                  inputRef.current.value = "";
                   inputRef.current.click();
                 }
               }}
               disabled={uploadState === "uploading"}
-              className="brand-button-secondary inline-flex shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+              className="workspace-button-secondary inline-flex shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               {selectedFile ? "Choose another file" : "Choose file"}
             </button>
           </div>
 
-          <div className="mt-4 rounded-[20px] border border-white/8 bg-slate-950/40 p-4">
+          <div className="mt-4 rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-4">
             <div className="flex items-start gap-3">
-              <div className="brand-icon rounded-2xl p-2">
+              <div className="workspace-icon-chip rounded-2xl p-2">
                 <FileSpreadsheet className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-100">
+                <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
                   {selectedFile ? selectedFile.name : "No file selected yet"}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-[var(--workspace-muted)]">
                   {selectedFile ? formatFileSize(selectedFile.size) : "Only .xlsx workbooks are supported."}
                 </p>
               </div>
@@ -163,7 +162,7 @@ export function UploadPanel() {
         <button
           type="submit"
           disabled={uploadState === "uploading" || !selectedFile}
-          className="brand-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+          className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploadState === "uploading" ? (
             <>

@@ -18,21 +18,21 @@ export function MetricCard({
   icon?: ReactNode;
 }) {
   return (
-    <article className="card-surface rounded-[24px] p-4">
+    <article className="workspace-card rounded-[24px] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-400">{label}</p>
-          <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">{label}</p>
+          <p className="mt-4 text-2xl font-semibold tracking-tight text-[var(--workspace-text)] sm:text-3xl">
             {formatMetricValue(value, format, currencyCode)}
           </p>
         </div>
         {icon ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-[var(--accent)]">
+          <div className="workspace-icon-chip rounded-2xl p-3">
             {icon}
           </div>
         ) : null}
       </div>
-      {helper ? <p className="mt-3 text-xs text-slate-500">{helper}</p> : null}
+      {helper ? <p className="mt-3 text-xs text-[var(--workspace-muted)]">{helper}</p> : null}
     </article>
   );
 }

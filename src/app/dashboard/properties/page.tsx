@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Building2, Layers3 } from "lucide-react";
 import { PropertiesManager } from "@/components/properties-manager";
 import { SectionCard } from "@/components/section-card";
-import { WorkspaceHeader } from "@/components/workspace-header";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
 import {
   getBookings,
@@ -106,48 +106,56 @@ export default async function PropertiesPage() {
   properties.sort((left, right) => left.name.localeCompare(right.name));
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1500px] flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8 xl:px-8">
-      <WorkspaceHeader
-        activePage="properties"
-        businessName={userSettings.businessName}
-        userName={userName}
-        userEmail={ownerEmail}
-        currencyCode={userSettings.currencyCode}
-        latestImport={latestImport}
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SectionCard title="Properties">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-[var(--accent-text)]" />
-            <p className="text-2xl font-semibold text-white">{formatNumber(properties.length)}</p>
-          </div>
-        </SectionCard>
-        <SectionCard title="Units">
-          <div className="flex items-center gap-3">
-            <Layers3 className="h-5 w-5 text-[var(--accent-text)]" />
-            <p className="text-2xl font-semibold text-white">
-              {formatNumber(properties.reduce((sum, property) => sum + property.units.length, 0))}
+    <WorkspaceShell
+      activePage="properties"
+      pageTitle="Properties"
+      pageSubtitle="Organize the portfolio into properties and optional units."
+      businessName={userSettings.businessName}
+      userName={userName}
+      userEmail={ownerEmail}
+      currencyCode={userSettings.currencyCode}
+      latestImport={latestImport}
+    >
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <SectionCard title="Properties">
+            <div className="flex items-center gap-3">
+              <div className="workspace-icon-chip rounded-2xl p-3">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(properties.length)}
+              </p>
+            </div>
+          </SectionCard>
+          <SectionCard title="Units">
+            <div className="flex items-center gap-3">
+              <div className="workspace-icon-chip rounded-2xl p-3">
+                <Layers3 className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(properties.reduce((sum, property) => sum + property.units.length, 0))}
+              </p>
+            </div>
+          </SectionCard>
+          <SectionCard title="How to use it">
+            <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+              Imported files default to `Default Property`. Use Bookings and Expenses to reassign rows once your structure is ready.
             </p>
-          </div>
-        </SectionCard>
-        <SectionCard title="How to use it">
-          <p className="text-sm leading-6 text-slate-400">
-            Imported files default to `Default Property`. Use the Bookings and Expenses pages to reassign rows to the right property and unit.
-          </p>
+          </SectionCard>
+        </div>
+
+        <SectionCard
+          title="Property Setup"
+          subtitle="Create the portfolio structure first, then assign bookings and expenses to the right property and unit."
+        >
+          <PropertiesManager
+            properties={propertyDefinitions}
+            summaries={properties}
+            currencyCode={userSettings.currencyCode}
+          />
         </SectionCard>
       </div>
-
-      <SectionCard
-        title="Property Setup"
-        subtitle="Create the portfolio structure first, then assign bookings and expenses to the right property and unit."
-      >
-        <PropertiesManager
-          properties={propertyDefinitions}
-          summaries={properties}
-          currencyCode={userSettings.currencyCode}
-        />
-      </SectionCard>
-    </main>
+    </WorkspaceShell>
   );
 }

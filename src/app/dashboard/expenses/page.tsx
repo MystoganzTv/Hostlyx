@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ReceiptText, Wallet } from "lucide-react";
 import { ExpensesManager } from "@/components/expenses-manager";
 import { SectionCard } from "@/components/section-card";
-import { WorkspaceHeader } from "@/components/workspace-header";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
 import {
   getExpenses,
@@ -33,48 +33,56 @@ export default async function ExpensesPage() {
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1500px] flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8 xl:px-8">
-      <WorkspaceHeader
-        activePage="expenses"
-        businessName={userSettings.businessName}
-        userName={userName}
-        userEmail={ownerEmail}
-        currencyCode={userSettings.currencyCode}
-        latestImport={latestImport}
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SectionCard title="Total expenses">
-          <div className="flex items-center gap-3">
-            <Wallet className="h-5 w-5 text-[var(--accent-text)]" />
-            <p className="text-2xl font-semibold text-white">
-              {formatCurrency(totalExpenses, false, userSettings.currencyCode)}
+    <WorkspaceShell
+      activePage="expenses"
+      pageTitle="Expenses"
+      pageSubtitle="Track operating costs, categories, and property-level spend."
+      businessName={userSettings.businessName}
+      userName={userName}
+      userEmail={ownerEmail}
+      currencyCode={userSettings.currencyCode}
+      latestImport={latestImport}
+    >
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <SectionCard title="Total expenses">
+            <div className="flex items-center gap-3">
+              <div className="workspace-icon-chip rounded-2xl p-3">
+                <Wallet className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatCurrency(totalExpenses, false, userSettings.currencyCode)}
+              </p>
+            </div>
+          </SectionCard>
+          <SectionCard title="Expense rows">
+            <div className="flex items-center gap-3">
+              <div className="workspace-icon-chip rounded-2xl p-3">
+                <ReceiptText className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(expenses.length)}
+              </p>
+            </div>
+          </SectionCard>
+          <SectionCard title="Editing">
+            <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+              Reclassify categories, move expenses to the right property, and clean notes directly inside the app.
             </p>
-          </div>
-        </SectionCard>
-        <SectionCard title="Expense rows">
-          <div className="flex items-center gap-3">
-            <ReceiptText className="h-5 w-5 text-[var(--accent-text)]" />
-            <p className="text-2xl font-semibold text-white">{formatNumber(expenses.length)}</p>
-          </div>
-        </SectionCard>
-        <SectionCard title="Editing">
-          <p className="text-sm leading-6 text-slate-400">
-            Reclassify categories, move expenses to the right property, and clean notes directly inside the app.
-          </p>
+          </SectionCard>
+        </div>
+
+        <SectionCard
+          title="All Expenses"
+          subtitle="Every expense saved in this business account, including imports and manual entries."
+        >
+          <ExpensesManager
+            expenses={expenses}
+            currencyCode={userSettings.currencyCode}
+            properties={properties}
+          />
         </SectionCard>
       </div>
-
-      <SectionCard
-        title="All Expenses"
-        subtitle="Every expense saved in this business account, including imports and manual entries."
-      >
-        <ExpensesManager
-          expenses={expenses}
-          currencyCode={userSettings.currencyCode}
-          properties={properties}
-        />
-      </SectionCard>
-    </main>
+    </WorkspaceShell>
   );
 }

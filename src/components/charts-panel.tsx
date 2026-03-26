@@ -18,7 +18,7 @@ import type { CategoryPoint, ChannelPoint, CurrencyCode, MonthlyPoint } from "@/
 import { formatCurrency } from "@/lib/format";
 import { SectionCard } from "./section-card";
 
-const pieColors = ["#5eead4", "#38bdf8", "#f59e0b", "#fb7185", "#a78bfa", "#34d399"];
+const pieColors = ["#65b5ae", "#7a94d6", "#f2b26b", "#ec8f96", "#8d81d9", "#7ccf99"];
 
 function compactCurrency(value: number, currencyCode: CurrencyCode) {
   return new Intl.NumberFormat("en-US", {
@@ -40,7 +40,7 @@ function formatTooltipValue(
 
 function EmptyChartState({ label }: { label: string }) {
   return (
-    <div className="flex h-[280px] items-center justify-center rounded-[22px] border border-dashed border-white/10 bg-white/[0.03] text-sm text-slate-500">
+    <div className="workspace-soft-card flex h-[280px] items-center justify-center rounded-[22px] border-dashed text-sm text-[var(--workspace-muted)]">
       {label}
     </div>
   );
@@ -74,20 +74,20 @@ export function ChartsPanel({
               <AreaChart data={revenueByMonth}>
                 <defs>
                   <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5eead4" stopOpacity={0.7} />
-                    <stop offset="95%" stopColor="#5eead4" stopOpacity={0.04} />
+                    <stop offset="5%" stopColor="#65b5ae" stopOpacity={0.7} />
+                    <stop offset="95%" stopColor="#65b5ae" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(148,163,184,0.08)" vertical={false} />
+                <CartesianGrid stroke="#e7edf5" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  tick={{ fill: "#70829e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
                   tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  tick={{ fill: "#70829e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                   width={72}
@@ -96,14 +96,14 @@ export function ChartsPanel({
                   formatter={(value) => formatTooltipValue(value, currencyCode)}
                   contentStyle={{
                     borderRadius: 18,
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    background: "rgba(7,17,28,0.96)",
+                    border: "1px solid #e4ebf3",
+                    background: "#ffffff",
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#5eead4"
+                  stroke="#65b5ae"
                   strokeWidth={3}
                   fill="url(#revenue-fill)"
                 />
@@ -124,16 +124,16 @@ export function ChartsPanel({
           <div className="h-[280px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={profitByMonth}>
-                <CartesianGrid stroke="rgba(148,163,184,0.08)" vertical={false} />
+                <CartesianGrid stroke="#e7edf5" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  tick={{ fill: "#70829e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
                   tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  tick={{ fill: "#70829e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                   width={72}
@@ -142,11 +142,11 @@ export function ChartsPanel({
                   formatter={(value) => formatTooltipValue(value, currencyCode)}
                   contentStyle={{
                     borderRadius: 18,
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    background: "rgba(7,17,28,0.96)",
+                    border: "1px solid #e4ebf3",
+                    background: "#ffffff",
                   }}
                 />
-                <Bar dataKey="profit" radius={[10, 10, 0, 0]} fill="#38bdf8" />
+                <Bar dataKey="profit" radius={[10, 10, 0, 0]} fill="#7a94d6" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -184,8 +184,8 @@ export function ChartsPanel({
                     formatter={(value) => formatTooltipValue(value, currencyCode)}
                     contentStyle={{
                       borderRadius: 18,
-                      border: "1px solid rgba(148,163,184,0.18)",
-                      background: "rgba(7,17,28,0.96)",
+                      border: "1px solid #e4ebf3",
+                      background: "#ffffff",
                     }}
                   />
                 </PieChart>
@@ -195,7 +195,7 @@ export function ChartsPanel({
               {expensesByCategory.slice(0, 6).map((item, index) => (
                 <div
                   key={item.label}
-                  className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3"
+                  className="workspace-soft-card flex items-center justify-between rounded-2xl px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -204,9 +204,9 @@ export function ChartsPanel({
                         backgroundColor: pieColors[index % pieColors.length],
                       }}
                     />
-                    <span className="text-sm text-slate-200">{item.label}</span>
+                    <span className="text-sm text-[var(--workspace-text)]">{item.label}</span>
                   </div>
-                  <span className="text-sm font-medium text-slate-100">
+                  <span className="text-sm font-medium text-[var(--workspace-text)]">
                     {formatCurrency(item.value, false, currencyCode)}
                   </span>
                 </div>
@@ -227,18 +227,18 @@ export function ChartsPanel({
           <div className="h-[280px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueByChannel} layout="vertical" margin={{ left: 8 }}>
-                <CartesianGrid stroke="rgba(148,163,184,0.08)" horizontal={false} />
+                <CartesianGrid stroke="#e7edf5" horizontal={false} />
                 <XAxis
                   type="number"
                   tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  tick={{ fill: "#70829e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
                   type="category"
                   dataKey="label"
-                  tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                  tick={{ fill: "#42536e", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
                   width={92}
@@ -247,11 +247,11 @@ export function ChartsPanel({
                   formatter={(value) => formatTooltipValue(value, currencyCode)}
                   contentStyle={{
                     borderRadius: 18,
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    background: "rgba(7,17,28,0.96)",
+                    border: "1px solid #e4ebf3",
+                    background: "#ffffff",
                   }}
                 />
-                <Bar dataKey="revenue" radius={[0, 12, 12, 0]} fill="#f59e0b" />
+                <Bar dataKey="revenue" radius={[0, 12, 12, 0]} fill="#f2b26b" />
               </BarChart>
             </ResponsiveContainer>
           </div>

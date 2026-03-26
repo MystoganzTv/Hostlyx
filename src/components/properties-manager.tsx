@@ -104,15 +104,15 @@ export function PropertiesManager({
       <div className="grid gap-4 xl:grid-cols-[0.62fr_1.38fr]">
         <form
           onSubmit={createProperty}
-          className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5"
+          className="workspace-card rounded-[26px] p-5"
         >
           <div className="flex items-center gap-3">
-            <div className="brand-icon rounded-2xl p-3">
+            <div className="workspace-icon-chip rounded-2xl p-3">
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-base font-semibold text-slate-100">Create property</p>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="text-base font-semibold text-[var(--workspace-text)]">Create property</p>
+              <p className="mt-1 text-sm text-[var(--workspace-muted)]">
                 Add standalone homes or multi-unit buildings.
               </p>
             </div>
@@ -128,7 +128,7 @@ export function PropertiesManager({
             <button
               type="submit"
               disabled={isPending}
-              className="brand-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+              className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
               Add property
@@ -136,31 +136,31 @@ export function PropertiesManager({
           </div>
         </form>
 
-        <div className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5">
+        <div className="workspace-card rounded-[26px] p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Saved properties</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-100">
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                 {formatNumber(properties.length)}
               </p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Saved units</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-100">
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                 {formatNumber(properties.reduce((sum, property) => sum + property.units.length, 0))}
               </p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Structure</p>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
+              <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
                 Properties can have no units, one unit, or several units.
               </p>
             </div>
           </div>
 
           <div className="mt-4 min-h-6">
-            {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
-            {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+            {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+            {error ? <p className="text-sm text-rose-500">{error}</p> : null}
           </div>
         </div>
       </div>
@@ -173,44 +173,44 @@ export function PropertiesManager({
           return (
             <article
               key={summary.name}
-              className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5"
+              className="workspace-card rounded-[26px] p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-lg font-semibold text-slate-100">{summary.name}</p>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="text-lg font-semibold text-[var(--workspace-text)]">{summary.name}</p>
+                  <p className="mt-1 text-sm text-[var(--workspace-muted)]">
                     {summary.units.length > 0
                       ? `${formatNumber(summary.units.length)} saved units`
                       : "No units yet"}
                   </p>
                 </div>
-                <div className="brand-icon rounded-2xl p-3">
+                <div className="workspace-icon-chip rounded-2xl p-3">
                   <Layers3 className="h-5 w-5" />
                 </div>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3">
+                <div className="workspace-soft-card rounded-2xl px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Bookings</p>
-                  <p className="mt-1 text-sm font-medium text-slate-100">
+                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                     {formatNumber(summary.bookings)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3">
+                <div className="workspace-soft-card rounded-2xl px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Expenses</p>
-                  <p className="mt-1 text-sm font-medium text-slate-100">
+                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                     {formatCurrency(summary.expenses, false, currencyCode)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3">
+                <div className="workspace-soft-card rounded-2xl px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Payout</p>
-                  <p className="mt-1 text-sm font-medium text-slate-100">
+                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                     {formatCurrency(summary.payout, false, currencyCode)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3">
+                <div className="workspace-soft-card rounded-2xl px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Profit</p>
-                  <p className="mt-1 text-sm font-medium text-slate-100">
+                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                     {formatCurrency(summary.profit, false, currencyCode)}
                   </p>
                 </div>
@@ -221,14 +221,14 @@ export function PropertiesManager({
                   {summary.units.map((unit) => (
                     <span
                       key={`${summary.name}-${unit}`}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-300"
+                      className="rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-panel-soft)] px-3 py-1 text-xs text-[var(--workspace-muted)]"
                     >
                       {unit}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-slate-500">
+                <p className="mt-4 text-sm text-[var(--workspace-muted)]">
                   This property works as a single unit for now. Add units only if you need them.
                 </p>
               )}
@@ -250,7 +250,7 @@ export function PropertiesManager({
                     type="button"
                     disabled={isPending}
                     onClick={() => createUnit(propertyId)}
-                    className="brand-button-secondary inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                    className="workspace-button-secondary inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Plus className="h-4 w-4" />
                     Add unit

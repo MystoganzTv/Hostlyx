@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect } from "react";
+import { Funnel } from "lucide-react";
 
 const monthOptions = [
   { value: "all", label: "All months" },
@@ -107,69 +108,46 @@ export function FilterBar({
   }
 
   return (
-    <div className="card-surface rounded-[28px] p-4 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
-            Filters
-          </p>
-          <p className="mt-1 text-sm text-slate-400">
-            Narrow the view by reporting year, month, and booking channel.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[560px]">
-          <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-              Year
-            </span>
-            <select
-              className={selectClassName()}
-              value={String(selectedYear)}
-              onChange={(event) => updateFilter("year", event.target.value)}
-            >
-              <option value="all">All years</option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-              Month
-            </span>
-            <select
-              className={selectClassName()}
-              value={String(selectedMonth)}
-              onChange={(event) => updateFilter("month", event.target.value)}
-            >
-              {monthOptions.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-              Channel
-            </span>
-            <select
-              className={selectClassName()}
-              value={selectedChannel}
-              onChange={(event) => updateFilter("channel", event.target.value)}
-            >
-              <option value="all">All channels</option>
-              {channels.map((channel) => (
-                <option key={channel} value={channel}>
-                  {channel}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+    <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center gap-2 px-2 text-sm font-semibold text-[var(--workspace-muted)]">
+        <Funnel className="h-4 w-4 text-[var(--workspace-accent)]" />
+        Filters
       </div>
+      <select
+        className={`${selectClassName()} min-w-[150px]`}
+        value={String(selectedYear)}
+        onChange={(event) => updateFilter("year", event.target.value)}
+      >
+        <option value="all">All Years</option>
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+      <select
+        className={`${selectClassName()} min-w-[170px]`}
+        value={String(selectedMonth)}
+        onChange={(event) => updateFilter("month", event.target.value)}
+      >
+        {monthOptions.map((month) => (
+          <option key={month.value} value={month.value}>
+            {month.label}
+          </option>
+        ))}
+      </select>
+      <select
+        className={`${selectClassName()} min-w-[170px]`}
+        value={selectedChannel}
+        onChange={(event) => updateFilter("channel", event.target.value)}
+      >
+        <option value="all">All Channels</option>
+        {channels.map((channel) => (
+          <option key={channel} value={channel}>
+            {channel}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

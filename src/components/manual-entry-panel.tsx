@@ -80,17 +80,17 @@ export function ManualEntryPanel({
   }
 
   return (
-    <div className="rounded-[30px] border border-white/8 bg-white/[0.02] p-5 sm:p-6">
+    <div className="workspace-card rounded-[30px] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--workspace-muted)]">
             Manual Entry
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
             Add bookings and expenses directly in the app.
           </p>
         </div>
-        <div className="brand-icon rounded-3xl p-3">
+        <div className="workspace-icon-chip rounded-3xl p-3">
           <PencilLine className="h-6 w-6" />
         </div>
       </div>
@@ -163,13 +163,13 @@ export function ManualEntryPanel({
           <button
             type="submit"
             disabled={isPending}
-            className="brand-button inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="workspace-button-primary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Saving booking..." : "Add booking"}
           </button>
           <div className="min-h-6">
-            {bookingMessage ? <p className="text-sm text-emerald-300">{bookingMessage}</p> : null}
-            {bookingError ? <p className="text-sm text-rose-300">{bookingError}</p> : null}
+            {bookingMessage ? <p className="text-sm text-emerald-600">{bookingMessage}</p> : null}
+            {bookingError ? <p className="text-sm text-rose-500">{bookingError}</p> : null}
           </div>
         </form>
 
@@ -210,13 +210,13 @@ export function ManualEntryPanel({
           <button
             type="submit"
             disabled={isPending}
-            className="brand-button-secondary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="workspace-button-secondary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Saving expense..." : "Add expense"}
           </button>
           <div className="min-h-6">
-            {expenseMessage ? <p className="text-sm text-emerald-300">{expenseMessage}</p> : null}
-            {expenseError ? <p className="text-sm text-rose-300">{expenseError}</p> : null}
+            {expenseMessage ? <p className="text-sm text-emerald-600">{expenseMessage}</p> : null}
+            {expenseError ? <p className="text-sm text-rose-500">{expenseError}</p> : null}
           </div>
         </form>
       </div>

@@ -39,10 +39,6 @@ export default async function DashboardPage({
     expenses,
     filters,
   });
-  const manualBookingsCount = bookings.filter((booking) => booking.source === "manual").length;
-  const manualExpensesCount = expenses.filter((expense) => expense.source === "manual").length;
-  const importedBookingsCount = bookings.length - manualBookingsCount;
-  const importedExpensesCount = expenses.length - manualExpensesCount;
 
   return (
     <DashboardShell
@@ -52,10 +48,6 @@ export default async function DashboardPage({
       userEmail={ownerEmail}
       businessName={userSettings.businessName}
       currencyCode={userSettings.currencyCode}
-      manualBookingsCount={manualBookingsCount}
-      manualExpensesCount={manualExpensesCount}
-      importedBookingsCount={importedBookingsCount}
-      importedExpensesCount={importedExpensesCount}
       properties={properties}
     />
   );
