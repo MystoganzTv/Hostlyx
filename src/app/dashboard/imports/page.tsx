@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { DatabaseZap, FileSpreadsheet, Layers3 } from "lucide-react";
+import { FileSpreadsheet, Layers3 } from "lucide-react";
+import { ImportsManager } from "@/components/imports-manager";
 import { SectionCard } from "@/components/section-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -9,7 +10,7 @@ import {
   getPropertyDefinitions,
   getUserSettings,
 } from "@/lib/db";
-import { formatDateLabel, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 
 export const runtime = "nodejs";
 
@@ -109,48 +110,7 @@ export default async function ImportsPage() {
           title="Backup & Audit Trail"
           subtitle="Each batch below shows which property it entered, when it landed, and how many live records it created inside Hostlyx."
         >
-          {importSummaries.length === 0 ? (
-            <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-              No imports yet. When you upload Excel files, Hostlyx will keep the history here for backup context and traceability.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                  <tr>
-                    <th className="pb-3 pr-4 font-medium">File</th>
-                    <th className="pb-3 pr-4 font-medium">Property</th>
-                    <th className="pb-3 pr-4 font-medium">Imported</th>
-                    <th className="pb-3 pr-4 font-medium">Bookings</th>
-                    <th className="pb-3 font-medium">Expenses</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--workspace-border)] text-[var(--workspace-text)]">
-                  {importSummaries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="py-4 pr-4">
-                        <div className="flex items-start gap-3">
-                          <div className="workspace-icon-chip rounded-2xl p-2.5">
-                            <DatabaseZap className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{entry.fileName}</p>
-                            <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                              {entry.source}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-4">{entry.propertyName}</td>
-                      <td className="py-4 pr-4">{formatDateLabel(entry.importedAt.slice(0, 10))}</td>
-                      <td className="py-4 pr-4">{formatNumber(entry.bookingsCount)}</td>
-                      <td className="py-4">{formatNumber(entry.expensesCount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ImportsManager importSummaries={importSummaries} />
         </SectionCard>
       </div>
     </WorkspaceShell>

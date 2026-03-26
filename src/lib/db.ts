@@ -846,6 +846,14 @@ type ImportDataResult = {
   skippedExpensesCount: number;
 };
 
+type DeleteImportResult = {
+  deletedImportId: number;
+  deletedFileName: string;
+  deletedPropertyName: string;
+  deletedBookingsCount: number;
+  deletedExpensesCount: number;
+};
+
 export async function appendImportData({
   ownerEmail,
   fileName,
@@ -1382,6 +1390,162 @@ export async function getImportSummaries(ownerEmail: string): Promise<ImportSumm
     )
     .all(normalizedEmail)
     .map((row) => mapImportSummary(row as Record<string, unknown>));
+}
+
+export async function deleteImportBatch({
+  ownerEmail,
+  importId,
+}: {
+  ownerEmail: string;
+  importId: number;
+}): Promise<DeleteImportResult> {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (!Number.isFinite(importId) || importId <= 0) {
+    throw new Error("Import not found.");
+  }
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const importResult = await client.query(
+        `
+          SELECT
+            id,
+            file_name AS fileName,
+            property_name AS propertyName
+          FROM imports
+          WHERE owner_email = $1 AND id = $2
+          LIMIT 1
+        `,
+        [normalizedEmail, importId],
+      );
+
+      const importRow = importResult.rows[0] as Record<string, unknown> | undefined;
+
+      if (!importRow) {
+        throw new Error("Import not found.");
+      }
+
+      const bookingDelete = await client.query(
+        "DELETE FROM bookings WHERE owner_email = $1 AND import_id = $2",
+        [normalizedEmail, importId],
+      );
+      const expenseDelete = await client.query(
+        "DELETE FROM expenses WHERE owner_email = $1 AND import_id = $2",
+        [normalizedEmail, importId],
+      );
+      await client.query("DELETE FROM imports WHERE owner_email = $1 AND id = $2", [
+        normalizedEmail,
+        importId,
+      ]);
+
+      await client.query("COMMIT");
+
+      return {
+        deletedImportId: importId,
+        deletedFileName: String(getRowValue(importRow, "fileName", "filename")),
+        deletedPropertyName:
+          String(getRowValue(importRow, "propertyName", "propertyname")) || "Default Property",
+        deletedBookingsCount: bookingDelete.rowCount ?? 0,
+        deletedExpensesCount: expenseDelete.rowCount ?? 0,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const importRow = store.imports.find(
+      (entry) => entry.ownerEmail === normalizedEmail && entry.id === importId,
+    );
+
+    if (!importRow) {
+      throw new Error("Import not found.");
+    }
+
+    const deletedBookingsCount = store.bookings.filter(
+      (booking) => booking.ownerEmail === normalizedEmail && booking.importId === importId,
+    ).length;
+    const deletedExpensesCount = store.expenses.filter(
+      (expense) => expense.ownerEmail === normalizedEmail && expense.importId === importId,
+    ).length;
+
+    store.bookings = store.bookings.filter(
+      (booking) => !(booking.ownerEmail === normalizedEmail && booking.importId === importId),
+    );
+    store.expenses = store.expenses.filter(
+      (expense) => !(expense.ownerEmail === normalizedEmail && expense.importId === importId),
+    );
+    store.imports = store.imports.filter(
+      (entry) => !(entry.ownerEmail === normalizedEmail && entry.id === importId),
+    );
+
+    return {
+      deletedImportId: importId,
+      deletedFileName: importRow.fileName,
+      deletedPropertyName: importRow.propertyName,
+      deletedBookingsCount,
+      deletedExpensesCount,
+    };
+  }
+
+  const db = getSQLiteDatabase();
+  const importRow = db
+    .prepare(
+      `
+        SELECT
+          id,
+          file_name AS fileName,
+          property_name AS propertyName
+        FROM imports
+        WHERE owner_email = ? AND id = ?
+        LIMIT 1
+      `,
+    )
+    .get(normalizedEmail, importId) as Record<string, unknown> | undefined;
+
+  if (!importRow) {
+    throw new Error("Import not found.");
+  }
+
+  let deletedBookingsCount = 0;
+  let deletedExpensesCount = 0;
+
+  const transaction = db.transaction(() => {
+    deletedBookingsCount =
+      db
+        .prepare("DELETE FROM bookings WHERE owner_email = ? AND import_id = ?")
+        .run(normalizedEmail, importId).changes ?? 0;
+    deletedExpensesCount =
+      db
+        .prepare("DELETE FROM expenses WHERE owner_email = ? AND import_id = ?")
+        .run(normalizedEmail, importId).changes ?? 0;
+    db.prepare("DELETE FROM imports WHERE owner_email = ? AND id = ?").run(
+      normalizedEmail,
+      importId,
+    );
+  });
+
+  transaction();
+
+  return {
+    deletedImportId: importId,
+    deletedFileName: String(getRowValue(importRow, "fileName", "filename")),
+    deletedPropertyName:
+      String(getRowValue(importRow, "propertyName", "propertyname")) || "Default Property",
+    deletedBookingsCount,
+    deletedExpensesCount,
+  };
 }
 
 export async function getBookings(ownerEmail: string): Promise<BookingRecord[]> {
