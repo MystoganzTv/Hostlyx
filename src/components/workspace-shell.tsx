@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BookOpenText,
   Building2,
+  CalendarRange,
   ChevronsLeft,
   ChevronsRight,
   DatabaseZap,
@@ -17,7 +18,7 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { formatDateLabel } from "@/lib/format";
 import type { CurrencyCode, ImportSummary } from "@/lib/types";
 
-type ActivePage = "dashboard" | "bookings" | "expenses" | "imports" | "properties" | "profile";
+type ActivePage = "dashboard" | "monthly" | "bookings" | "expenses" | "imports" | "properties" | "profile";
 const sidebarStorageKey = "hostlyx:sidebar-collapsed";
 
 const navItems: Array<{
@@ -27,6 +28,7 @@ const navItems: Array<{
   icon: typeof LayoutDashboard;
 }> = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { id: "monthly", label: "Monthly", href: "/dashboard/monthly", icon: CalendarRange },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
   { id: "imports", label: "Import History", href: "/dashboard/imports", icon: DatabaseZap },
