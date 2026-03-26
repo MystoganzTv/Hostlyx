@@ -40,7 +40,7 @@ export default async function ExpensesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <SectionCard title="Total expenses">
           <div className="flex items-center gap-3">
-            <Wallet className="h-5 w-5 text-teal-200" />
+            <Wallet className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">
               {formatCurrency(totalExpenses, false, userSettings.currencyCode)}
             </p>
@@ -48,7 +48,7 @@ export default async function ExpensesPage() {
         </SectionCard>
         <SectionCard title="Expense rows">
           <div className="flex items-center gap-3">
-            <ReceiptText className="h-5 w-5 text-teal-200" />
+            <ReceiptText className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">{formatNumber(expenses.length)}</p>
           </div>
         </SectionCard>

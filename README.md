@@ -1,4 +1,4 @@
-# HomeXperience
+# Hostlyx
 
 Accounting dashboard for a short-term rental business built with Next.js, Tailwind CSS, Recharts, Google login, and Postgres-ready persistence.
 
@@ -54,7 +54,7 @@ Use those values in:
 
 ## Persistence
 
-- Local development without `DATABASE_URL` uses SQLite in `/data/homexperience.sqlite`
+- Local development without `DATABASE_URL` uses SQLite in `/data/hostlyx.sqlite`
 - Production can use either `DATABASE_URL` or Netlify DB's `NETLIFY_DATABASE_URL`
 - This repo is already compatible with Netlify DB / Neon and will use that connection automatically when available
 
@@ -92,7 +92,7 @@ Suggested first push flow:
 ```bash
 git init
 git add .
-git commit -m "Initial HomeXperience app"
+git commit -m "Initial Hostlyx app"
 ```
 
 Then create a GitHub repo and connect it to Netlify.

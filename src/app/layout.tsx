@@ -14,7 +14,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HomeXperience | Short-Term Rental Accounting Dashboard",
+  title: "Hostlyx | Short-Term Rental Accounting Dashboard",
   description:
     "Upload short-term rental booking and expense workbooks, normalize the data, and explore revenue, payout, and profitability in one clean dashboard.",
 };

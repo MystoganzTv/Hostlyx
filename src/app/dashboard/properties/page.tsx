@@ -95,13 +95,13 @@ export default async function PropertiesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <SectionCard title="Properties">
           <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-teal-200" />
+            <Building2 className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">{formatNumber(properties.length)}</p>
           </div>
         </SectionCard>
         <SectionCard title="Units">
           <div className="flex items-center gap-3">
-            <Layers3 className="h-5 w-5 text-teal-200" />
+            <Layers3 className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">
               {formatNumber(properties.reduce((sum, property) => sum + property.units.size, 0))}
             </p>
@@ -130,7 +130,7 @@ export default async function PropertiesPage() {
                       : "No units assigned yet"}
                   </p>
                 </div>
-                <Home className="h-5 w-5 text-teal-200" />
+                <Home className="h-5 w-5 text-[var(--accent-text)]" />
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">

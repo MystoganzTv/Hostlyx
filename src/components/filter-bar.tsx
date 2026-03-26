@@ -19,10 +19,10 @@ const monthOptions = [
   { value: "12", label: "December" },
 ];
 
-const filterStorageKey = "homexperience:filters";
+const filterStorageKey = "hostlyx:filters";
 
 function selectClassName() {
-  return "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-teal-300/60 focus:bg-white/8";
+  return "input-surface w-full rounded-2xl px-4 py-3 text-sm";
 }
 
 export function FilterBar({
@@ -110,7 +110,7 @@ export function FilterBar({
     <div className="card-surface rounded-[28px] p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-200/75">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
             Filters
           </p>
           <p className="mt-1 text-sm text-slate-400">

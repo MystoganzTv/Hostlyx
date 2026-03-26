@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
     const duplicateNotice =
       result.skippedBookingsCount > 0 || result.skippedExpensesCount > 0
-        ? ` Skipped ${result.skippedBookingsCount} duplicate bookings and ${result.skippedExpensesCount} duplicate expenses already saved in HomeXperience.`
+        ? ` Skipped ${result.skippedBookingsCount} duplicate bookings and ${result.skippedExpensesCount} duplicate expenses already saved in Hostlyx.`
         : "";
 
     return NextResponse.json({

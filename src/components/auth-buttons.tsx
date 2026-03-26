@@ -18,7 +18,7 @@ export function SignInButton({ disabled = false }: SignInButtonProps) {
         void signIn("google", { callbackUrl: "/dashboard" });
       }}
       disabled={disabled}
-      className="rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+      className="brand-button rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
     >
       {disabled ? "Google login not configured" : "Continue with Google"}
     </button>
@@ -30,7 +30,7 @@ export function SignOutButton() {
     <button
       type="button"
       onClick={() => void signOut({ callbackUrl: "/login" })}
-      className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+      className="brand-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
     >
       Sign out
     </button>

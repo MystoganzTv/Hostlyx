@@ -42,7 +42,7 @@ export default async function ProfilePage() {
           <div className="space-y-4">
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
-                <UserCircle2 className="h-5 w-5 text-teal-200" />
+                <UserCircle2 className="h-5 w-5 text-[var(--accent-text)]" />
                 <div>
                   <p className="text-sm font-medium text-white">{userName}</p>
                   <p className="text-sm text-slate-400">{ownerEmail}</p>
@@ -52,7 +52,7 @@ export default async function ProfilePage() {
 
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
-                <Building2 className="h-5 w-5 text-teal-200" />
+                <Building2 className="h-5 w-5 text-[var(--accent-text)]" />
                 <div>
                   <p className="text-sm font-medium text-white">{userSettings.businessName}</p>
                   <p className="text-sm text-slate-400">Business name shown across the app</p>
@@ -62,7 +62,7 @@ export default async function ProfilePage() {
 
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
-                <Globe2 className="h-5 w-5 text-teal-200" />
+                <Globe2 className="h-5 w-5 text-[var(--accent-text)]" />
                 <div>
                   <p className="text-sm font-medium text-white">{userSettings.currencyCode}</p>
                   <p className="text-sm text-slate-400">Currency for cards, charts, tables, and reports</p>
@@ -72,7 +72,7 @@ export default async function ProfilePage() {
 
             <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
-                <DatabaseZap className="h-5 w-5 text-teal-200" />
+                <DatabaseZap className="h-5 w-5 text-[var(--accent-text)]" />
                 <div>
                   <p className="text-sm font-medium text-white">
                     {formatNumber(bookings.length + expenses.length)} total saved records

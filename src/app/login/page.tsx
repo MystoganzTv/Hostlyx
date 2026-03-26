@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Building2, ShieldCheck } from "lucide-react";
 import { SignInButton } from "@/components/auth-buttons";
+import { BrandLogo } from "@/components/brand-logo";
 import { getAuthSession, hasGoogleAuthConfig } from "@/lib/auth";
 
 export default async function LoginPage() {
@@ -15,11 +16,9 @@ export default async function LoginPage() {
       <div className="grid w-full gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="card-surface rounded-[34px] p-8 sm:p-10">
           <div className="max-w-2xl space-y-5">
-            <span className="inline-flex rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
-              HomeXperience
-            </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Secure finance software for modern short-term rental businesses.
+            <BrandLogo href="/" showTagline />
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-100 sm:text-5xl">
+              Secure finance software for modern short-term rental brands.
             </h1>
             <p className="text-base leading-7 text-slate-300 sm:text-lg">
               Sign in once and keep your business name, uploads, manual entries, and reporting preferences tied to your own account.
@@ -29,11 +28,11 @@ export default async function LoginPage() {
 
         <section className="card-surface flex flex-col justify-between rounded-[34px] p-8">
           <div className="space-y-5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-3xl border border-teal-400/20 bg-teal-400/10 text-teal-200">
+            <div className="brand-icon flex h-14 w-14 items-center justify-center rounded-3xl">
               <ShieldCheck className="h-7 w-7" />
             </div>
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
                 Sign in
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -51,7 +50,7 @@ export default async function LoginPage() {
           </div>
 
           <div className="mt-8 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
-            <div className="flex items-center gap-2 text-white">
+            <div className="flex items-center gap-2 text-slate-100">
               <Building2 className="h-4 w-4" />
               Ready for Netlify
             </div>

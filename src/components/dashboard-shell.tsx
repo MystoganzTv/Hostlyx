@@ -37,7 +37,7 @@ type ActiveTab = "overview" | "activity" | "data";
 
 function tabClassName(active: boolean) {
   return active
-    ? "rounded-2xl bg-teal-300 px-4 py-2.5 text-sm font-semibold text-slate-950"
+    ? "brand-tab-active rounded-2xl px-4 py-2.5 text-sm font-semibold"
     : "rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/[0.06]";
 }
 
@@ -143,14 +143,14 @@ export function DashboardShell({
               <button
                 type="button"
                 onClick={() => setIsUploadOpen(true)}
-                className="rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                className="brand-button rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
                 Import Excel
               </button>
               <button
                 type="button"
                 onClick={() => setIsEntryOpen(true)}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                className="brand-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
                 Add Entry
               </button>

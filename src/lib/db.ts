@@ -48,7 +48,7 @@ let postgresPool: Pool | null = null;
 let postgresInitialization: Promise<void> | null = null;
 
 declare global {
-  var __homexperienceMemoryStore: MemoryStore | undefined;
+  var __hostlyxMemoryStore: MemoryStore | undefined;
 }
 
 function isPostgresConfigured() {
@@ -91,8 +91,8 @@ function getSQLiteModule() {
 }
 
 function getMemoryStore() {
-  if (!globalThis.__homexperienceMemoryStore) {
-    globalThis.__homexperienceMemoryStore = {
+  if (!globalThis.__hostlyxMemoryStore) {
+    globalThis.__hostlyxMemoryStore = {
       nextImportId: 1,
       nextBookingId: 1,
       nextExpenseId: 1,
@@ -103,7 +103,7 @@ function getMemoryStore() {
     };
   }
 
-  return globalThis.__homexperienceMemoryStore;
+  return globalThis.__hostlyxMemoryStore;
 }
 
 function hasColumn(db: SQLiteDatabase, tableName: string, columnName: string) {
@@ -117,7 +117,7 @@ function hasColumn(db: SQLiteDatabase, tableName: string, columnName: string) {
 function getSQLiteDatabasePath() {
   const directory = path.join(process.cwd(), "data");
   mkdirSync(directory, { recursive: true });
-  return path.join(directory, "homexperience.sqlite");
+  return path.join(directory, "hostlyx.sqlite");
 }
 
 function initializeSQLiteSchema(db: SQLiteDatabase) {

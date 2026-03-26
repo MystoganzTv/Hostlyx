@@ -38,10 +38,10 @@ export default async function ShowcasePage() {
       <main className="mx-auto w-full max-w-7xl px-4 pb-6 pt-8 sm:px-6 xl:px-8">
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="card-surface rounded-[34px] p-8 sm:p-10">
-            <span className="inline-flex rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
+            <span className="brand-pill inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em]">
               Showcase
             </span>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-100 sm:text-5xl">
               What buyers get when they subscribe.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
@@ -51,13 +51,13 @@ export default async function ShowcasePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href={signedIn ? "/dashboard" : "/login"}
-                className="rounded-2xl bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                className="brand-button rounded-2xl px-5 py-3 text-sm font-semibold transition"
               >
                 {signedIn ? "Open your dashboard" : "Try the app"}
               </Link>
               <Link
                 href="/pricing"
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                className="brand-button-secondary rounded-2xl px-5 py-3 text-sm font-semibold transition"
               >
                 See pricing
               </Link>
@@ -67,8 +67,8 @@ export default async function ShowcasePage() {
           <div className="grid gap-4">
             <div className="card-surface rounded-[30px] p-6">
               <div className="flex items-center gap-3">
-                <LayoutPanelTop className="h-5 w-5 text-teal-200" />
-                <p className="text-lg font-semibold text-white">App flow</p>
+                <LayoutPanelTop className="h-5 w-5 text-[var(--accent-text)]" />
+                <p className="text-lg font-semibold text-slate-100">App flow</p>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {[
@@ -85,7 +85,7 @@ export default async function ShowcasePage() {
             </div>
 
             <div className="card-surface rounded-[30px] p-6">
-              <p className="text-lg font-semibold text-white">Inside the workspace</p>
+              <p className="text-lg font-semibold text-slate-100">Inside the workspace</p>
               <div className="mt-5 space-y-3">
                 {[
                   "Dedicated dashboard route instead of one overloaded home screen",
@@ -105,10 +105,10 @@ export default async function ShowcasePage() {
         <section className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {showcaseCards.map((card) => (
             <article key={card.title} className="card-surface rounded-[28px] p-6">
-              <div className="inline-flex rounded-2xl border border-teal-300/20 bg-teal-300/10 p-3 text-teal-200">
+              <div className="brand-icon inline-flex rounded-2xl p-3">
                 {card.icon}
               </div>
-              <h2 className="mt-5 text-xl font-semibold text-white">{card.title}</h2>
+              <h2 className="mt-5 text-xl font-semibold text-slate-100">{card.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
             </article>
           ))}

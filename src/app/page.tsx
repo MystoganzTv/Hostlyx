@@ -34,17 +34,17 @@ export default async function LandingPage() {
         <section className="grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
           <div className="card-surface rounded-[34px] p-8 sm:p-10">
             <div className="max-w-3xl space-y-6">
-              <span className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
+              <span className="brand-pill inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em]">
                 <Sparkles className="h-3.5 w-3.5" />
                 Spreadsheet chaos, turned into SaaS
               </span>
 
               <div className="space-y-4">
-                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl xl:text-6xl">
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-slate-100 sm:text-5xl xl:text-6xl">
                   Accounting software for short-term rental hosts who are done living in Excel.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                  HomeXperience helps Airbnb and vacation-rental operators import bookings and expenses,
+                  Hostlyx helps Airbnb and vacation-rental operators import bookings and expenses,
                   save them to the cloud, and instantly read the business through real dashboards.
                 </p>
               </div>
@@ -52,14 +52,14 @@ export default async function LandingPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href={signedIn ? "/dashboard" : "/login"}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                  className="brand-button inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
                 >
                   {signedIn ? "Open dashboard" : "Start with Google"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/showcase"
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                  className="brand-button-secondary rounded-2xl px-5 py-3 text-sm font-semibold transition"
                 >
                   View showcase
                 </Link>
@@ -68,15 +68,15 @@ export default async function LandingPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Import sources</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">Excel + Manual</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-100">Excel + Manual</p>
                 </div>
                 <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Currencies</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">USD / EUR</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-100">USD / EUR</p>
                 </div>
                 <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Audience</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">Hosts & PMs</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-100">Hosts & PMs</p>
                 </div>
               </div>
             </div>
@@ -88,20 +88,20 @@ export default async function LandingPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Demo workspace</p>
-                    <p className="mt-2 text-xl font-semibold text-white">PinarSabroso</p>
+                    <p className="mt-2 text-xl font-semibold text-slate-100">PinarSabroso</p>
                   </div>
-                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm font-medium text-emerald-200">
+                  <div className="brand-pill rounded-2xl px-3 py-2 text-sm font-medium">
                     EUR
                   </div>
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Net profit</p>
-                    <p className="mt-2 text-2xl font-semibold text-white">EUR 18.4K</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-100">EUR 18.4K</p>
                   </div>
                   <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Occupancy</p>
-                    <p className="mt-2 text-2xl font-semibold text-white">73.8%</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-100">73.8%</p>
                   </div>
                 </div>
               </div>
@@ -109,10 +109,10 @@ export default async function LandingPage() {
               <div className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-white">Recent booking visibility</p>
+                    <p className="text-sm font-semibold text-slate-100">Recent booking visibility</p>
                     <p className="mt-1 text-sm text-slate-400">Guest, dates, nights, guests, revenue, and payout without opening the spreadsheet.</p>
                   </div>
-                  <BadgeDollarSign className="h-5 w-5 text-teal-200" />
+                  <BadgeDollarSign className="h-5 w-5 text-[var(--accent-text)]" />
                 </div>
 
                 <div className="mt-4 space-y-3">
@@ -126,7 +126,7 @@ export default async function LandingPage() {
                       className="grid gap-2 rounded-[20px] border border-white/8 bg-slate-950/30 p-4 sm:grid-cols-[1fr_auto_auto]"
                     >
                       <div>
-                        <p className="font-medium text-white">{guest}</p>
+                        <p className="font-medium text-slate-100">{guest}</p>
                         <p className="mt-1 text-sm text-slate-400">{stay}</p>
                       </div>
                       <p className="text-sm text-slate-300">{nights}</p>
@@ -145,10 +145,10 @@ export default async function LandingPage() {
               key={highlight.title}
               className="card-surface rounded-[30px] p-6"
             >
-              <div className="inline-flex rounded-2xl border border-teal-300/20 bg-teal-300/10 p-3 text-teal-200">
+              <div className="brand-icon inline-flex rounded-2xl p-3">
                 {highlight.icon}
               </div>
-              <h2 className="mt-5 text-xl font-semibold text-white">{highlight.title}</h2>
+              <h2 className="mt-5 text-xl font-semibold text-slate-100">{highlight.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">{highlight.description}</p>
             </article>
           ))}

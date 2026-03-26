@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { PencilLine } from "lucide-react";
 
 function inputClassName() {
-  return "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-teal-300/60 focus:bg-white/[0.06]";
+  return "input-surface w-full rounded-2xl px-4 py-3 text-sm";
 }
 
 export function ManualEntryPanel() {
@@ -77,14 +77,14 @@ export function ManualEntryPanel() {
     <div className="rounded-[30px] border border-white/8 bg-white/[0.02] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-200/75">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
             Manual Entry
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
             Add bookings and expenses directly in the app.
           </p>
         </div>
-        <div className="rounded-3xl border border-teal-400/20 bg-teal-400/10 p-3 text-teal-200">
+        <div className="brand-icon rounded-3xl p-3">
           <PencilLine className="h-6 w-6" />
         </div>
       </div>
@@ -168,7 +168,7 @@ export function ManualEntryPanel() {
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="brand-button inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Saving booking..." : "Add booking"}
           </button>
@@ -226,7 +226,7 @@ export function ManualEntryPanel() {
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-60"
+            className="brand-button-secondary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Saving expense..." : "Add expense"}
           </button>

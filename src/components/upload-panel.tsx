@@ -93,14 +93,14 @@ export function UploadPanel() {
     <div className="rounded-[30px] border border-white/8 bg-white/[0.02] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-200/75">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent-text)]/80">
             Import Workbook
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
             Reads only `Bookings` and `Expenses`. New uploads are saved to the system and exact duplicates are skipped.
           </p>
         </div>
-        <div className="rounded-3xl border border-teal-400/20 bg-teal-400/10 p-3 text-teal-200">
+        <div className="brand-icon rounded-3xl p-3">
           <UploadCloud className="h-6 w-6" />
         </div>
       </div>
@@ -137,7 +137,7 @@ export function UploadPanel() {
                 }
               }}
               disabled={uploadState === "uploading"}
-              className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+              className="brand-button-secondary inline-flex shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               {selectedFile ? "Choose another file" : "Choose file"}
             </button>
@@ -145,11 +145,11 @@ export function UploadPanel() {
 
           <div className="mt-4 rounded-[20px] border border-white/8 bg-slate-950/40 p-4">
             <div className="flex items-start gap-3">
-              <div className="rounded-2xl bg-teal-300/10 p-2 text-teal-200">
+              <div className="brand-icon rounded-2xl p-2">
                 <FileSpreadsheet className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">
+                <p className="truncate text-sm font-medium text-slate-100">
                   {selectedFile ? selectedFile.name : "No file selected yet"}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -163,7 +163,7 @@ export function UploadPanel() {
         <button
           type="submit"
           disabled={uploadState === "uploading" || !selectedFile}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="brand-button inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploadState === "uploading" ? (
             <>

@@ -40,13 +40,13 @@ export default async function BookingsPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <SectionCard title="Total bookings">
           <div className="flex items-center gap-3">
-            <BookOpenText className="h-5 w-5 text-teal-200" />
+            <BookOpenText className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">{formatNumber(bookings.length)}</p>
           </div>
         </SectionCard>
         <SectionCard title="Properties used">
           <div className="flex items-center gap-3">
-            <Home className="h-5 w-5 text-teal-200" />
+            <Home className="h-5 w-5 text-[var(--accent-text)]" />
             <p className="text-2xl font-semibold text-white">{formatNumber(propertyCount)}</p>
           </div>
         </SectionCard>

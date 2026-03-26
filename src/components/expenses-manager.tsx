@@ -8,7 +8,7 @@ import type { CurrencyCode, ExpenseRecord } from "@/lib/types";
 import { Modal } from "@/components/modal";
 
 function inputClassName() {
-  return "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-teal-300/60 focus:bg-white/[0.06]";
+  return "input-surface w-full rounded-2xl px-4 py-3 text-sm";
 }
 
 export function ExpensesManager({
@@ -119,7 +119,7 @@ export function ExpensesManager({
                 <tr key={expense.id ?? `${expense.date}-${expense.description}`} className="border-t border-white/8 text-slate-200">
                   <td className="py-4 pr-4">
                     <div>
-                      <p className="font-medium text-white">{expense.propertyName}</p>
+                      <p className="font-medium text-slate-100">{expense.propertyName}</p>
                       <p className="mt-1 text-xs text-slate-400">{expense.unitName || "No unit"}</p>
                     </div>
                   </td>
@@ -127,7 +127,7 @@ export function ExpensesManager({
                   <td className="py-4 pr-4">{expense.category}</td>
                   <td className="py-4 pr-4">
                     <div>
-                      <p className="font-medium text-white">{expense.description}</p>
+                      <p className="font-medium text-slate-100">{expense.description}</p>
                       {expense.note ? <p className="mt-1 text-xs text-slate-400">{expense.note}</p> : null}
                     </div>
                   </td>
@@ -199,7 +199,7 @@ export function ExpensesManager({
               <button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="brand-button inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? "Saving expense..." : "Save expense"}
               </button>

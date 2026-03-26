@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 function navLinkClassName(active: boolean) {
   return active
-    ? "text-white"
-    : "text-slate-400 transition hover:text-white";
+    ? "text-slate-100"
+    : "text-slate-400 transition hover:text-slate-100";
 }
 
 export function MarketingHeader({
@@ -17,9 +18,7 @@ export function MarketingHeader({
     <header className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6 xl:px-8">
       <div className="card-surface flex flex-col gap-4 rounded-[28px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center gap-3">
-          <span className="rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-teal-100">
-            HomeXperience
-          </span>
+          <BrandLogo href="/" showTagline />
           <span className="text-sm text-slate-400">
             Accounting SaaS for short-term rentals
           </span>
@@ -40,7 +39,7 @@ export function MarketingHeader({
 
           <Link
             href={signedIn ? "/dashboard" : "/login"}
-            className="rounded-2xl bg-teal-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+            className="brand-button rounded-2xl px-4 py-3 text-sm font-semibold transition"
           >
             {signedIn ? "Open dashboard" : "Sign in"}
           </Link>
