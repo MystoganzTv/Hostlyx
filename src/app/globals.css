@@ -125,7 +125,7 @@ select {
 }
 
 .brand-button:hover {
-  background: linear-gradient(180deg, #dfc48f 0%, var(--accent-hover) 100%);
+  background: linear-gradient(180deg, #7de0d3 0%, var(--accent-hover) 100%);
 }
 
 .brand-button-secondary {
@@ -183,7 +183,7 @@ select {
 
 .brand-tab-active {
   border: 1px solid var(--accent-soft-strong);
-  background: linear-gradient(180deg, rgba(201, 168, 107, 0.2) 0%, rgba(201, 168, 107, 0.12) 100%);
+  background: linear-gradient(180deg, rgba(88, 196, 182, 0.2) 0%, rgba(88, 196, 182, 0.12) 100%);
   color: var(--accent-text);
 }
 

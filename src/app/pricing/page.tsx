@@ -70,7 +70,7 @@ export default async function PricingPage() {
               key={plan.name}
               className={`rounded-[32px] p-6 ${
                 plan.featured
-                  ? "card-surface border-[color:var(--accent-soft-strong)] shadow-[0_24px_80px_rgba(201,168,107,0.1)]"
+                  ? "card-surface border-[color:var(--accent-soft-strong)] shadow-[0_24px_80px_rgba(88,196,182,0.12)]"
                   : "card-surface"
               }`}
             >
