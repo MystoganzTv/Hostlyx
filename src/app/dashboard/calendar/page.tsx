@@ -18,17 +18,16 @@ export const runtime = "nodejs";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-function getLatestAnchor(bookings: Awaited<ReturnType<typeof getBookings>>, closures: Awaited<ReturnType<typeof getCalendarClosures>>) {
-  const dates = [
-    ...bookings.map((booking) => booking.checkIn),
-    ...closures.map((closure) => closure.date),
-  ].filter(Boolean);
+function matchesCalendarFilter(
+  dateValue: string,
+  year: number | "all",
+  month: number | "all",
+) {
+  const date = parseISO(dateValue);
+  const matchesYear = year === "all" || date.getFullYear() === year;
+  const matchesMonth = month === "all" || date.getMonth() + 1 === month;
 
-  if (dates.length === 0) {
-    return new Date();
-  }
-
-  return parseISO(dates.sort().at(-1) ?? format(new Date(), "yyyy-MM-dd"));
+  return matchesYear && matchesMonth;
 }
 
 export default async function CalendarPage({
@@ -65,12 +64,7 @@ export default async function CalendarPage({
     properties,
     userSettings.primaryCountryCode,
   );
-  const latestAnchor = getLatestAnchor(bookings, closures);
-  const filters = {
-    ...baseFilters,
-    year: baseFilters.year === "all" ? latestAnchor.getFullYear() : baseFilters.year,
-    month: baseFilters.month === "all" ? latestAnchor.getMonth() + 1 : baseFilters.month,
-  };
+  const filters = baseFilters;
   const propertyCountryMap = new Map(
     properties.map((property) => [property.name.trim().toLowerCase(), property.countryCode]),
   );
@@ -78,30 +72,29 @@ export default async function CalendarPage({
     const countryCode =
       propertyCountryMap.get(booking.propertyName.trim().toLowerCase()) ??
       userSettings.primaryCountryCode;
-    const bookingDate = parseISO(booking.checkIn);
     return (
       countryCode === filters.countryCode || filters.countryCode === "all"
-    ) &&
-      bookingDate.getFullYear() === filters.year &&
-      bookingDate.getMonth() + 1 === filters.month &&
+    ) && matchesCalendarFilter(booking.checkIn, filters.year, filters.month) &&
       (filters.channel === "all" || booking.channel === filters.channel);
   });
   const filteredClosures = closures.filter((closure) => {
     const countryCode =
       propertyCountryMap.get(closure.propertyName.trim().toLowerCase()) ??
       userSettings.primaryCountryCode;
-    const closureDate = parseISO(closure.date);
     return (
       countryCode === filters.countryCode || filters.countryCode === "all"
-    ) &&
-      closureDate.getFullYear() === filters.year &&
-      closureDate.getMonth() + 1 === filters.month;
+    ) && matchesCalendarFilter(closure.date, filters.year, filters.month);
   });
 
   const displayCountryCode =
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
   const currencyCode = getCurrencyForCountry(displayCountryCode);
-  const anchorDate = new Date(filters.year, filters.month - 1, 1);
+  const rangeLabel =
+    filters.year === "all"
+      ? "All imported months"
+      : filters.month === "all"
+        ? String(filters.year)
+        : format(new Date(filters.year, filters.month - 1, 1), "MMMM yyyy");
 
   return (
     <WorkspaceShell
@@ -133,11 +126,11 @@ export default async function CalendarPage({
       }
     >
       <CalendarPanel
-        monthLabel={format(anchorDate, "MMMM yyyy")}
-        anchorDate={anchorDate}
+        rangeLabel={rangeLabel}
         bookings={filteredBookings}
         closures={filteredClosures}
-        currencyCode={currencyCode}
+        selectedYear={filters.year}
+        selectedMonth={filters.month}
       />
     </WorkspaceShell>
   );
