@@ -2,7 +2,13 @@
 
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FileSpreadsheet, LoaderCircle, UploadCloud } from "lucide-react";
+import {
+  CheckCircle2,
+  FileSpreadsheet,
+  LoaderCircle,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import type { PropertyDefinition } from "@/lib/types";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -21,6 +27,25 @@ function formatFileSize(size: number) {
   }
 
   return `${size} B`;
+}
+
+function mergeFiles(currentFiles: File[], incomingFiles: File[]) {
+  const nextFiles = [...currentFiles];
+
+  for (const incomingFile of incomingFiles) {
+    const alreadyIncluded = nextFiles.some(
+      (file) =>
+        file.name === incomingFile.name &&
+        file.size === incomingFile.size &&
+        file.lastModified === incomingFile.lastModified,
+    );
+
+    if (!alreadyIncluded) {
+      nextFiles.push(incomingFile);
+    }
+  }
+
+  return nextFiles;
 }
 
 export function UploadPanel({
@@ -97,8 +122,12 @@ export function UploadPanel({
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextFiles = Array.from(event.target.files ?? []);
+    const incomingFiles = Array.from(event.target.files ?? []);
+    const nextFiles = mergeFiles(selectedFiles, incomingFiles);
     setSelectedFiles(nextFiles);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
 
     if (nextFiles.length === 0) {
       setUploadState("idle");
@@ -112,6 +141,36 @@ export function UploadPanel({
         ? `${nextFiles[0].name} selected and ready to import.`
         : `${nextFiles.length} workbooks selected and ready to import.`,
     );
+  }
+
+  function removeSelectedFile(fileToRemove: File) {
+    const nextFiles = selectedFiles.filter(
+      (file) =>
+        !(
+          file.name === fileToRemove.name &&
+          file.size === fileToRemove.size &&
+          file.lastModified === fileToRemove.lastModified
+        ),
+    );
+
+    setSelectedFiles(nextFiles);
+    setUploadState("idle");
+    setMessage(
+      nextFiles.length === 0
+        ? "All selected workbooks were removed."
+        : nextFiles.length === 1
+          ? `${nextFiles[0].name} still selected and ready to import.`
+          : `${nextFiles.length} workbooks selected and ready to import.`,
+    );
+  }
+
+  function clearSelectedFiles() {
+    setSelectedFiles([]);
+    setUploadState("idle");
+    setMessage("Selection cleared. Choose one or more .xlsx workbooks to import.");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   }
 
   const statusTone =
@@ -210,22 +269,48 @@ export function UploadPanel({
               </div>
               <div className="min-w-0 flex-1">
                 {selectedFiles.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedFiles.slice(0, 4).map((file) => (
-                      <div key={`${file.name}-${file.size}`} className="flex items-center justify-between gap-3">
-                        <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
-                          {file.name}
-                        </p>
-                        <p className="shrink-0 text-xs text-[var(--workspace-muted)]">
-                          {formatFileSize(file.size)}
-                        </p>
-                      </div>
-                    ))}
-                    {selectedFiles.length > 4 ? (
-                      <p className="text-xs text-[var(--workspace-muted)]">
-                        +{selectedFiles.length - 4} more files selected
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                        Selected files
                       </p>
-                    ) : null}
+                      {selectedFiles.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={clearSelectedFiles}
+                          disabled={uploadState === "uploading"}
+                          className="text-xs font-semibold text-[var(--workspace-accent)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Clear all
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="space-y-2">
+                      {selectedFiles.map((file) => (
+                        <div
+                          key={`${file.name}-${file.size}-${file.lastModified}`}
+                          className="flex items-center justify-between gap-3 rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-[var(--workspace-text)]">
+                              {file.name}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--workspace-muted)]">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${file.name}`}
+                            onClick={() => removeSelectedFile(file)}
+                            disabled={uploadState === "uploading"}
+                            className="workspace-button-secondary inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <>
