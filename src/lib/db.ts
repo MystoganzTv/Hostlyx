@@ -378,7 +378,54 @@ function cloneExpenseRecord(expense: StoredExpense): ExpenseRecord {
   };
 }
 
-export async function replaceImportData({
+function normalizeFingerprintValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function formatFingerprintNumber(value: number) {
+  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+}
+
+function createBookingFingerprint(booking: BookingRecord) {
+  return [
+    booking.checkIn,
+    booking.checkout,
+    normalizeFingerprintValue(booking.guestName),
+    booking.guestCount,
+    normalizeFingerprintValue(booking.channel),
+    normalizeFingerprintValue(booking.rentalPeriod),
+    formatFingerprintNumber(booking.pricePerNight),
+    formatFingerprintNumber(booking.extraFee),
+    formatFingerprintNumber(booking.discount),
+    formatFingerprintNumber(booking.rentalRevenue),
+    formatFingerprintNumber(booking.cleaningFee),
+    formatFingerprintNumber(booking.totalRevenue),
+    formatFingerprintNumber(booking.hostFee),
+    formatFingerprintNumber(booking.payout),
+    booking.nights,
+  ].join("|");
+}
+
+function createExpenseFingerprint(expense: ExpenseRecord) {
+  return [
+    expense.date,
+    normalizeFingerprintValue(expense.category),
+    formatFingerprintNumber(expense.amount),
+    normalizeFingerprintValue(expense.description),
+    normalizeFingerprintValue(expense.note),
+  ].join("|");
+}
+
+type ImportDataResult = {
+  importId: number;
+  importedAt: string;
+  bookingsCount: number;
+  expensesCount: number;
+  skippedBookingsCount: number;
+  skippedExpensesCount: number;
+};
+
+export async function appendImportData({
   ownerEmail,
   fileName,
   source,
@@ -390,7 +437,7 @@ export async function replaceImportData({
   source: ImportSource;
   bookings: BookingRecord[];
   expenses: ExpenseRecord[];
-}) {
+}): Promise<ImportDataResult> {
   await ensureDatabase();
   const normalizedEmail = normalizeOwnerEmail(ownerEmail);
 
@@ -400,17 +447,69 @@ export async function replaceImportData({
 
     try {
       await client.query("BEGIN");
-      await client.query(
-        "DELETE FROM bookings WHERE owner_email = $1 AND source != 'manual'",
+
+      const existingBookings = await client.query(
+        `
+          SELECT
+            check_in AS checkIn,
+            checkout,
+            guest_name AS guestName,
+            guest_count AS guestCount,
+            channel,
+            rental_period AS rentalPeriod,
+            price_per_night AS pricePerNight,
+            extra_fee AS extraFee,
+            discount,
+            rental_revenue AS rentalRevenue,
+            cleaning_fee AS cleaningFee,
+            total_revenue AS totalRevenue,
+            host_fee AS hostFee,
+            payout,
+            nights
+          FROM bookings
+          WHERE owner_email = $1 AND source = 'upload'
+        `,
         [normalizedEmail],
       );
-      await client.query(
-        "DELETE FROM expenses WHERE owner_email = $1 AND source != 'manual'",
+      const existingExpenses = await client.query(
+        `
+          SELECT
+            date,
+            category,
+            amount,
+            description,
+            note
+          FROM expenses
+          WHERE owner_email = $1 AND source = 'upload'
+        `,
         [normalizedEmail],
       );
-      await client.query("DELETE FROM imports WHERE owner_email = $1", [
-        normalizedEmail,
-      ]);
+
+      const bookingFingerprints = new Set(
+        existingBookings.rows.map((row) => createBookingFingerprint(mapBookingRecord(row))),
+      );
+      const expenseFingerprints = new Set(
+        existingExpenses.rows.map((row) => createExpenseFingerprint(mapExpenseRecord(row))),
+      );
+
+      const freshBookings = bookings.filter((booking) => {
+        const fingerprint = createBookingFingerprint(booking);
+        if (bookingFingerprints.has(fingerprint)) {
+          return false;
+        }
+
+        bookingFingerprints.add(fingerprint);
+        return true;
+      });
+      const freshExpenses = expenses.filter((expense) => {
+        const fingerprint = createExpenseFingerprint(expense);
+        if (expenseFingerprints.has(fingerprint)) {
+          return false;
+        }
+
+        expenseFingerprints.add(fingerprint);
+        return true;
+      });
 
       const importedAt = new Date().toISOString();
 
@@ -425,14 +524,14 @@ export async function replaceImportData({
           fileName,
           source,
           importedAt,
-          bookings.length,
-          expenses.length,
+          freshBookings.length,
+          freshExpenses.length,
         ],
       );
 
       const importId = Number(importResult.rows[0]?.id ?? 0);
 
-      for (const booking of bookings) {
+      for (const booking of freshBookings) {
         await client.query(
           `
             INSERT INTO bookings (
@@ -465,7 +564,7 @@ export async function replaceImportData({
         );
       }
 
-      for (const expense of expenses) {
+      for (const expense of freshExpenses) {
         await client.query(
           `
             INSERT INTO expenses (
@@ -491,8 +590,10 @@ export async function replaceImportData({
       return {
         importId,
         importedAt,
-        bookingsCount: bookings.length,
-        expensesCount: expenses.length,
+        bookingsCount: freshBookings.length,
+        expensesCount: freshExpenses.length,
+        skippedBookingsCount: bookings.length - freshBookings.length,
+        skippedExpensesCount: expenses.length - freshExpenses.length,
       };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -507,13 +608,35 @@ export async function replaceImportData({
     const importedAt = new Date().toISOString();
     const importId = store.nextImportId++;
 
-    store.bookings = store.bookings.filter(
-      (booking) => booking.ownerEmail !== normalizedEmail || booking.source === "manual",
+    const bookingFingerprints = new Set(
+      store.bookings
+        .filter((booking) => booking.ownerEmail === normalizedEmail && booking.source === "upload")
+        .map(createBookingFingerprint),
     );
-    store.expenses = store.expenses.filter(
-      (expense) => expense.ownerEmail !== normalizedEmail || expense.source === "manual",
+    const expenseFingerprints = new Set(
+      store.expenses
+        .filter((expense) => expense.ownerEmail === normalizedEmail && expense.source === "upload")
+        .map(createExpenseFingerprint),
     );
-    store.imports = store.imports.filter((entry) => entry.ownerEmail !== normalizedEmail);
+
+    const freshBookings = bookings.filter((booking) => {
+      const fingerprint = createBookingFingerprint(booking);
+      if (bookingFingerprints.has(fingerprint)) {
+        return false;
+      }
+
+      bookingFingerprints.add(fingerprint);
+      return true;
+    });
+    const freshExpenses = expenses.filter((expense) => {
+      const fingerprint = createExpenseFingerprint(expense);
+      if (expenseFingerprints.has(fingerprint)) {
+        return false;
+      }
+
+      expenseFingerprints.add(fingerprint);
+      return true;
+    });
 
     store.imports.push({
       id: importId,
@@ -521,11 +644,11 @@ export async function replaceImportData({
       fileName,
       source,
       importedAt,
-      bookingsCount: bookings.length,
-      expensesCount: expenses.length,
+      bookingsCount: freshBookings.length,
+      expensesCount: freshExpenses.length,
     });
 
-    for (const booking of bookings) {
+    for (const booking of freshBookings) {
       store.bookings.push({
         ...booking,
         id: store.nextBookingId++,
@@ -535,7 +658,7 @@ export async function replaceImportData({
       });
     }
 
-    for (const expense of expenses) {
+    for (const expense of freshExpenses) {
       store.expenses.push({
         ...expense,
         id: store.nextExpenseId++,
@@ -548,20 +671,77 @@ export async function replaceImportData({
     return {
       importId,
       importedAt,
-      bookingsCount: bookings.length,
-      expensesCount: expenses.length,
+      bookingsCount: freshBookings.length,
+      expensesCount: freshExpenses.length,
+      skippedBookingsCount: bookings.length - freshBookings.length,
+      skippedExpensesCount: expenses.length - freshExpenses.length,
     };
   }
 
   const db = getSQLiteDatabase();
   const transaction = db.transaction(() => {
-    db.prepare(
-      "DELETE FROM bookings WHERE owner_email = ? AND source != 'manual'",
-    ).run(normalizedEmail);
-    db.prepare(
-      "DELETE FROM expenses WHERE owner_email = ? AND source != 'manual'",
-    ).run(normalizedEmail);
-    db.prepare("DELETE FROM imports WHERE owner_email = ?").run(normalizedEmail);
+    const existingBookings = db
+      .prepare(
+        `
+          SELECT
+            check_in AS checkIn,
+            checkout,
+            guest_name AS guestName,
+            guest_count AS guestCount,
+            channel,
+            rental_period AS rentalPeriod,
+            price_per_night AS pricePerNight,
+            extra_fee AS extraFee,
+            discount,
+            rental_revenue AS rentalRevenue,
+            cleaning_fee AS cleaningFee,
+            total_revenue AS totalRevenue,
+            host_fee AS hostFee,
+            payout,
+            nights
+          FROM bookings
+          WHERE owner_email = ? AND source = 'upload'
+        `,
+      )
+      .all(normalizedEmail)
+      .map((row) => mapBookingRecord(row as Record<string, unknown>));
+
+    const existingExpenses = db
+      .prepare(
+        `
+          SELECT
+            date,
+            category,
+            amount,
+            description,
+            note
+          FROM expenses
+          WHERE owner_email = ? AND source = 'upload'
+        `,
+      )
+      .all(normalizedEmail)
+      .map((row) => mapExpenseRecord(row as Record<string, unknown>));
+
+    const bookingFingerprints = new Set(existingBookings.map(createBookingFingerprint));
+    const expenseFingerprints = new Set(existingExpenses.map(createExpenseFingerprint));
+    const freshBookings = bookings.filter((booking) => {
+      const fingerprint = createBookingFingerprint(booking);
+      if (bookingFingerprints.has(fingerprint)) {
+        return false;
+      }
+
+      bookingFingerprints.add(fingerprint);
+      return true;
+    });
+    const freshExpenses = expenses.filter((expense) => {
+      const fingerprint = createExpenseFingerprint(expense);
+      if (expenseFingerprints.has(fingerprint)) {
+        return false;
+      }
+
+      expenseFingerprints.add(fingerprint);
+      return true;
+    });
 
     const importedAt = new Date().toISOString();
 
@@ -577,8 +757,8 @@ export async function replaceImportData({
         fileName,
         source,
         importedAt,
-        bookings.length,
-        expenses.length,
+        freshBookings.length,
+        freshExpenses.length,
       );
 
     const importId = Number(result.lastInsertRowid);
@@ -599,7 +779,7 @@ export async function replaceImportData({
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    for (const booking of bookings) {
+    for (const booking of freshBookings) {
       insertBooking.run(
         normalizedEmail,
         importId,
@@ -622,7 +802,7 @@ export async function replaceImportData({
       );
     }
 
-    for (const expense of expenses) {
+    for (const expense of freshExpenses) {
       insertExpense.run(
         normalizedEmail,
         importId,
@@ -638,8 +818,10 @@ export async function replaceImportData({
     return {
       importId,
       importedAt,
-      bookingsCount: bookings.length,
-      expensesCount: expenses.length,
+      bookingsCount: freshBookings.length,
+      expensesCount: freshExpenses.length,
+      skippedBookingsCount: bookings.length - freshBookings.length,
+      skippedExpensesCount: expenses.length - freshExpenses.length,
     };
   });
 

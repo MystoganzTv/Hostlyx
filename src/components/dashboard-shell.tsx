@@ -389,7 +389,7 @@ export function DashboardShell({
                   Only `Bookings` and `Expenses` are imported.
                 </div>
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
-                  New imports replace imported rows and keep manual rows.
+                  New imports are added to your saved data and exact duplicates are skipped.
                 </div>
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
                   Channel filters affect bookings only.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUserEmail } from "@/lib/auth";
-import { replaceImportData } from "@/lib/db";
+import { appendImportData } from "@/lib/db";
 import { parseWorkbook } from "@/lib/workbook";
 
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const buffer = await file.arrayBuffer();
     const { bookings, expenses } = parseWorkbook(buffer);
 
-    const result = await replaceImportData({
+    const result = await appendImportData({
       ownerEmail,
       fileName: file.name,
       source: "upload",
@@ -41,8 +41,13 @@ export async function POST(request: Request) {
       expenses,
     });
 
+    const duplicateNotice =
+      result.skippedBookingsCount > 0 || result.skippedExpensesCount > 0
+        ? ` Skipped ${result.skippedBookingsCount} duplicate bookings and ${result.skippedExpensesCount} duplicate expenses already saved in HomeXperience.`
+        : "";
+
     return NextResponse.json({
-      message: `Imported ${result.bookingsCount} bookings and ${result.expensesCount} expenses from ${file.name}.`,
+      message: `Added ${result.bookingsCount} bookings and ${result.expensesCount} expenses from ${file.name}.${duplicateNotice}`,
     });
   } catch (error) {
     return NextResponse.json(

@@ -97,7 +97,7 @@ export function UploadPanel() {
             Import Workbook
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            Reads only `Bookings` and `Expenses`. Manual rows stay untouched.
+            Reads only `Bookings` and `Expenses`. New uploads are saved to the system and exact duplicates are skipped.
           </p>
         </div>
         <div className="rounded-3xl border border-teal-400/20 bg-teal-400/10 p-3 text-teal-200">
