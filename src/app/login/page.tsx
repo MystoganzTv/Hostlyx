@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Building2, ShieldCheck } from "lucide-react";
 import { SignInButton } from "@/components/auth-buttons";
 import { BrandLogo } from "@/components/brand-logo";
@@ -47,6 +48,12 @@ export default async function LoginPage() {
               </div>
             ) : null}
             <SignInButton disabled={!hasGoogleAuthConfig} />
+            <Link
+              href="/"
+              className="inline-flex text-sm font-medium text-slate-400 transition hover:text-slate-100"
+            >
+              Back to landing page
+            </Link>
           </div>
 
           <div className="mt-8 rounded-[24px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">

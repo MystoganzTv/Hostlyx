@@ -29,7 +29,7 @@ export function SignOutButton() {
   return (
     <button
       type="button"
-      onClick={() => void signOut({ callbackUrl: "/login" })}
+      onClick={() => void signOut({ callbackUrl: "/" })}
       className="brand-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
     >
       Sign out
