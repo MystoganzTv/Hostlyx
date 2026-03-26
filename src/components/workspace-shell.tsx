@@ -82,9 +82,9 @@ export function WorkspaceShell({
 
   return (
     <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-4 sm:px-6 xl:px-8">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 xl:flex-row xl:items-start">
         <aside
-          className={`flex w-full flex-col gap-5 overflow-hidden rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_20px_40px_rgba(15,23,42,0.16)] lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:shrink-0 lg:self-start ${isCollapsed ? "p-4 lg:w-[104px]" : "p-5 lg:w-[272px]"}`}
+          className={`flex w-full flex-col gap-6 overflow-hidden rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_20px_40px_rgba(15,23,42,0.16)] xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] xl:shrink-0 xl:self-start ${isCollapsed ? "p-4 xl:w-[104px]" : "p-5 xl:w-[272px]"}`}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="border-b border-white/8 pb-5">
@@ -96,7 +96,7 @@ export function WorkspaceShell({
                   type="button"
                   onClick={toggleSidebar}
                   aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  className="hidden lg:inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-white transition hover:bg-white/[0.08]"
+                  className="hidden xl:inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-white transition hover:bg-white/[0.08]"
                   title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                   {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
@@ -112,7 +112,7 @@ export function WorkspaceShell({
               ) : null}
             </div>
 
-            <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
 
@@ -134,7 +134,7 @@ export function WorkspaceShell({
             </nav>
 
             {!isCollapsed ? (
-              <div className="mt-auto space-y-3 border-t border-white/8 pt-5">
+              <div className="mt-8 space-y-4 border-t border-white/8 pt-8 xl:mt-auto">
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
                     Last import
@@ -161,7 +161,7 @@ export function WorkspaceShell({
             ) : null}
           </div>
 
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <div className={`flex ${isCollapsed ? "justify-center" : "justify-start"}`}>
               {isCollapsed ? (
                 <SignOutButton
