@@ -1,9 +1,14 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import {
   BookOpenText,
   Building2,
+  ChevronsLeft,
+  ChevronsRight,
   LayoutDashboard,
+  LogOut,
   ReceiptText,
   UserCircle2,
 } from "lucide-react";
@@ -13,6 +18,7 @@ import { formatDateLabel } from "@/lib/format";
 import type { CurrencyCode, ImportSummary } from "@/lib/types";
 
 type ActivePage = "dashboard" | "bookings" | "expenses" | "properties" | "profile";
+const sidebarStorageKey = "hostlyx:sidebar-collapsed";
 
 const navItems: Array<{
   id: ActivePage;
@@ -56,19 +62,48 @@ export function WorkspaceShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.localStorage.getItem(sidebarStorageKey) === "true";
+  });
+
+  function toggleSidebar() {
+    setIsCollapsed((current) => {
+      const nextValue = !current;
+      window.localStorage.setItem(sidebarStorageKey, String(nextValue));
+      return nextValue;
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-4 sm:px-6 xl:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1680px] flex-col gap-4 lg:flex-row">
-        <aside className="flex w-full flex-col gap-5 rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] p-5 shadow-[0_20px_40px_rgba(15,23,42,0.16)] lg:min-h-[calc(100vh-2rem)] lg:w-[272px] lg:shrink-0">
+        <aside className={`flex w-full flex-col gap-5 rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] p-5 shadow-[0_20px_40px_rgba(15,23,42,0.16)] lg:min-h-[calc(100vh-2rem)] lg:shrink-0 ${isCollapsed ? "lg:w-[96px]" : "lg:w-[272px]"}`}>
           <div className="space-y-5">
             <div className="border-b border-white/8 pb-5">
-              <BrandLogo href="/dashboard" compact />
-              <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white">{businessName}</p>
-                <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                  {currencyCode} workspace
-                </p>
+              <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} gap-3`}>
+                <BrandLogo href="/dashboard" compact hideWordmark={isCollapsed} />
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  className="hidden lg:inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-white transition hover:bg-white/[0.08]"
+                  title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                  {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+                </button>
               </div>
+              {!isCollapsed ? (
+                <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-sm font-medium text-white">{businessName}</p>
+                  <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
+                    {currencyCode} workspace
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
@@ -76,41 +111,69 @@ export function WorkspaceShell({
                 const Icon = item.icon;
 
                 return (
-                  <Link key={item.id} href={item.href} className={navClassName(activePage === item.id)}>
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`${navClassName(activePage === item.id)} ${isCollapsed ? "justify-center px-3" : ""}`}
+                    title={item.label}
+                  >
                     <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                    {activePage === item.id ? (
+                    {!isCollapsed ? <span>{item.label}</span> : null}
+                    {activePage === item.id && !isCollapsed ? (
                       <span className="ml-auto h-2 w-2 rounded-full bg-[var(--workspace-accent)]" />
                     ) : null}
                   </Link>
                 );
               })}
             </nav>
+            {!isCollapsed ? (
+              <div className="space-y-3 border-t border-white/8 pt-5">
+                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
+                    Last import
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    {latestImport?.fileName ?? "No workbook yet"}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
+                    {latestImport
+                      ? formatDateLabel(latestImport.importedAt.slice(0, 10))
+                      : "Upload your first file to start"}
+                  </p>
+                </div>
+
+                <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-sm font-medium text-white">{userName}</p>
+                  <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
+                    {userEmail}
+                  </p>
+                </div>
+
+                <SignOutButton className="flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]" />
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-auto space-y-3 border-t border-white/8 pt-5">
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
-                Last import
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">
-                {latestImport?.fileName ?? "No workbook yet"}
-              </p>
-              <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                {latestImport
-                  ? formatDateLabel(latestImport.importedAt.slice(0, 10))
-                  : "Upload your first file to start"}
-              </p>
+          <div className="mt-auto hidden lg:block">
+            <div className={`flex ${isCollapsed ? "justify-center" : "justify-start"}`}>
+              {isCollapsed ? (
+                <SignOutButton
+                  label=""
+                  ariaLabel="Sign out"
+                  icon={<LogOut className="h-4 w-4" />}
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-white transition hover:bg-white/[0.08]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                  Collapse
+                </button>
+              )}
             </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-              <p className="text-sm font-medium text-white">{userName}</p>
-              <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                {userEmail}
-              </p>
-            </div>
-
-            <SignOutButton className="flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]" />
           </div>
         </aside>
 

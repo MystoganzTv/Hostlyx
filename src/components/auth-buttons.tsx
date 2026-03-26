@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { signIn, signOut } from "next-auth/react";
 
 type SignInButtonProps = {
@@ -27,16 +28,24 @@ export function SignInButton({ disabled = false }: SignInButtonProps) {
 
 export function SignOutButton({
   className,
+  label = "Sign out",
+  icon,
+  ariaLabel,
 }: {
   className?: string;
+  label?: string;
+  icon?: ReactNode;
+  ariaLabel?: string;
 } = {}) {
   return (
     <button
       type="button"
       onClick={() => void signOut({ callbackUrl: "/" })}
+      aria-label={ariaLabel ?? label}
       className={className ?? "brand-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"}
     >
-      Sign out
+      {icon}
+      {label ? <span>{label}</span> : null}
     </button>
   );
 }

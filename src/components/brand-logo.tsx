@@ -4,12 +4,14 @@ type BrandLogoProps = {
   href?: string;
   showTagline?: boolean;
   compact?: boolean;
+  hideWordmark?: boolean;
 };
 
 export function BrandLogo({
   href,
   showTagline = false,
   compact = false,
+  hideWordmark = false,
 }: BrandLogoProps) {
   const content = (
     <div className="flex items-center gap-3">
@@ -55,16 +57,18 @@ export function BrandLogo({
         </svg>
       </span>
 
-      <span className="min-w-0">
-        <span className={`${compact ? "text-base" : "text-lg"} block font-semibold tracking-[-0.05em] text-slate-100`}>
-          Hostlyx
-        </span>
-        {showTagline ? (
-          <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-500">
-            Finance OS for rental hosts
+      {!hideWordmark ? (
+        <span className="min-w-0">
+          <span className={`${compact ? "text-base" : "text-lg"} block font-semibold tracking-[-0.05em] text-slate-100`}>
+            Hostlyx
           </span>
-        ) : null}
-      </span>
+          {showTagline ? (
+            <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              Finance OS for rental hosts
+            </span>
+          ) : null}
+        </span>
+      ) : null}
     </div>
   );
 
