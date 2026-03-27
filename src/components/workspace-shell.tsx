@@ -113,11 +113,19 @@ export function WorkspaceShell({
     return "border-white/10 bg-white/[0.05] text-white";
   }
 
+  function subscriptionTimerClassName(tone: SubscriptionBadge["tone"]) {
+    if (tone === "expired") {
+      return "border-rose-300/16 bg-rose-400/10 text-rose-100";
+    }
+
+    return "border-amber-300/16 bg-amber-400/10 text-amber-50";
+  }
+
   return (
-    <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-5 sm:px-6 xl:px-8 xl:py-6">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5 xl:flex-row xl:items-start">
+    <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-5 sm:px-6 xl:h-screen xl:overflow-hidden xl:px-8 xl:py-6">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5 xl:h-[calc(100vh-3rem)] xl:flex-row xl:items-stretch">
         <aside
-          className={`w-full rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_18px_42px_rgba(2,6,23,0.2)] xl:sticky xl:top-6 xl:shrink-0 xl:self-start ${isCollapsed ? "p-4 xl:w-[104px]" : "p-5 xl:w-[272px]"}`}
+          className={`w-full rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_18px_42px_rgba(2,6,23,0.2)] xl:max-h-full xl:shrink-0 xl:self-stretch xl:overflow-y-auto xl:overscroll-contain ${isCollapsed ? "p-4 xl:w-[104px]" : "p-5 xl:w-[272px]"}`}
         >
           <div className="border-b border-white/8 pb-5">
             <div
@@ -155,6 +163,23 @@ export function WorkspaceShell({
                   <p className="mt-3 text-xs text-[var(--workspace-sidebar-muted)]">
                     {subscriptionBadge.detail}
                   </p>
+                ) : null}
+                {subscriptionBadge && (subscriptionBadge.tone === "trial" || subscriptionBadge.tone === "expired") ? (
+                  <div
+                    className={`mt-4 rounded-[18px] border p-3 ${subscriptionTimerClassName(subscriptionBadge.tone)}`}
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                      {subscriptionBadge.tone === "expired" ? "Trial ended" : "Trial countdown"}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {subscriptionBadge.detail}
+                    </p>
+                    <p className="mt-1 text-xs text-inherit/80">
+                      {subscriptionBadge.tone === "expired"
+                        ? "Upgrade to keep using the dashboard."
+                        : "Upgrade before it ends so access stays uninterrupted."}
+                    </p>
+                  </div>
                 ) : null}
               </div>
             ) : null}
@@ -241,8 +266,8 @@ export function WorkspaceShell({
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)]">
-          <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:p-9">
+        <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)] xl:min-h-0 xl:overflow-hidden">
+          <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:p-9">
             <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-4xl">

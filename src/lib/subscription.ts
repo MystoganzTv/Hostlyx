@@ -78,7 +78,7 @@ export function getSubscriptionBadge(subscription: SubscriptionState) {
   if (subscription.status === "expired") {
     return {
       label: "Trial",
-      detail: "Expired",
+      detail: "0 days left",
       tone: "expired" as const,
     };
   }

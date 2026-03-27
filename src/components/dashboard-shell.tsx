@@ -343,6 +343,15 @@ export function DashboardShell({
       : view.metrics.profitAfterTax < 0
         ? "Below Break-Even"
         : "Break-Even After Tax";
+  const upgradeTone = subscriptionBadge?.tone;
+  const highlightUpgrade =
+    upgradeTone === "trial" || upgradeTone === "expired" || upgradeTone === "starter";
+  const upgradeLabel =
+    upgradeTone === "starter"
+      ? "Upgrade to Pro"
+      : upgradeTone === "trial" || upgradeTone === "expired"
+        ? "Choose a Plan"
+        : "Upgrade";
 
   return (
     <>
@@ -361,20 +370,18 @@ export function DashboardShell({
             {showUpgradeAction ? (
               <Link
                 href="/pricing"
-                className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  highlightUpgrade
+                    ? "border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.24)_0%,rgba(245,158,11,0.16)_100%)] text-amber-50 shadow-[0_18px_36px_rgba(245,158,11,0.18)] hover:border-amber-200/28 hover:bg-[linear-gradient(135deg,rgba(251,191,36,0.3)_0%,rgba(245,158,11,0.2)_100%)]"
+                    : "workspace-button-secondary"
+                }`}
               >
-                Upgrade
+                {upgradeLabel}
               </Link>
             ) : null}
             {reportExportEnabled ? (
               <ExportReportLink className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition" />
             ) : null}
-            <Link
-              href="/dashboard/lab"
-              className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
-            >
-              Grid lab
-            </Link>
             <button
               type="button"
               onClick={() => setIsUploadOpen(true)}
