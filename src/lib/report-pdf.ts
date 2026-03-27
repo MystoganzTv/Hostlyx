@@ -24,9 +24,9 @@ const contentWidth = sheetWidth - sheetInset * 2;
 const contentTop = pageHeight - pageMargin - sheetInset;
 
 const brandFontFiles = {
-  regular: path.join(process.cwd(), "node_modules/@fontsource/manrope/files/manrope-latin-400-normal.woff"),
-  semibold: path.join(process.cwd(), "node_modules/@fontsource/manrope/files/manrope-latin-700-normal.woff"),
-  mono: path.join(process.cwd(), "node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff"),
+  regular: path.join(process.cwd(), "src/assets/fonts/Manrope-Variable.ttf"),
+  semibold: path.join(process.cwd(), "src/assets/fonts/Manrope-Variable.ttf"),
+  mono: path.join(process.cwd(), "src/assets/fonts/IBMPlexMono-Medium.ttf"),
 } as const;
 
 const brandFontDataPromise = Promise.all([
