@@ -258,7 +258,8 @@ function drawDetailCard(
 
   drawLabel(page, fonts.mono, options.title, options.x + 16, options.y + options.height - 18, rgb(0.44, 0.5, 0.61));
 
-  let cursorY = options.y + options.height - 34;
+  const rowHeight = 31;
+  let cursorY = options.y + options.height - 42;
 
   for (const [index, row] of options.rows.entries()) {
     const rowLabel = truncateToWidth(fonts.semibold, row.label, 10.8, options.width - 100);
@@ -282,7 +283,7 @@ function drawDetailCard(
       fonts.regular,
       row.sublabel,
       options.x + 16,
-      cursorY - 15,
+      cursorY - 18,
       options.width - 32,
       8.8,
       rgb(0.44, 0.5, 0.61),
@@ -290,16 +291,18 @@ function drawDetailCard(
       1,
     );
 
-    cursorY -= 29;
-
     if (index < options.rows.length - 1) {
+      const dividerY = cursorY - rowHeight + 8;
+
       page.drawLine({
-        start: { x: options.x + 16, y: cursorY + 6 },
-        end: { x: options.x + options.width - 16, y: cursorY + 6 },
+        start: { x: options.x + 16, y: dividerY },
+        end: { x: options.x + options.width - 16, y: dividerY },
         thickness: 1,
         color: rgb(0.93, 0.95, 0.97),
       });
     }
+
+    cursorY -= rowHeight;
   }
 }
 
