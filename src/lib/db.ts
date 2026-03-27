@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { Pool } from "pg";
 import type {
+  AdminUserSummary,
   BookingRecord,
   CalendarClosureRecord,
   CountryCode,
@@ -16,6 +17,7 @@ import type {
   SubscriptionStatus,
   UserSettings,
 } from "./types";
+import { isAdminOwnerEmail } from "./admin";
 import { normalizeExpenseFields } from "./expense-normalization";
 import {
   getCountryForCurrency,
@@ -924,6 +926,89 @@ function cloneSubscription(subscription: StoredSubscription): SubscriptionState 
     activatedAt: subscription.activatedAt,
     updatedAt: subscription.updatedAt,
   };
+}
+
+async function upsertStoredSubscription(nextSubscription: StoredSubscription) {
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    await pool.query(
+      `
+        INSERT INTO subscriptions (
+          owner_email,
+          plan,
+          status,
+          trial_started_at,
+          trial_ends_at,
+          activated_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (owner_email)
+        DO UPDATE SET
+          plan = EXCLUDED.plan,
+          status = EXCLUDED.status,
+          trial_started_at = EXCLUDED.trial_started_at,
+          trial_ends_at = EXCLUDED.trial_ends_at,
+          activated_at = EXCLUDED.activated_at,
+          updated_at = EXCLUDED.updated_at
+      `,
+      [
+        nextSubscription.ownerEmail,
+        nextSubscription.plan,
+        nextSubscription.status,
+        nextSubscription.trialStartedAt,
+        nextSubscription.trialEndsAt,
+        nextSubscription.activatedAt,
+        nextSubscription.updatedAt,
+      ],
+    );
+
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const index = store.subscriptions.findIndex((entry) => entry.ownerEmail === nextSubscription.ownerEmail);
+
+    if (index >= 0) {
+      store.subscriptions[index] = nextSubscription;
+    } else {
+      store.subscriptions.push(nextSubscription);
+    }
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  db.prepare(
+    `
+      INSERT INTO subscriptions (
+        owner_email,
+        plan,
+        status,
+        trial_started_at,
+        trial_ends_at,
+        activated_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(owner_email) DO UPDATE SET
+        plan = excluded.plan,
+        status = excluded.status,
+        trial_started_at = excluded.trial_started_at,
+        trial_ends_at = excluded.trial_ends_at,
+        activated_at = excluded.activated_at,
+        updated_at = excluded.updated_at
+    `,
+  ).run(
+    nextSubscription.ownerEmail,
+    nextSubscription.plan,
+    nextSubscription.status,
+    nextSubscription.trialStartedAt,
+    nextSubscription.trialEndsAt,
+    nextSubscription.activatedAt,
+    nextSubscription.updatedAt,
+  );
 }
 
 function clonePropertyUnit(unit: StoredPropertyUnit): PropertyUnit {
@@ -3961,6 +4046,28 @@ async function expireTrialSubscriptionIfNeeded(
   return expiredSubscription;
 }
 
+async function ensureAdminProSubscription(subscription: StoredSubscription) {
+  if (
+    !isAdminOwnerEmail(subscription.ownerEmail) ||
+    (subscription.status === "active" &&
+      (subscription.plan === "pro" || subscription.plan === "portfolio"))
+  ) {
+    return subscription;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const nextSubscription: StoredSubscription = {
+    ...subscription,
+    plan: "pro",
+    status: "active",
+    activatedAt: subscription.activatedAt ?? updatedAt,
+    updatedAt,
+  };
+
+  await upsertStoredSubscription(nextSubscription);
+  return nextSubscription;
+}
+
 export async function getSubscriptionState(ownerEmail: string): Promise<SubscriptionState> {
   await ensureDatabase();
   const normalizedEmail = normalizeOwnerEmail(ownerEmail);
@@ -4013,11 +4120,13 @@ export async function getSubscriptionState(ownerEmail: string): Promise<Subscrip
         ],
       );
 
-      return cloneSubscription(nextSubscription);
+      return cloneSubscription(await ensureAdminProSubscription(nextSubscription));
     }
 
     return cloneSubscription(
-      await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+      await ensureAdminProSubscription(
+        await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+      ),
     );
   }
 
@@ -4028,11 +4137,13 @@ export async function getSubscriptionState(ownerEmail: string): Promise<Subscrip
     if (!subscription) {
       const nextSubscription = createDefaultStoredSubscription(normalizedEmail);
       store.subscriptions.push(nextSubscription);
-      return cloneSubscription(nextSubscription);
+      return cloneSubscription(await ensureAdminProSubscription(nextSubscription));
     }
 
     return cloneSubscription(
-      await expireTrialSubscriptionIfNeeded(normalizedEmail, subscription),
+      await ensureAdminProSubscription(
+        await expireTrialSubscriptionIfNeeded(normalizedEmail, subscription),
+      ),
     );
   }
 
@@ -4079,12 +4190,14 @@ export async function getSubscriptionState(ownerEmail: string): Promise<Subscrip
       nextSubscription.updatedAt,
     );
 
-    return cloneSubscription(nextSubscription);
+    return cloneSubscription(await ensureAdminProSubscription(nextSubscription));
   }
 
   const storedSubscription = normalizeStoredSubscription(normalizedEmail, row);
   return cloneSubscription(
-    await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+    await ensureAdminProSubscription(
+      await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+    ),
   );
 }
 
@@ -4109,84 +4222,232 @@ export async function updateSubscriptionPlan({
     updatedAt,
   };
 
+  await upsertStoredSubscription(nextSubscription);
+}
+
+export async function revokeSubscriptionAccess(ownerEmail: string) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const currentSubscription = await getSubscriptionState(normalizedEmail);
+  const updatedAt = new Date().toISOString();
+
+  await upsertStoredSubscription({
+    ownerEmail: normalizedEmail,
+    plan: "trial",
+    status: "expired",
+    trialStartedAt: currentSubscription.trialStartedAt,
+    trialEndsAt: currentSubscription.trialEndsAt,
+    activatedAt: currentSubscription.activatedAt,
+    updatedAt,
+  });
+}
+
+async function getUserRecordCounts(ownerEmail: string) {
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
   if (isPostgresConfigured()) {
     const pool = getPostgresPool();
-    await pool.query(
+    const [properties, imports, bookings, expenses] = await Promise.all([
+      pool.query("SELECT COUNT(*) AS count FROM properties WHERE owner_email = $1", [normalizedEmail]),
+      pool.query("SELECT COUNT(*) AS count FROM imports WHERE owner_email = $1", [normalizedEmail]),
+      pool.query("SELECT COUNT(*) AS count FROM bookings WHERE owner_email = $1", [normalizedEmail]),
+      pool.query("SELECT COUNT(*) AS count FROM expenses WHERE owner_email = $1", [normalizedEmail]),
+    ]);
+
+    return {
+      propertiesCount: Number(getRowValue(properties.rows[0] as Record<string, unknown>, "count") ?? 0),
+      importsCount: Number(getRowValue(imports.rows[0] as Record<string, unknown>, "count") ?? 0),
+      bookingsCount: Number(getRowValue(bookings.rows[0] as Record<string, unknown>, "count") ?? 0),
+      expensesCount: Number(getRowValue(expenses.rows[0] as Record<string, unknown>, "count") ?? 0),
+    };
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    return {
+      propertiesCount: store.properties.filter((entry) => entry.ownerEmail === normalizedEmail).length,
+      importsCount: store.imports.filter((entry) => entry.ownerEmail === normalizedEmail).length,
+      bookingsCount: store.bookings.filter((entry) => entry.ownerEmail === normalizedEmail).length,
+      expensesCount: store.expenses.filter((entry) => entry.ownerEmail === normalizedEmail).length,
+    };
+  }
+
+  const db = getSQLiteDatabase();
+  const [properties, imports, bookings, expenses] = [
+    db.prepare("SELECT COUNT(*) AS count FROM properties WHERE owner_email = ?").get(normalizedEmail),
+    db.prepare("SELECT COUNT(*) AS count FROM imports WHERE owner_email = ?").get(normalizedEmail),
+    db.prepare("SELECT COUNT(*) AS count FROM bookings WHERE owner_email = ?").get(normalizedEmail),
+    db.prepare("SELECT COUNT(*) AS count FROM expenses WHERE owner_email = ?").get(normalizedEmail),
+  ] as Array<Record<string, unknown> | undefined>;
+
+  return {
+    propertiesCount: Number(getRowValue(properties ?? {}, "count") ?? 0),
+    importsCount: Number(getRowValue(imports ?? {}, "count") ?? 0),
+    bookingsCount: Number(getRowValue(bookings ?? {}, "count") ?? 0),
+    expensesCount: Number(getRowValue(expenses ?? {}, "count") ?? 0),
+  };
+}
+
+export async function listAdminUsers(): Promise<AdminUserSummary[]> {
+  await ensureDatabase();
+  const ownerEmails = new Set<string>();
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const result = await pool.query(
       `
-        INSERT INTO subscriptions (
-          owner_email,
-          plan,
-          status,
-          trial_started_at,
-          trial_ends_at,
-          activated_at,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (owner_email)
-        DO UPDATE SET
-          plan = EXCLUDED.plan,
-          status = EXCLUDED.status,
-          trial_started_at = EXCLUDED.trial_started_at,
-          trial_ends_at = EXCLUDED.trial_ends_at,
-          activated_at = EXCLUDED.activated_at,
-          updated_at = EXCLUDED.updated_at
+        SELECT owner_email AS ownerEmail FROM user_settings
+        UNION
+        SELECT owner_email AS ownerEmail FROM subscriptions
+        UNION
+        SELECT owner_email AS ownerEmail FROM auth_users
+        UNION
+        SELECT owner_email AS ownerEmail FROM properties
+        UNION
+        SELECT owner_email AS ownerEmail FROM imports
+        UNION
+        SELECT owner_email AS ownerEmail FROM bookings
+        UNION
+        SELECT owner_email AS ownerEmail FROM expenses
       `,
-      [
-        nextSubscription.ownerEmail,
-        nextSubscription.plan,
-        nextSubscription.status,
-        nextSubscription.trialStartedAt,
-        nextSubscription.trialEndsAt,
-        nextSubscription.activatedAt,
-        nextSubscription.updatedAt,
-      ],
     );
+
+    for (const row of result.rows) {
+      const email = String(getRowValue(row as Record<string, unknown>, "ownerEmail", "owneremail") ?? "").trim();
+      if (email) {
+        ownerEmails.add(email.toLowerCase());
+      }
+    }
+  } else if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    for (const collection of [
+      store.settings,
+      store.subscriptions,
+      store.authUsers,
+      store.properties,
+      store.imports,
+      store.bookings,
+      store.expenses,
+    ]) {
+      for (const entry of collection) {
+        if ("ownerEmail" in entry && typeof entry.ownerEmail === "string" && entry.ownerEmail.trim()) {
+          ownerEmails.add(entry.ownerEmail.toLowerCase());
+        }
+      }
+    }
+  } else {
+    const db = getSQLiteDatabase();
+    const rows = db.prepare(
+      `
+        SELECT owner_email AS ownerEmail FROM user_settings
+        UNION
+        SELECT owner_email AS ownerEmail FROM subscriptions
+        UNION
+        SELECT owner_email AS ownerEmail FROM auth_users
+        UNION
+        SELECT owner_email AS ownerEmail FROM properties
+        UNION
+        SELECT owner_email AS ownerEmail FROM imports
+        UNION
+        SELECT owner_email AS ownerEmail FROM bookings
+        UNION
+        SELECT owner_email AS ownerEmail FROM expenses
+      `,
+    ).all() as Array<Record<string, unknown>>;
+
+    for (const row of rows) {
+      const email = String(getRowValue(row, "ownerEmail", "owneremail") ?? "").trim();
+      if (email) {
+        ownerEmails.add(email.toLowerCase());
+      }
+    }
+  }
+
+  const users = await Promise.all(
+    Array.from(ownerEmails)
+      .sort((left, right) => left.localeCompare(right))
+      .map(async (ownerEmail) => {
+        const businessName = (await getUserSettings(ownerEmail, ownerEmail.split("@")[0] ?? "Workspace")).businessName;
+        const subscription = await getSubscriptionState(ownerEmail);
+        const counts = await getUserRecordCounts(ownerEmail);
+
+        return {
+          ownerEmail,
+          businessName,
+          subscription,
+          isAdmin: isAdminOwnerEmail(ownerEmail),
+          ...counts,
+        } satisfies AdminUserSummary;
+      }),
+  );
+
+  return users.sort((left, right) => {
+    if (left.isAdmin && !right.isAdmin) {
+      return -1;
+    }
+    if (!left.isAdmin && right.isAdmin) {
+      return 1;
+    }
+    return left.businessName.localeCompare(right.businessName);
+  });
+}
+
+export async function deleteManagedUser(ownerEmail: string) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (isAdminOwnerEmail(normalizedEmail)) {
+    throw new Error("The primary admin account cannot be deleted.");
+  }
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM bookings WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM expenses WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM calendar_closures WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM imports WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM property_units WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM properties WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM user_settings WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM subscriptions WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM auth_users WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
 
     return;
   }
 
   if (shouldUseMemoryFallback()) {
     const store = getMemoryStore();
-    const index = store.subscriptions.findIndex((entry) => entry.ownerEmail === normalizedEmail);
-
-    if (index >= 0) {
-      store.subscriptions[index] = nextSubscription;
-    } else {
-      store.subscriptions.push(nextSubscription);
-    }
-
+    store.bookings = store.bookings.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.expenses = store.expenses.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.closures = store.closures.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.imports = store.imports.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.propertyUnits = store.propertyUnits.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.properties = store.properties.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.settings = store.settings.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.subscriptions = store.subscriptions.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.authUsers = store.authUsers.filter((entry) => entry.ownerEmail !== normalizedEmail);
     return;
   }
 
   const db = getSQLiteDatabase();
-  db.prepare(
-    `
-      INSERT INTO subscriptions (
-        owner_email,
-        plan,
-        status,
-        trial_started_at,
-        trial_ends_at,
-        activated_at,
-        updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(owner_email) DO UPDATE SET
-        plan = excluded.plan,
-        status = excluded.status,
-        trial_started_at = excluded.trial_started_at,
-        trial_ends_at = excluded.trial_ends_at,
-        activated_at = excluded.activated_at,
-        updated_at = excluded.updated_at
-    `,
-  ).run(
-    nextSubscription.ownerEmail,
-    nextSubscription.plan,
-    nextSubscription.status,
-    nextSubscription.trialStartedAt,
-    nextSubscription.trialEndsAt,
-    nextSubscription.activatedAt,
-    nextSubscription.updatedAt,
-  );
+  db.prepare("DELETE FROM bookings WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM expenses WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM calendar_closures WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM imports WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM property_units WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM properties WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM user_settings WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM subscriptions WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM auth_users WHERE owner_email = ?").run(normalizedEmail);
 }

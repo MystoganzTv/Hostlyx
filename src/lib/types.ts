@@ -95,6 +95,17 @@ export type SubscriptionState = {
   updatedAt: string;
 };
 
+export type AdminUserSummary = {
+  ownerEmail: string;
+  businessName: string;
+  subscription: SubscriptionState;
+  propertiesCount: number;
+  importsCount: number;
+  bookingsCount: number;
+  expensesCount: number;
+  isAdmin: boolean;
+};
+
 export type PropertyUnit = {
   id?: number;
   name: string;

@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import {
+  Shield,
   BookOpenText,
   Building2,
   ChartNoAxesCombined,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/auth-buttons";
+import { isAdminOwnerEmail } from "@/lib/admin";
 import { formatDateLabel } from "@/lib/format";
 import type { CurrencyCode, ImportSummary } from "@/lib/types";
 
@@ -29,6 +31,7 @@ type ActivePage =
   | "cashflow"
   | "performance"
   | "reports"
+  | "admin"
   | "imports"
   | "properties"
   | "settings";
@@ -40,7 +43,7 @@ type SubscriptionBadge = {
   tone?: "trial" | "expired" | "starter" | "pro" | "portfolio";
 };
 
-const navItems: Array<{
+const baseNavItems: Array<{
   id: ActivePage;
   label: string;
   href: string;
@@ -120,6 +123,13 @@ export function WorkspaceShell({
 
     return "border-amber-300/16 bg-amber-400/10 text-amber-50";
   }
+
+  const navItems = isAdminOwnerEmail(userEmail)
+    ? [
+      ...baseNavItems,
+      { id: "admin" as const, label: "Admin Panel", href: "/dashboard/admin", icon: Shield },
+    ]
+    : baseNavItems;
 
   return (
     <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-5 sm:px-6 xl:h-screen xl:overflow-hidden xl:px-8 xl:py-6">
