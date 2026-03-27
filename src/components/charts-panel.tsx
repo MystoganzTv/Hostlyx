@@ -55,6 +55,10 @@ function topCostShare(expensesByCategory: CategoryPoint[]) {
   }));
 }
 
+function monthlyMargin(point: MonthlyPoint) {
+  return point.revenue > 0 ? point.profit / point.revenue : 0;
+}
+
 export function ChartsPanel({
   monthlySummary,
   expensesByCategory,
@@ -90,36 +94,82 @@ export function ChartsPanel({
         {monthlySummary.length === 0 ? (
           <EmptyChartState label="No monthly data available for the current filters." />
         ) : (
-          <div className="h-[320px] min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlySummary}>
-                <defs>
-                  <linearGradient id="profit-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#58c4b6" stopOpacity={0.55} />
-                    <stop offset="95%" stopColor="#58c4b6" stopOpacity={0.04} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: "#93a4bf", fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis
-                  tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={72}
-                />
-                <Tooltip
-                  formatter={(value) => formatTooltipValue(value, currencyCode)}
-                  contentStyle={{
-                    borderRadius: 18,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "#101c2e",
-                    color: "#e7edf5",
-                  }}
-                />
-                <Area type="monotone" dataKey="profit" stroke="#58c4b6" strokeWidth={3} fill="url(#profit-fill)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="h-[320px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={monthlySummary}>
+                  <defs>
+                    <linearGradient id="profit-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#58c4b6" stopOpacity={0.55} />
+                      <stop offset="95%" stopColor="#58c4b6" stopOpacity={0.04} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: "#93a4bf", fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => compactCurrency(value, currencyCode)}
+                    tick={{ fill: "#93a4bf", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={72}
+                  />
+                  <Tooltip
+                    formatter={(value) => formatTooltipValue(value, currencyCode)}
+                    contentStyle={{
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "#101c2e",
+                      color: "#e7edf5",
+                    }}
+                  />
+                  <Area type="monotone" dataKey="profit" stroke="#58c4b6" strokeWidth={3} fill="url(#profit-fill)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="workspace-soft-card rounded-[22px] p-4">
+              <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--workspace-text)]">Monthly Snapshot</p>
+                  <p className="mt-1 text-xs text-[var(--workspace-muted)]">Quick scan of the strongest recent months.</p>
+                </div>
+                <span className="rounded-full bg-emerald-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                  Live read
+                </span>
+              </div>
+
+              <div className="mt-3 overflow-hidden rounded-[18px] border border-white/8">
+                <div className="grid grid-cols-[0.8fr_1.1fr_0.8fr_0.7fr] gap-3 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                  <span>Month</span>
+                  <span>Profit</span>
+                  <span>Margin</span>
+                  <span>Bookings</span>
+                </div>
+
+                <div className="divide-y divide-white/8">
+                  {[...monthlySummary]
+                    .sort((left, right) => right.profit - left.profit)
+                    .slice(0, 5)
+                    .map((month) => {
+                      const margin = monthlyMargin(month);
+
+                      return (
+                        <div
+                          key={`snapshot-${month.label}`}
+                          className="grid grid-cols-[0.8fr_1.1fr_0.8fr_0.7fr] gap-3 px-4 py-3 text-sm"
+                        >
+                          <span className="font-medium text-[var(--workspace-text)]">{month.label}</span>
+                          <span className={month.profit >= 0 ? "font-medium text-emerald-300" : "font-medium text-rose-200"}>
+                            {formatCurrency(month.profit, false, currencyCode)}
+                          </span>
+                          <span className="text-[var(--workspace-text)]">{formatPercent(margin)}</span>
+                          <span className="text-[var(--workspace-muted)]">{month.bookings}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </SectionCard>
