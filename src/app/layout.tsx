@@ -14,9 +14,27 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hostlyx1.netlify.app"),
   title: "Hostlyx | Short-Term Rental Accounting Dashboard",
   description:
     "Upload short-term rental booking and expense workbooks, normalize the data, and explore revenue, payout, and profitability in one clean dashboard.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Hostlyx | Short-Term Rental Accounting Dashboard",
+    description:
+      "Upload short-term rental booking and expense workbooks, normalize the data, and explore revenue, payout, and profitability in one clean dashboard.",
+    url: "https://hostlyx1.netlify.app",
+    siteName: "Hostlyx",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hostlyx | Short-Term Rental Accounting Dashboard",
+    description:
+      "Upload short-term rental booking and expense workbooks, normalize the data, and explore revenue, payout, and profitability in one clean dashboard.",
+  },
 };
 
 export default function RootLayout({

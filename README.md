@@ -45,7 +45,7 @@ npm run dev
 Create Google OAuth credentials and add these callback URLs:
 
 - `http://localhost:3000/api/auth/callback/google`
-- `https://your-netlify-site.netlify.app/api/auth/callback/google`
+- `https://hostlyx1.netlify.app/api/auth/callback/google`
 
 Use those values in:
 
@@ -64,7 +64,7 @@ This project includes `netlify.toml` with the build command.
 
 Set these environment variables in Netlify:
 
-- `NEXTAUTH_URL`
+- `NEXTAUTH_URL=https://hostlyx1.netlify.app`
 - `NEXTAUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`

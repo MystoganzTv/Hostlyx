@@ -276,7 +276,7 @@ export default async function LandingPage() {
                   </div>
                   <div className="mx-4 flex-1">
                     <div className="mx-auto max-w-xs rounded-lg bg-white/[0.04] px-4 py-1.5 text-center text-xs text-slate-400">
-                      app.hostlyx.com/dashboard
+                      hostlyx1.netlify.app/dashboard
                     </div>
                   </div>
                 </div>
