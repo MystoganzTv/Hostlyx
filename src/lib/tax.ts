@@ -30,7 +30,9 @@ export function calculateEstimatedTaxes(netProfit: number, taxRate: number) {
     return 0;
   }
 
-  return netProfit * (normalizeTaxRate(taxRate) / 100);
+  const normalizedTaxRate = normalizeTaxRate(taxRate) / 100;
+
+  return netProfit * normalizedTaxRate;
 }
 
 export function calculateProfitAfterTax(netProfit: number, taxRate: number) {

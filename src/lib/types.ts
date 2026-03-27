@@ -1,9 +1,12 @@
 export type ImportSource = "demo" | "upload" | "manual";
 export type CurrencyCode = "USD" | "EUR" | "GBP";
 export type CountryCode = "US" | "ES" | "GB";
+export type SubscriptionPlan = "trial" | "starter" | "pro" | "portfolio";
+export type SubscriptionStatus = "trialing" | "active" | "expired";
 export type DashboardDateRangePreset =
   | "all-time"
   | "this-year"
+  | "last-year"
   | "this-month"
   | "last-90-days"
   | "custom";
@@ -81,6 +84,15 @@ export type UserSettings = {
   currencyCode: CurrencyCode;
   taxCountryCode: CountryCode;
   taxRate: number;
+};
+
+export type SubscriptionState = {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  trialStartedAt: string;
+  trialEndsAt: string;
+  activatedAt: string | null;
+  updatedAt: string;
 };
 
 export type PropertyUnit = {

@@ -56,7 +56,7 @@ export function EmailAuthForm() {
             email,
             password,
             redirect: false,
-            callbackUrl: "/dashboard",
+            callbackUrl: "/onboarding",
           });
 
           if (!result || result.error) {
@@ -65,7 +65,7 @@ export function EmailAuthForm() {
             return;
           }
 
-          router.push(result.url ?? "/dashboard");
+          router.push(result.url ?? "/onboarding");
           router.refresh();
         } catch {
           setError(

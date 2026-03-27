@@ -32,7 +32,7 @@ export default async function LoginPage() {
   const session = await getAuthSession();
 
   if (session?.user?.email) {
-    redirect("/dashboard");
+    redirect("/onboarding");
   }
 
   return (

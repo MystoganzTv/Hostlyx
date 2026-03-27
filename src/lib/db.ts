@@ -11,6 +11,9 @@ import type {
   ImportSummary,
   PropertyDefinition,
   PropertyUnit,
+  SubscriptionPlan,
+  SubscriptionState,
+  SubscriptionStatus,
   UserSettings,
 } from "./types";
 import type { DashboardWidgetLayoutState } from "./dashboard-widget-layout";
@@ -20,6 +23,11 @@ import {
   getCurrencyForCountry,
   normalizeCountryCode,
 } from "./markets";
+import {
+  getTrialEndDate,
+  normalizeSubscriptionPlan,
+  normalizeSubscriptionStatus,
+} from "./subscription";
 import { getDefaultTaxRateByCountry, normalizeTaxRate } from "./tax";
 
 type SQLiteDatabase = import("better-sqlite3").Database;
@@ -51,6 +59,16 @@ type StoredAuthUser = {
   fullName: string;
   passwordHash: string;
   createdAt: string;
+  updatedAt: string;
+};
+
+type StoredSubscription = {
+  ownerEmail: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  trialStartedAt: string;
+  trialEndsAt: string;
+  activatedAt: string | null;
   updatedAt: string;
 };
 
@@ -88,6 +106,7 @@ type MemoryStore = {
   closures: StoredCalendarClosure[];
   settings: StoredUserSettings[];
   authUsers: StoredAuthUser[];
+  subscriptions: StoredSubscription[];
   properties: StoredProperty[];
   propertyUnits: StoredPropertyUnit[];
   dashboardLayouts: StoredDashboardLayout[];
@@ -158,6 +177,7 @@ function getMemoryStore() {
       closures: [],
       settings: [],
       authUsers: [],
+      subscriptions: [],
       properties: [],
       propertyUnits: [],
       dashboardLayouts: [],
@@ -166,6 +186,10 @@ function getMemoryStore() {
 
   if (!globalThis.__hostlyxMemoryStore.authUsers) {
     globalThis.__hostlyxMemoryStore.authUsers = [];
+  }
+
+  if (!globalThis.__hostlyxMemoryStore.subscriptions) {
+    globalThis.__hostlyxMemoryStore.subscriptions = [];
   }
 
   return globalThis.__hostlyxMemoryStore;
@@ -272,6 +296,16 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      owner_email TEXT PRIMARY KEY,
+      plan TEXT NOT NULL DEFAULT 'trial',
+      status TEXT NOT NULL DEFAULT 'trialing',
+      trial_started_at TEXT NOT NULL,
+      trial_ends_at TEXT NOT NULL,
+      activated_at TEXT,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS properties (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       owner_email TEXT NOT NULL,
@@ -302,6 +336,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_expenses_owner_date ON expenses(owner_email, date);
     CREATE INDEX IF NOT EXISTS idx_calendar_closures_owner_date ON calendar_closures(owner_email, date);
     CREATE INDEX IF NOT EXISTS idx_auth_users_owner_email ON auth_users(owner_email);
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_owner_email ON subscriptions(owner_email);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_properties_owner_name ON properties(owner_email, name);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_property_units_property_name ON property_units(property_id, name);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_dashboard_layouts_owner_key ON dashboard_layouts(owner_email, layout_key);
@@ -548,6 +583,16 @@ async function initializePostgresSchema() {
           updated_at TIMESTAMPTZ NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          owner_email TEXT PRIMARY KEY,
+          plan TEXT NOT NULL DEFAULT 'trial',
+          status TEXT NOT NULL DEFAULT 'trialing',
+          trial_started_at TIMESTAMPTZ NOT NULL,
+          trial_ends_at TIMESTAMPTZ NOT NULL,
+          activated_at TIMESTAMPTZ,
+          updated_at TIMESTAMPTZ NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS properties (
           id BIGSERIAL PRIMARY KEY,
           owner_email TEXT NOT NULL,
@@ -578,6 +623,7 @@ async function initializePostgresSchema() {
         CREATE INDEX IF NOT EXISTS idx_expenses_owner_date ON expenses(owner_email, date);
         CREATE INDEX IF NOT EXISTS idx_calendar_closures_owner_date ON calendar_closures(owner_email, date);
         CREATE INDEX IF NOT EXISTS idx_auth_users_owner_email ON auth_users(owner_email);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_owner_email ON subscriptions(owner_email);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_properties_owner_name ON properties(owner_email, name);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_property_units_property_name ON property_units(property_id, name);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_dashboard_layouts_owner_key ON dashboard_layouts(owner_email, layout_key);
@@ -876,6 +922,17 @@ function cloneAuthUser(authUser: StoredAuthUser) {
     passwordHash: authUser.passwordHash,
     createdAt: authUser.createdAt,
     updatedAt: authUser.updatedAt,
+  };
+}
+
+function cloneSubscription(subscription: StoredSubscription): SubscriptionState {
+  return {
+    plan: subscription.plan,
+    status: subscription.status,
+    trialStartedAt: subscription.trialStartedAt,
+    trialEndsAt: subscription.trialEndsAt,
+    activatedAt: subscription.activatedAt,
+    updatedAt: subscription.updatedAt,
   };
 }
 
@@ -3956,4 +4013,334 @@ export async function createAuthUser({
       VALUES (?, ?, ?, ?, ?)
     `,
   ).run(normalizedEmail, normalizedFullName, passwordHash, createdAt, createdAt);
+}
+
+function createDefaultStoredSubscription(ownerEmail: string): StoredSubscription {
+  const trialStartedAt = new Date().toISOString();
+  return {
+    ownerEmail,
+    plan: "trial",
+    status: "trialing",
+    trialStartedAt,
+    trialEndsAt: getTrialEndDate(trialStartedAt),
+    activatedAt: null,
+    updatedAt: trialStartedAt,
+  };
+}
+
+function normalizeStoredSubscription(
+  ownerEmail: string,
+  row: Record<string, unknown> | StoredSubscription,
+): StoredSubscription {
+  return {
+    ownerEmail,
+    plan: normalizeSubscriptionPlan(
+      String(getRowValue(row as Record<string, unknown>, "plan") ?? "trial"),
+    ),
+    status: normalizeSubscriptionStatus(
+      String(getRowValue(row as Record<string, unknown>, "status") ?? "trialing"),
+    ),
+    trialStartedAt: String(
+      getRowValue(row as Record<string, unknown>, "trialStartedAt", "trial_started_at", "trialstartedat") ??
+        new Date().toISOString(),
+    ),
+    trialEndsAt: String(
+      getRowValue(row as Record<string, unknown>, "trialEndsAt", "trial_ends_at", "trialendsat") ??
+        getTrialEndDate(new Date().toISOString()),
+    ),
+    activatedAt:
+      (getRowValue(
+        row as Record<string, unknown>,
+        "activatedAt",
+        "activated_at",
+        "activatedat",
+      ) as string | null | undefined) ?? null,
+    updatedAt: String(
+      getRowValue(row as Record<string, unknown>, "updatedAt", "updated_at", "updatedat") ??
+        new Date().toISOString(),
+    ),
+  };
+}
+
+async function expireTrialSubscriptionIfNeeded(
+  ownerEmail: string,
+  subscription: StoredSubscription,
+) {
+  if (
+    subscription.status !== "trialing" ||
+    new Date(subscription.trialEndsAt).getTime() > Date.now()
+  ) {
+    return subscription;
+  }
+
+  const expiredSubscription: StoredSubscription = {
+    ...subscription,
+    status: "expired",
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    await pool.query(
+      `
+        UPDATE subscriptions
+        SET status = $2, updated_at = $3
+        WHERE owner_email = $1
+      `,
+      [ownerEmail, expiredSubscription.status, expiredSubscription.updatedAt],
+    );
+    return expiredSubscription;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const index = store.subscriptions.findIndex((entry) => entry.ownerEmail === ownerEmail);
+
+    if (index >= 0) {
+      store.subscriptions[index] = expiredSubscription;
+    }
+
+    return expiredSubscription;
+  }
+
+  const db = getSQLiteDatabase();
+  db.prepare(
+    `
+      UPDATE subscriptions
+      SET status = ?, updated_at = ?
+      WHERE owner_email = ?
+    `,
+  ).run(expiredSubscription.status, expiredSubscription.updatedAt, ownerEmail);
+
+  return expiredSubscription;
+}
+
+export async function getSubscriptionState(ownerEmail: string): Promise<SubscriptionState> {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const result = await pool.query(
+      `
+        SELECT
+          owner_email AS ownerEmail,
+          plan,
+          status,
+          trial_started_at AS trialStartedAt,
+          trial_ends_at AS trialEndsAt,
+          activated_at AS activatedAt,
+          updated_at AS updatedAt
+        FROM subscriptions
+        WHERE owner_email = $1
+      `,
+      [normalizedEmail],
+    );
+
+    const storedSubscription = result.rows[0]
+      ? normalizeStoredSubscription(normalizedEmail, result.rows[0] as Record<string, unknown>)
+      : null;
+
+    if (!storedSubscription) {
+      const nextSubscription = createDefaultStoredSubscription(normalizedEmail);
+      await pool.query(
+        `
+          INSERT INTO subscriptions (
+            owner_email,
+            plan,
+            status,
+            trial_started_at,
+            trial_ends_at,
+            activated_at,
+            updated_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          nextSubscription.ownerEmail,
+          nextSubscription.plan,
+          nextSubscription.status,
+          nextSubscription.trialStartedAt,
+          nextSubscription.trialEndsAt,
+          nextSubscription.activatedAt,
+          nextSubscription.updatedAt,
+        ],
+      );
+
+      return cloneSubscription(nextSubscription);
+    }
+
+    return cloneSubscription(
+      await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+    );
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const subscription = store.subscriptions.find((entry) => entry.ownerEmail === normalizedEmail);
+
+    if (!subscription) {
+      const nextSubscription = createDefaultStoredSubscription(normalizedEmail);
+      store.subscriptions.push(nextSubscription);
+      return cloneSubscription(nextSubscription);
+    }
+
+    return cloneSubscription(
+      await expireTrialSubscriptionIfNeeded(normalizedEmail, subscription),
+    );
+  }
+
+  const db = getSQLiteDatabase();
+  const row = db
+    .prepare(
+      `
+        SELECT
+          owner_email AS ownerEmail,
+          plan,
+          status,
+          trial_started_at AS trialStartedAt,
+          trial_ends_at AS trialEndsAt,
+          activated_at AS activatedAt,
+          updated_at AS updatedAt
+        FROM subscriptions
+        WHERE owner_email = ?
+      `,
+    )
+    .get(normalizedEmail) as Record<string, unknown> | undefined;
+
+  if (!row) {
+    const nextSubscription = createDefaultStoredSubscription(normalizedEmail);
+    db.prepare(
+      `
+        INSERT INTO subscriptions (
+          owner_email,
+          plan,
+          status,
+          trial_started_at,
+          trial_ends_at,
+          activated_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+    ).run(
+      nextSubscription.ownerEmail,
+      nextSubscription.plan,
+      nextSubscription.status,
+      nextSubscription.trialStartedAt,
+      nextSubscription.trialEndsAt,
+      nextSubscription.activatedAt,
+      nextSubscription.updatedAt,
+    );
+
+    return cloneSubscription(nextSubscription);
+  }
+
+  const storedSubscription = normalizeStoredSubscription(normalizedEmail, row);
+  return cloneSubscription(
+    await expireTrialSubscriptionIfNeeded(normalizedEmail, storedSubscription),
+  );
+}
+
+export async function updateSubscriptionPlan({
+  ownerEmail,
+  plan,
+}: {
+  ownerEmail: string;
+  plan: SubscriptionPlan;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const currentSubscription = await getSubscriptionState(normalizedEmail);
+  const updatedAt = new Date().toISOString();
+  const nextSubscription: StoredSubscription = {
+    ownerEmail: normalizedEmail,
+    plan,
+    status: "active",
+    trialStartedAt: currentSubscription.trialStartedAt,
+    trialEndsAt: currentSubscription.trialEndsAt,
+    activatedAt: updatedAt,
+    updatedAt,
+  };
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    await pool.query(
+      `
+        INSERT INTO subscriptions (
+          owner_email,
+          plan,
+          status,
+          trial_started_at,
+          trial_ends_at,
+          activated_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (owner_email)
+        DO UPDATE SET
+          plan = EXCLUDED.plan,
+          status = EXCLUDED.status,
+          trial_started_at = EXCLUDED.trial_started_at,
+          trial_ends_at = EXCLUDED.trial_ends_at,
+          activated_at = EXCLUDED.activated_at,
+          updated_at = EXCLUDED.updated_at
+      `,
+      [
+        nextSubscription.ownerEmail,
+        nextSubscription.plan,
+        nextSubscription.status,
+        nextSubscription.trialStartedAt,
+        nextSubscription.trialEndsAt,
+        nextSubscription.activatedAt,
+        nextSubscription.updatedAt,
+      ],
+    );
+
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const index = store.subscriptions.findIndex((entry) => entry.ownerEmail === normalizedEmail);
+
+    if (index >= 0) {
+      store.subscriptions[index] = nextSubscription;
+    } else {
+      store.subscriptions.push(nextSubscription);
+    }
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  db.prepare(
+    `
+      INSERT INTO subscriptions (
+        owner_email,
+        plan,
+        status,
+        trial_started_at,
+        trial_ends_at,
+        activated_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(owner_email) DO UPDATE SET
+        plan = excluded.plan,
+        status = excluded.status,
+        trial_started_at = excluded.trial_started_at,
+        trial_ends_at = excluded.trial_ends_at,
+        activated_at = excluded.activated_at,
+        updated_at = excluded.updated_at
+    `,
+  ).run(
+    nextSubscription.ownerEmail,
+    nextSubscription.plan,
+    nextSubscription.status,
+    nextSubscription.trialStartedAt,
+    nextSubscription.trialEndsAt,
+    nextSubscription.activatedAt,
+    nextSubscription.updatedAt,
+  );
 }

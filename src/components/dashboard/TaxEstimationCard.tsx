@@ -38,12 +38,12 @@ export function TaxEstimationCard({
       ? usesCustomRate
         ? `Using your saved ${savedMarket.countryName} rate of ${taxRate}% for this view.`
         : `Using the saved ${savedMarket.countryName} baseline at ${taxRate}%.`
-      : `Using the active ${market.countryName} suggestion of ${suggestedTaxRate}%.`;
+      : `Using the active ${market.countryName} default estimate of ${suggestedTaxRate}%.`;
   const settingsHint = mixedCurrencyMode
     ? `Settings currently default to ${savedMarket.countryName}.`
     : usesSavedSettings
       ? "Adjust your baseline in Settings if you want a different estimate."
-      : "Save a custom rate in Settings if you want something other than the suggested rate.";
+      : "Save a custom rate in Settings if you want something other than the default estimate.";
 
   return (
     <SectionCard

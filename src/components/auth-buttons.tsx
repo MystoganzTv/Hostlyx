@@ -24,7 +24,7 @@ export function SignInButton({
           return;
         }
 
-        void signIn("google", { callbackUrl: "/dashboard" });
+        void signIn("google", { callbackUrl: "/onboarding" });
       }}
       disabled={disabled}
       className={

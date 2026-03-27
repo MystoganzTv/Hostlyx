@@ -34,6 +34,12 @@ type ActivePage =
   | "settings";
 const sidebarStorageKey = "hostlyx:sidebar-collapsed";
 
+type SubscriptionBadge = {
+  label: string;
+  detail?: string;
+  tone?: "trial" | "expired" | "starter" | "pro" | "portfolio";
+};
+
 const navItems: Array<{
   id: ActivePage;
   label: string;
@@ -63,6 +69,7 @@ export function WorkspaceShell({
   userEmail,
   currencyCode,
   latestImport,
+  subscriptionBadge,
   actions,
   children,
 }: {
@@ -74,6 +81,7 @@ export function WorkspaceShell({
   userEmail: string;
   currencyCode: CurrencyCode;
   latestImport: ImportSummary | null;
+  subscriptionBadge?: SubscriptionBadge;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -93,11 +101,23 @@ export function WorkspaceShell({
     });
   }
 
+  function subscriptionBadgeClassName(tone: SubscriptionBadge["tone"]) {
+    if (tone === "expired") {
+      return "border-rose-300/20 bg-rose-400/10 text-rose-100";
+    }
+
+    if (tone === "pro" || tone === "portfolio") {
+      return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+    }
+
+    return "border-white/10 bg-white/[0.05] text-white";
+  }
+
   return (
-    <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-4 sm:px-6 xl:px-8">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 xl:flex-row xl:items-start">
+    <main className="min-h-screen bg-[var(--workspace-bg)] px-4 py-5 sm:px-6 xl:px-8 xl:py-6">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5 xl:flex-row xl:items-start">
         <aside
-          className={`w-full rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_20px_40px_rgba(15,23,42,0.16)] xl:sticky xl:top-4 xl:shrink-0 xl:self-start ${isCollapsed ? "p-4 xl:w-[104px]" : "p-5 xl:w-[272px]"}`}
+          className={`w-full rounded-[30px] border border-[var(--workspace-sidebar-border)] bg-[var(--workspace-sidebar)] shadow-[0_18px_42px_rgba(2,6,23,0.2)] xl:sticky xl:top-6 xl:shrink-0 xl:self-start ${isCollapsed ? "p-4 xl:w-[104px]" : "p-5 xl:w-[272px]"}`}
         >
           <div className="border-b border-white/8 pb-5">
             <div
@@ -116,10 +136,26 @@ export function WorkspaceShell({
             </div>
             {!isCollapsed ? (
               <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-white">{businessName}</p>
-                <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                  {currencyCode} workspace
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{businessName}</p>
+                    <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
+                      {currencyCode} workspace
+                    </p>
+                  </div>
+                  {subscriptionBadge ? (
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${subscriptionBadgeClassName(subscriptionBadge.tone)}`}
+                    >
+                      {subscriptionBadge.label}
+                    </span>
+                  ) : null}
+                </div>
+                {subscriptionBadge?.detail ? (
+                  <p className="mt-3 text-xs text-[var(--workspace-sidebar-muted)]">
+                    {subscriptionBadge.detail}
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -205,17 +241,17 @@ export function WorkspaceShell({
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 rounded-[34px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.7)] shadow-[0_20px_40px_rgba(2,6,23,0.28)]">
-          <div className="min-h-full rounded-[34px] bg-[linear-gradient(180deg,rgba(11,22,38,0.92)_0%,rgba(7,17,29,0.98)_100%)] p-5 sm:p-6 xl:p-8">
-            <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)]">
+          <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:p-9">
+            <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-[var(--workspace-text)] sm:text-4xl">
+                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-4xl">
                   {pageTitle}
                 </h1>
-                <p className="mt-2 text-base text-[var(--workspace-muted)]">{pageSubtitle}</p>
+                <p className="mt-3 max-w-2xl text-base leading-8 text-[var(--workspace-muted)]">{pageSubtitle}</p>
               </div>
               {actions ? (
-                <div className="flex flex-wrap items-center gap-3">{actions}</div>
+                <div className="flex flex-wrap items-center gap-3 xl:justify-end">{actions}</div>
               ) : null}
             </div>
 

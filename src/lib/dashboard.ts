@@ -9,6 +9,7 @@ import {
   startOfMonth,
   startOfYear,
   subDays,
+  subYears,
 } from "date-fns";
 import {
   calculateChannelData,
@@ -122,6 +123,16 @@ function getRangeFromFilters(
       start: startOfYear(today),
       end: endOfDay(today),
       label: "This year",
+    };
+  }
+
+  if (filters.rangePreset === "last-year") {
+    const lastYear = subYears(today, 1);
+
+    return {
+      start: startOfYear(lastYear),
+      end: endOfYear(lastYear),
+      label: "Last year",
     };
   }
 
@@ -242,6 +253,7 @@ export function getDashboardFilters(
   if (
     rangeParam === "all-time" ||
     rangeParam === "this-year" ||
+    rangeParam === "last-year" ||
     rangeParam === "this-month" ||
     rangeParam === "last-90-days" ||
     rangeParam === "custom"

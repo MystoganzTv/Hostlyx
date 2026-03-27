@@ -1,117 +1,166 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { getAuthSession } from "@/lib/auth";
-import { MarketingDashboardPreview } from "@/components/marketing-dashboard-preview";
+import { getSubscriptionState } from "@/lib/db";
+import { getOnboardingState } from "@/lib/onboarding";
+import { getSubscriptionBadge } from "@/lib/subscription";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
+import { SubscriptionPlanButton } from "@/components/subscription-plan-button";
 
-const plans = [
+type PricingPlan = {
+  name: "Starter" | "Pro" | "Portfolio";
+  tagline: string;
+  price: number;
+  description: string;
+  features: string[];
+  highlighted: boolean;
+  badge?: string;
+};
+
+const plans: PricingPlan[] = [
   {
     name: "Starter",
-    price: "$19",
-    audience: "Solo host",
-    description: "For hosts who want to move out of Excel and into a single clean dashboard.",
-    features: [
-      "1 business workspace",
-      "Excel import history and native entries",
-      "Dashboard, calendar, monthly, cashflow, and performance views",
-      "US, Spain, and UK market support",
-    ],
+    tagline: "Para una propiedad",
+    price: 19,
+    description:
+      "Un punto de partida sencillo para hosts que quieren claridad sin añadir complejidad.",
+    features: ["1 propiedad", "Importación Excel", "Dashboard completo", "Estimación fiscal"],
+    highlighted: false,
   },
   {
     name: "Pro",
-    price: "$49",
-    audience: "Growing operator",
-    featured: true,
-    description: "For rental brands with more properties, more history, and more need for financial clarity.",
-    features: [
-      "Everything in Starter",
-      "Higher import volume and deeper reporting",
-      "More room for portfolio operations",
-      "Priority support",
-    ],
+    tagline: "Para operadores en crecimiento",
+    price: 49,
+    description:
+      "La mejor opción para hosts que gestionan más de una propiedad y quieren mayor visibilidad.",
+    features: ["Múltiples propiedades", "Informes avanzados", "Insights de rendimiento", "Soporte prioritario"],
+    highlighted: true,
+    badge: "Más popular",
   },
   {
     name: "Portfolio",
-    price: "$99",
-    audience: "Boutique manager",
-    description: "For operators managing several homes or client-facing hospitality portfolios.",
-    features: [
-      "Everything in Pro",
-      "White-glove migration support",
-      "Expanded onboarding help",
-      "Priority roadmap access",
-    ],
+    tagline: "Para carteras grandes",
+    price: 99,
+    description:
+      "Diseñado para operadores que necesitan escala, analítica profunda y más de un usuario.",
+    features: ["Propiedades ilimitadas", "Analítica avanzada", "Funciones de equipo", "API access"],
+    highlighted: false,
   },
 ];
 
 export default async function PricingPage() {
   const session = await getAuthSession();
   const signedIn = Boolean(session?.user?.email);
+  const subscription =
+    signedIn && session?.user?.email
+      ? await getSubscriptionState(session.user.email.toLowerCase())
+      : null;
+  const subscriptionBadge = subscription ? getSubscriptionBadge(subscription) : null;
+  const primaryCtaHref =
+    signedIn && session?.user?.email
+      ? (await getOnboardingState(session.user.email.toLowerCase(), session.user.name ?? session.user.email)).isComplete
+        ? "/dashboard"
+        : "/onboarding"
+      : "/login";
 
   return (
     <>
       <MarketingHeader activePage="pricing" signedIn={signedIn} />
 
-      <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 xl:px-8">
-        <section className="grid items-end gap-10 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent-text)]/80">Pricing</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-100 sm:text-5xl">
-              Simple pricing for operators who want a better dashboard, not more spreadsheet maintenance.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              Pick the level that matches your portfolio today and keep the same premium Hostlyx experience as the business grows.
-            </p>
-          </div>
-
-          <MarketingDashboardPreview compact variant="value" />
+      <main className="mx-auto w-full max-w-7xl px-4 pb-16 pt-10 sm:px-6 xl:px-8">
+        <section className="text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--accent-text)]">
+            Precios
+          </p>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-100 sm:text-5xl lg:text-6xl">
+            Simple, transparente, <span className="text-[var(--accent)]">sin sorpresas.</span>
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-8 text-slate-300">
+            Elige el plan que se adapta a tu negocio. Cancela cuando quieras.
+          </p>
+          {subscriptionBadge ? (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-200">
+              <span className="font-semibold">{subscriptionBadge.label}</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-slate-400">{subscriptionBadge.detail}</span>
+            </div>
+          ) : null}
         </section>
 
-        <div className="marketing-divider my-14" />
-
-        <section className="grid gap-8 lg:grid-cols-3">
+        <section className="mt-16 grid items-start gap-5 md:grid-cols-3">
           {plans.map((plan) => (
-            <article key={plan.name} className={`marketing-panel rounded-[32px] px-6 py-7 ${plan.featured ? "shadow-[0_28px_70px_rgba(88,196,182,0.16)]" : ""}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent-text)]/85">
-                    {plan.name}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-400">{plan.audience}</p>
-                </div>
-                {plan.featured ? (
-                  <span className="brand-pill rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
-                    Best fit
+            <article
+              key={plan.name}
+              className={`relative rounded-[28px] border p-8 transition-all duration-300 ${
+                plan.highlighted
+                  ? "scale-[1.02] border-[var(--accent)]/40 bg-[rgba(88,196,182,0.06)] shadow-[0_24px_50px_rgba(88,196,182,0.12)]"
+                  : "bg-[linear-gradient(180deg,rgba(12,23,39,0.76)_0%,rgba(8,17,28,0.62)_100%)] border-white/8"
+              }`}
+            >
+              {plan.badge ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-contrast)]">
+                    {plan.badge}
                   </span>
-                ) : null}
+                </div>
+              ) : null}
+
+              <div className="mb-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
+                  {plan.name}
+                </p>
+                <p className="mt-1 text-sm text-slate-400">{plan.tagline}</p>
               </div>
 
-              <div className="mt-8">
-                <p className="text-5xl font-semibold tracking-tight text-slate-100">{plan.price}</p>
-                <p className="mt-2 text-sm text-slate-400">per month</p>
+              <div className="mb-6 flex items-end gap-1">
+                <span className="text-5xl font-bold tracking-tight text-slate-100">€{plan.price}</span>
+                <span className="mb-2 text-slate-400">/mes</span>
               </div>
 
-              <p className="mt-6 text-sm leading-7 text-slate-300">{plan.description}</p>
+              <p className="min-h-[84px] text-sm leading-7 text-slate-400">{plan.description}</p>
 
-              <div className="mt-8 space-y-3">
+              <ul className="mb-8 mt-8 space-y-3">
                 {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[var(--accent)]" />
-                    <p className="text-sm leading-7 text-slate-300">{feature}</p>
-                  </div>
+                  <li key={feature} className="flex items-center gap-3">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                    <span className="text-sm text-slate-300">{feature}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
 
-              <Link
-                href={signedIn ? "/dashboard" : "/login"}
-                className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                  plan.featured ? "brand-button" : "brand-button-secondary"
-                }`}
-              >
-                {signedIn ? "Go to workspace" : "Choose plan"}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              {signedIn ? (
+                <SubscriptionPlanButton
+                  plan={plan.name.toLowerCase() as "starter" | "pro" | "portfolio"}
+                  currentPlan={subscription?.status === "active" ? subscription.plan : "trial"}
+                  redirectTo={primaryCtaHref}
+                  labels={{
+                    currentPlan: "Plan actual",
+                    starter: "Empezar",
+                    pro: "Empezar",
+                    portfolio: "Empezar",
+                    loading: "Actualizando...",
+                    error: "No se pudo actualizar el plan.",
+                  }}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                    plan.highlighted
+                      ? "brand-button shadow-[0_18px_36px_rgba(88,196,182,0.2)]"
+                      : "border border-white/8 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                  }`}
+                />
+              ) : (
+                <Link
+                  href={primaryCtaHref}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                    plan.highlighted
+                      ? "brand-button shadow-[0_18px_36px_rgba(88,196,182,0.2)]"
+                      : "border border-white/8 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                  }`}
+                >
+                  Empezar
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
             </article>
           ))}
         </section>

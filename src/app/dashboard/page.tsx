@@ -1,14 +1,25 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buildDashboardView, getDashboardFilters } from "@/lib/dashboard";
 import {
   getBookings,
   getExpenses,
   getLatestImport,
-  getPropertyDefinitions,
+  getSubscriptionState,
   getUserSettings,
 } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { SubscriptionUpgradeCard } from "@/components/subscription-upgrade-card";
+import { WorkspaceShell } from "@/components/workspace-shell";
+import { getOnboardingState } from "@/lib/onboarding";
+import {
+  canAccessDashboard,
+  canAccessInsights,
+  canAccessReports,
+  getSubscriptionBadge,
+  getTrialDaysLeft,
+} from "@/lib/subscription";
 
 export const runtime = "nodejs";
 
@@ -27,16 +38,61 @@ export default async function DashboardPage({
   }
 
   const userName = session.user.name ?? session.user.email ?? "Host";
-  const properties = await getPropertyDefinitions(ownerEmail);
+  const onboardingState = await getOnboardingState(ownerEmail, userName);
+  const properties = onboardingState.properties;
 
-  if (properties.length === 0) {
-    redirect("/dashboard/properties?setup=1");
+  if (!onboardingState.isComplete) {
+    redirect("/onboarding");
   }
 
-  const bookings = await getBookings(ownerEmail);
-  const expenses = await getExpenses(ownerEmail);
-  const latestImport = await getLatestImport(ownerEmail);
-  const userSettings = await getUserSettings(ownerEmail, userName);
+  const [subscription, latestImport, userSettings] = await Promise.all([
+    getSubscriptionState(ownerEmail),
+    getLatestImport(ownerEmail),
+    getUserSettings(ownerEmail, userName),
+  ]);
+  const subscriptionBadge = getSubscriptionBadge(subscription);
+
+  if (!canAccessDashboard(subscription)) {
+    const trialDaysLeft = getTrialDaysLeft(subscription);
+
+    return (
+      <WorkspaceShell
+        activePage="dashboard"
+        pageTitle="Dashboard Locked"
+        pageSubtitle="Your free trial has ended. Upgrade to keep using the financial dashboard."
+        businessName={userSettings.businessName}
+        userName={userName}
+        userEmail={ownerEmail}
+        currencyCode={userSettings.currencyCode}
+        latestImport={latestImport}
+        subscriptionBadge={subscriptionBadge}
+        actions={
+          <Link
+            href="/pricing"
+            className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
+          >
+            Upgrade
+          </Link>
+        }
+      >
+        <div className="space-y-6">
+          <SubscriptionUpgradeCard
+            title="Upgrade to reopen your dashboard"
+            description={
+              trialDaysLeft > 0
+                ? `Your 7-day trial is almost over. Choose a plan now to keep access to the dashboard without interruption.`
+                : "Your bookings, expenses, and imported files are still safe in Hostlyx. Choose a paid plan to keep using the dashboard."
+            }
+          />
+        </div>
+      </WorkspaceShell>
+    );
+  }
+
+  const [bookings, expenses] = await Promise.all([
+    getBookings(ownerEmail),
+    getExpenses(ownerEmail),
+  ]);
   const resolvedSearchParams = await searchParams;
   const filters = getDashboardFilters(
     resolvedSearchParams,
@@ -64,6 +120,12 @@ export default async function DashboardPage({
       businessName={userSettings.businessName}
       currencyCode={view.displayCurrencyCode}
       properties={properties}
+      pageTitle="Financial Overview"
+      pageSubtitle="Track what the business earned, spent, and kept during the selected period."
+      insightsEnabled={canAccessInsights(subscription)}
+      reportExportEnabled={canAccessReports(subscription)}
+      subscriptionBadge={subscriptionBadge}
+      showUpgradeAction={subscription.plan !== "portfolio" || subscription.status !== "active"}
     />
   );
 }

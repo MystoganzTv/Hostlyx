@@ -116,8 +116,16 @@ async function parseImportResponse(response: Response) {
 
 export function UploadPanel({
   properties,
+  title = "Spreadsheet Intake",
+  subtitle = "Use Excel only to bring legacy `Bookings` and `Expenses` into Hostlyx. Once imported, the records live in the app as normal data and the workbook stays in Import History as backup traceability. Exact duplicates are skipped automatically.",
+  refreshOnSuccess = true,
+  onImportComplete,
 }: {
   properties: PropertyDefinition[];
+  title?: string;
+  subtitle?: string;
+  refreshOnSuccess?: boolean;
+  onImportComplete?: (payload: { importedFilesCount: number; propertyName: string }) => void;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -395,7 +403,13 @@ export function UploadPanel({
               ? `${succeededFiles[0].name} imported successfully.`
               : `${succeededFiles.length} workbooks imported successfully into ${selectedPropertyName}.`,
         });
-        router.refresh();
+        if (refreshOnSuccess) {
+          router.refresh();
+        }
+        onImportComplete?.({
+          importedFilesCount: succeededFiles.length,
+          propertyName: selectedPropertyName,
+        });
         return;
       }
 
@@ -411,8 +425,14 @@ export function UploadPanel({
             ? `${succeededFiles.length} file${succeededFiles.length === 1 ? "" : "s"} imported, but ${failedResults.length} failed. ${failurePreview}`
             : `No files were imported. ${failurePreview}`,
       });
-      if (succeededFiles.length > 0) {
+      if (succeededFiles.length > 0 && refreshOnSuccess) {
         router.refresh();
+      }
+      if (succeededFiles.length > 0) {
+        onImportComplete?.({
+          importedFilesCount: succeededFiles.length,
+          propertyName: selectedPropertyName,
+        });
       }
     } catch {
       setUploadState("error");
@@ -516,10 +536,10 @@ export function UploadPanel({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--workspace-muted)]">
-            Spreadsheet Intake
+            {title}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-            Use Excel only to bring legacy `Bookings` and `Expenses` into Hostlyx. Once imported, the records live in the app as normal data and the workbook stays in Import History as backup traceability. Exact duplicates are skipped automatically.
+            {subtitle}
           </p>
         </div>
         <div className="workspace-icon-chip rounded-3xl p-3">

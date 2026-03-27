@@ -20,7 +20,7 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import { getLocaleForCurrency } from "@/lib/markets";
 import { SectionCard } from "./section-card";
 
-const pieColors = ["#58c4b6", "#82d3c8", "#7a94d6", "#f2b26b", "#ec8f96", "#8d81d9"];
+const categoryColors = ["#58c4b6", "#82d3c8", "#7a94d6", "#f2b26b", "#ec8f96", "#8d81d9"];
 
 function compactCurrency(value: number, currencyCode: CurrencyCode) {
   return new Intl.NumberFormat(getLocaleForCurrency(currencyCode), {
@@ -82,6 +82,7 @@ export function ChartsPanel({
   const [activeProfitBarKey, setActiveProfitBarKey] = useState<string | null>(null);
   const costStructure = topCostShare(expensesByCategory);
   const barsSummary = useMemo(() => monthlySummary.slice(-12), [monthlySummary]);
+  const revenueExpenseSummary = useMemo(() => monthlySummary.slice(-12), [monthlySummary]);
   const largestProfitMagnitude = Math.max(
     ...barsSummary.map((month) => Math.abs(month.profit)),
     1,
@@ -215,17 +216,24 @@ export function ChartsPanel({
         )}
       </SectionCard>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <SectionCard
           title="Revenue vs Expenses"
           subtitle="See how top-line inflow compares against cost load each month."
+          action={
+            monthlySummary.length > 12 ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                Last 12 months
+              </div>
+            ) : null
+          }
         >
           {monthlySummary.length === 0 ? (
             <EmptyChartState label="No revenue or expense data for the current filters." />
           ) : (
             <div className="h-[300px] min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlySummary} barGap={8}>
+                <BarChart data={revenueExpenseSummary} barGap={10}>
                   <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
                   <XAxis dataKey="label" tick={{ fill: "#93a4bf", fontSize: 12 }} tickLine={false} axisLine={false} />
                   <YAxis
@@ -244,8 +252,8 @@ export function ChartsPanel({
                       color: "#e7edf5",
                     }}
                   />
-                  <Bar dataKey="revenue" radius={[10, 10, 0, 0]} fill="#58c4b6" />
-                  <Bar dataKey="expenses" radius={[10, 10, 0, 0]} fill="#ec8f96" />
+                  <Bar dataKey="revenue" radius={[10, 10, 0, 0]} fill="#58c4b6" maxBarSize={18} />
+                  <Bar dataKey="expenses" radius={[10, 10, 0, 0]} fill="#ec8f96" maxBarSize={18} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -259,13 +267,13 @@ export function ChartsPanel({
           {expensesByCategory.length === 0 ? (
             <EmptyChartState label="No expenses match the current filters." />
           ) : (
-            <div className="grid gap-5 lg:grid-cols-[1fr_0.95fr]">
+            <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
               <div className="h-[300px] min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={expensesByCategory} dataKey="value" nameKey="label" innerRadius={70} outerRadius={106} paddingAngle={3}>
+                    <Pie data={expensesByCategory} dataKey="value" nameKey="label" innerRadius={70} outerRadius={110} paddingAngle={3}>
                       {expensesByCategory.map((entry, index) => (
-                        <Cell key={entry.label} fill={pieColors[index % pieColors.length]} />
+                        <Cell key={entry.label} fill={categoryColors[index % categoryColors.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -280,38 +288,44 @@ export function ChartsPanel({
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="workspace-soft-card rounded-[22px] p-4">
+
+              <div className="workspace-soft-card rounded-[22px] p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-3">
                   <div>
                     <p className="text-sm font-semibold text-[var(--workspace-text)]">Cost Table</p>
                     <p className="mt-1 text-xs text-[var(--workspace-muted)]">Top categories by weight in the business.</p>
                   </div>
-                  <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                    Top 5
+                  <span className="flex min-h-[58px] min-w-[58px] flex-col items-center justify-center rounded-full bg-white/[0.06] px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                    <span className="leading-none">Top</span>
+                    <span className="mt-1 text-base leading-none text-[var(--workspace-text)]">5</span>
                   </span>
                 </div>
 
                 <div className="mt-3 overflow-hidden rounded-[18px] border border-white/8">
-                  <div className="grid grid-cols-[1.3fr_0.9fr_0.8fr] gap-3 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                  <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-6 bg-white/[0.04] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                     <span>Category</span>
-                    <span>Amount</span>
-                    <span>Share</span>
+                    <span className="text-right">Share</span>
                   </div>
 
                   <div className="divide-y divide-white/8">
                     {costStructure.slice(0, 5).map((item, index) => (
                       <div
                         key={`cost-table-${item.label}`}
-                        className="grid grid-cols-[1.3fr_0.9fr_0.8fr] gap-3 px-4 py-3 text-sm"
+                        className="grid grid-cols-[minmax(0,1fr)_96px] gap-6 px-5 py-3 text-sm"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />
-                          <span className="truncate font-medium text-[var(--workspace-text)]">{item.label}</span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full"
+                            style={{ backgroundColor: categoryColors[index % categoryColors.length] }}
+                          />
+                          <span
+                            className="truncate text-[15px] font-medium leading-5 text-[var(--workspace-text)]"
+                            title={item.label}
+                          >
+                            {item.label}
+                          </span>
                         </div>
-                        <span className="font-medium text-[var(--workspace-text)]">
-                          {formatCurrency(item.value, false, currencyCode)}
-                        </span>
-                        <span className="text-[var(--workspace-muted)]">{formatPercent(item.share)}</span>
+                        <span className="text-right text-sm text-[var(--workspace-muted)]">{formatPercent(item.share)}</span>
                       </div>
                     ))}
                   </div>

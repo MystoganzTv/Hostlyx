@@ -96,7 +96,7 @@ export default async function SettingsPage() {
                     {taxMarket.countryName} • {userSettings.taxRate}%
                   </p>
                   <p className="text-sm text-[var(--workspace-muted)]">
-                    {taxRateIsCustom ? "Custom tax default saved for Settings" : "Suggested tax default currently in use"}
+                    {taxRateIsCustom ? "Custom tax default saved for Settings" : "Default estimate currently in use"}
                   </p>
                 </div>
               </div>

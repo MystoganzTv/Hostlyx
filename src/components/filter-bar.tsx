@@ -27,6 +27,7 @@ const monthOptions = [
 const rangeOptions: Array<{ value: DashboardDateRangePreset; label: string }> = [
   { value: "all-time", label: "All time" },
   { value: "this-year", label: "This year" },
+  { value: "last-year", label: "Last year" },
   { value: "this-month", label: "This month" },
   { value: "last-90-days", label: "Last 90 days" },
   { value: "custom", label: "Custom" },

@@ -11,7 +11,7 @@ import type { CountryCode } from "@/lib/types";
 const countryOptions = marketDefinitions.map((market) => ({
   value: market.countryCode,
   label: market.countryName,
-  description: `Suggested ${getDefaultTaxRateByCountry(market.countryCode)}%`,
+  description: `Default estimate ${getDefaultTaxRateByCountry(market.countryCode)}%`,
 }));
 
 function inputClassName() {
@@ -47,7 +47,7 @@ export function TaxSettingsPanel({
         description:
           hasCustomRate
             ? `If you are viewing ${market.countryName}, Hostlyx uses your saved ${normalizedTaxRate}% rate.`
-            : `If you are viewing ${market.countryName}, Hostlyx uses the suggested ${suggestedRate}% rate.`,
+            : `If you are viewing ${market.countryName}, Hostlyx uses the default estimate of ${suggestedRate}%.`,
       },
       {
         label: "All-countries fallback",
@@ -172,7 +172,7 @@ export function TaxSettingsPanel({
               </p>
             </div>
             <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-              {hasCustomRate ? "Custom rate" : "Suggested rate"}
+              {hasCustomRate ? "Custom rate" : "Default estimate"}
             </span>
           </div>
 

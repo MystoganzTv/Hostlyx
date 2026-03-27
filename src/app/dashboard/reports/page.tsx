@@ -6,12 +6,16 @@ import {
   getExpenses,
   getLatestImport,
   getPropertyDefinitions,
+  getSubscriptionState,
   getUserSettings,
 } from "@/lib/db";
 import { FilterBar } from "@/components/filter-bar";
+import { ExportReportLink } from "@/components/export-report-link";
 import { SectionCard } from "@/components/section-card";
+import { SubscriptionUpgradeCard } from "@/components/subscription-upgrade-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { canAccessReports, getSubscriptionBadge } from "@/lib/subscription";
 
 export const runtime = "nodejs";
 
@@ -36,13 +40,36 @@ export default async function ReportsPage({
     redirect("/dashboard/properties?setup=1");
   }
 
-  const [bookings, expenses, latestImport, userSettings, resolvedSearchParams] = await Promise.all([
+  const [bookings, expenses, latestImport, userSettings, resolvedSearchParams, subscription] = await Promise.all([
     getBookings(ownerEmail),
     getExpenses(ownerEmail),
     getLatestImport(ownerEmail),
     getUserSettings(ownerEmail, userName),
     searchParams,
+    getSubscriptionState(ownerEmail),
   ]);
+  const subscriptionBadge = getSubscriptionBadge(subscription);
+
+  if (!canAccessReports(subscription)) {
+    return (
+      <WorkspaceShell
+        activePage="reports"
+        pageTitle="Reports"
+        pageSubtitle="Monthly reporting and channel mix are available on Pro and Portfolio."
+        businessName={userSettings.businessName}
+        userName={userName}
+        userEmail={ownerEmail}
+        currencyCode={userSettings.currencyCode}
+        latestImport={latestImport}
+        subscriptionBadge={subscriptionBadge}
+      >
+        <SubscriptionUpgradeCard
+          title="Upgrade to unlock reports"
+          description="Reports are part of the Pro plan and above. Your imported data stays safe, and you can upgrade whenever you are ready."
+        />
+      </WorkspaceShell>
+    );
+  }
 
   const filters = getDashboardFilters(
     resolvedSearchParams,
@@ -71,16 +98,22 @@ export default async function ReportsPage({
       userEmail={ownerEmail}
       currencyCode={view.displayCurrencyCode}
       latestImport={latestImport}
+      subscriptionBadge={subscriptionBadge}
       actions={
-        <FilterBar
-          channels={view.availableChannels}
-          countries={view.availableCountries}
-          selectedRangePreset={view.filters.rangePreset}
-          selectedStartDate={view.filters.startDate}
-          selectedEndDate={view.filters.endDate}
-          selectedChannel={view.filters.channel}
-          selectedCountryCode={view.filters.countryCode}
-        />
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
+          <FilterBar
+            channels={view.availableChannels}
+            countries={view.availableCountries}
+            selectedRangePreset={view.filters.rangePreset}
+            selectedStartDate={view.filters.startDate}
+            selectedEndDate={view.filters.endDate}
+            selectedChannel={view.filters.channel}
+            selectedCountryCode={view.filters.countryCode}
+          />
+          <ExportReportLink
+            className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+          />
+        </div>
       }
     >
       <div className="space-y-6">
