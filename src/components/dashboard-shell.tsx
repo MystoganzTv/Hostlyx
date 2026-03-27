@@ -1,16 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import {
-  ArrowRight,
-  BarChart3,
+  ArrowDownRight,
+  ArrowUpRight,
   CalendarDays,
-  LayoutDashboard,
   Percent,
   ReceiptText,
   TrendingUp,
-  Users,
   Wallet,
 } from "lucide-react";
 import type {
@@ -19,12 +16,11 @@ import type {
   ImportSummary,
   PropertyDefinition,
 } from "@/lib/types";
-import { formatCurrency, formatDateLabel, formatNumber, formatPercent } from "@/lib/format";
+import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
 import { getMarketDefinition } from "@/lib/markets";
 import { ChartsPanel } from "@/components/charts-panel";
 import { FilterBar } from "@/components/filter-bar";
 import { ManualEntryPanel } from "@/components/manual-entry-panel";
-import { MetricCard } from "@/components/metric-card";
 import { Modal } from "@/components/modal";
 import { SectionCard } from "@/components/section-card";
 import { UploadPanel } from "@/components/upload-panel";
@@ -48,6 +44,33 @@ function recordKey(
   return record.id ? `${record.source ?? "row"}-${record.id}` : `${fallback}-${index}`;
 }
 
+function profitState(netProfit: number) {
+  if (netProfit > 0) {
+    return {
+      chip: "Profitable",
+      chipClass: "bg-emerald-400/14 text-emerald-200",
+      valueClass: "text-white",
+      helper: "Net profit after payout and expenses.",
+    };
+  }
+
+  if (netProfit < 0) {
+    return {
+      chip: "Losing money",
+      chipClass: "bg-rose-400/14 text-rose-200",
+      valueClass: "text-rose-200",
+      helper: "Expenses are heavier than payout in this view.",
+    };
+  }
+
+  return {
+    chip: "Break-even",
+    chipClass: "bg-slate-400/14 text-slate-200",
+    valueClass: "text-white",
+    helper: "The business is neither ahead nor behind right now.",
+  };
+}
+
 export function DashboardShell({
   view,
   latestImport,
@@ -59,109 +82,14 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isEntryOpen, setIsEntryOpen] = useState(false);
-
-  const metricCards = view.mixedCurrencyMode
-    ? [
-        {
-          label: "Markets in View",
-          value: view.marketBreakdown.length,
-          format: "number" as const,
-          icon: <LayoutDashboard className="h-5 w-5" />,
-        },
-        {
-          label: "Total Bookings",
-          value: view.metrics.bookingsCount,
-          format: "number" as const,
-          icon: <CalendarDays className="h-5 w-5" />,
-        },
-        {
-          label: "Total Guests",
-          value: view.metrics.guestsCount,
-          format: "number" as const,
-          icon: <Users className="h-5 w-5" />,
-        },
-        {
-          label: "Nights Booked",
-          value: view.metrics.nightsBooked,
-          format: "number" as const,
-          icon: <CalendarDays className="h-5 w-5" />,
-        },
-      ]
-    : [
-        {
-          label: "Gross Revenue",
-          value: view.metrics.grossRevenue,
-          format: "currency" as const,
-          icon: <Wallet className="h-5 w-5" />,
-        },
-        {
-          label: "Net Payout",
-          value: view.metrics.netPayout,
-          format: "currency" as const,
-          icon: <TrendingUp className="h-5 w-5" />,
-        },
-        {
-          label: "Total Expenses",
-          value: view.metrics.totalExpenses,
-          format: "currency" as const,
-          icon: <ReceiptText className="h-5 w-5" />,
-        },
-        {
-          label: "Net Profit",
-          value: view.metrics.netProfit,
-          format: "currency" as const,
-          icon: <LayoutDashboard className="h-5 w-5" />,
-        },
-        {
-          label: "Profit Margin",
-          value: view.metrics.profitMargin,
-          format: "percent" as const,
-          icon: <Percent className="h-5 w-5" />,
-        },
-        {
-          label: "Total Bookings",
-          value: view.metrics.bookingsCount,
-          format: "number" as const,
-          icon: <CalendarDays className="h-5 w-5" />,
-        },
-        {
-          label: "Total Guests",
-          value: view.metrics.guestsCount,
-          format: "number" as const,
-          icon: <Users className="h-5 w-5" />,
-        },
-        {
-          label: "Nights Booked",
-          value: view.metrics.nightsBooked,
-          format: "number" as const,
-          icon: <CalendarDays className="h-5 w-5" />,
-        },
-        {
-          label: "ADR",
-          value: view.metrics.adr,
-          format: "currency" as const,
-          icon: <BarChart3 className="h-5 w-5" />,
-        },
-        {
-          label: "Occupancy Rate",
-          value: view.metrics.occupancyRate,
-          format: "percent" as const,
-          icon: <LayoutDashboard className="h-5 w-5" />,
-        },
-        {
-          label: "RevPAR",
-          value: view.metrics.revPar,
-          format: "currency" as const,
-          icon: <TrendingUp className="h-5 w-5" />,
-        },
-      ];
+  const profitMeta = profitState(view.metrics.netProfit);
 
   return (
     <>
       <WorkspaceShell
         activePage="dashboard"
-        pageTitle="Dashboard"
-        pageSubtitle="Your saved business data at a glance"
+        pageTitle="Financial Command Center"
+        pageSubtitle="Know profit first, spot cost drag fast, and track how the business performs over time."
         businessName={businessName}
         userName={userName}
         userEmail={userEmail}
@@ -174,14 +102,14 @@ export function DashboardShell({
               onClick={() => setIsUploadOpen(true)}
               className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
             >
-              Import Data
+              Upload data
             </button>
             <button
               type="button"
               onClick={() => setIsEntryOpen(true)}
               className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
             >
-              Add Entry
+              Add entry
             </button>
           </>
         }
@@ -199,112 +127,42 @@ export function DashboardShell({
             />
           </div>
 
-          <SectionCard
-            title="Hostlyx Is The Source Of Truth"
-            subtitle="Use manual entry for day-to-day work. Bring old spreadsheets in only when you need to migrate legacy records into the app."
-            action={
-              <Link
-                href="/dashboard/imports"
-                className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition"
-              >
-                Open Import History
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            }
-          >
-            <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              Every imported workbook is kept in <span className="font-medium text-[var(--workspace-text)]">Import History</span> for audit trail and reference, but the records themselves become normal Hostlyx data that you can filter, edit, and report on inside the product.
-            </div>
-          </SectionCard>
-
-          {view.mixedCurrencyMode ? (
-            <div className="workspace-soft-card rounded-[22px] px-4 py-3 text-sm text-[var(--workspace-muted)]">
-              `All markets` now behaves as a portfolio view. Hostlyx will not fake one converted total across{" "}
-              {view.availableCountries.map((countryCode) => getMarketDefinition(countryCode).shortLabel).join(", ")}.{" "}
-              Select one market for exact single-currency KPIs and charts.
-            </div>
-          ) : null}
-
-          <div className={`grid gap-4 ${view.mixedCurrencyMode ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-5"}`}>
-            {metricCards.map((card) => (
-              <MetricCard
-                key={card.label}
-                label={card.label}
-                value={card.value}
-                format={card.format}
-                currencyCode={currencyCode}
-                icon={card.icon}
-              />
-            ))}
-          </div>
-
           {view.mixedCurrencyMode ? (
             <SectionCard
-              title="Portfolio by Market"
-              subtitle="Each market keeps its own real currency without FX conversion."
+              title="Portfolio View"
+              subtitle="All markets is useful for portfolio volume, but Hostlyx will not fake a converted profit total across mixed currencies."
             >
               <div className="grid gap-4 xl:grid-cols-3">
                 {view.marketBreakdown.map((market) => {
-                  const marketMeta = getMarketDefinition(market.countryCode);
+                  const meta = getMarketDefinition(market.countryCode);
 
                   return (
-                    <article
-                      key={market.countryCode}
-                      className="workspace-soft-card rounded-[22px] p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--workspace-text)]">
-                            {marketMeta.countryName}
-                          </p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            {market.currencyCode}
-                          </p>
-                        </div>
-                        <div className="workspace-icon-chip rounded-2xl p-2.5">
-                          <Wallet className="h-4 w-4" />
-                        </div>
-                      </div>
-
+                    <article key={market.countryCode} className="workspace-soft-card rounded-[22px] p-5">
+                      <p className="text-sm font-semibold text-[var(--workspace-text)]">{meta.countryName}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {market.currencyCode}
+                      </p>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Revenue
-                          </p>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Revenue</p>
                           <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
                             {formatCurrency(market.revenue, false, market.currencyCode)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Profit
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Profit</p>
+                          <p className={`mt-1 text-sm font-semibold ${market.profit >= 0 ? "text-emerald-300" : "text-rose-200"}`}>
                             {formatCurrency(market.profit, false, market.currencyCode)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Bookings
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                            {formatNumber(market.bookings)}
-                          </p>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Bookings</p>
+                          <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(market.bookings)}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Guests
-                          </p>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Expenses</p>
                           <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                            {formatNumber(market.guests)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Nights
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                            {formatNumber(market.nights)}
+                            {formatCurrency(market.expenses, false, market.currencyCode)}
                           </p>
                         </div>
                       </div>
@@ -313,11 +171,126 @@ export function DashboardShell({
                 })}
               </div>
             </SectionCard>
-          ) : null}
+          ) : (
+            <>
+              <section className="grid gap-4 xl:grid-cols-[1.35fr_0.9fr_0.9fr_0.9fr]">
+                <article className="workspace-card rounded-[28px] bg-[linear-gradient(180deg,rgba(29,78,60,0.22)_0%,rgba(11,22,38,0.98)_100%)] p-6 ring-1 ring-emerald-300/14">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/80">
+                        Net Profit
+                      </p>
+                      <p className={`mt-5 text-4xl font-semibold tracking-tight sm:text-5xl ${profitMeta.valueClass}`}>
+                        {formatCurrency(view.metrics.netProfit, false, currencyCode)}
+                      </p>
+                      <p className="mt-3 max-w-md text-sm leading-7 text-slate-300">{profitMeta.helper}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${profitMeta.chipClass}`}>
+                      {profitMeta.chip}
+                    </span>
+                  </div>
+                </article>
+
+                <article className="workspace-card rounded-[28px] p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Total Revenue</p>
+                      <p className="mt-4 text-3xl font-semibold tracking-tight text-[var(--workspace-text)]">
+                        {formatCurrency(view.metrics.grossRevenue, false, currencyCode)}
+                      </p>
+                    </div>
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <Wallet className="h-5 w-5" />
+                    </div>
+                  </div>
+                </article>
+
+                <article className="workspace-card rounded-[28px] p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Total Expenses</p>
+                      <p className="mt-4 text-3xl font-semibold tracking-tight text-[var(--workspace-text)]">
+                        {formatCurrency(view.metrics.totalExpenses, false, currencyCode)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-rose-400/12 p-3 text-rose-200">
+                      <ReceiptText className="h-5 w-5" />
+                    </div>
+                  </div>
+                </article>
+
+                <article className="workspace-card rounded-[28px] p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Profit Margin</p>
+                      <p className={`mt-4 text-3xl font-semibold tracking-tight ${view.metrics.profitMargin >= 0 ? "text-emerald-300" : "text-rose-200"}`}>
+                        {(view.metrics.profitMargin * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <Percent className="h-5 w-5" />
+                    </div>
+                  </div>
+                </article>
+              </section>
+
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <article className="workspace-soft-card rounded-[24px] p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <ArrowDownRight className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Net Payout</p>
+                      <p className="mt-1 text-xl font-semibold text-[var(--workspace-text)]">
+                        {formatCurrency(view.metrics.netPayout, false, currencyCode)}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+                <article className="workspace-soft-card rounded-[24px] p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <CalendarDays className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Bookings</p>
+                      <p className="mt-1 text-xl font-semibold text-[var(--workspace-text)]">{formatNumber(view.metrics.bookingsCount)}</p>
+                    </div>
+                  </div>
+                </article>
+                <article className="workspace-soft-card rounded-[24px] p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">ADR</p>
+                      <p className="mt-1 text-xl font-semibold text-[var(--workspace-text)]">
+                        {formatCurrency(view.metrics.adr, false, currencyCode)}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+                <article className="workspace-soft-card rounded-[24px] p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="workspace-icon-chip rounded-2xl p-3">
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Occupancy</p>
+                      <p className="mt-1 text-xl font-semibold text-[var(--workspace-text)]">
+                        {(view.metrics.occupancyRate * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              </section>
+            </>
+          )}
 
           <ChartsPanel
-            revenueByMonth={view.revenueByMonth}
-            profitByMonth={view.profitByMonth}
+            monthlySummary={view.monthlySummary}
             expensesByCategory={view.expensesByCategory}
             revenueByChannel={view.revenueByChannel}
             currencyCode={currencyCode}
@@ -325,11 +298,11 @@ export function DashboardShell({
           />
 
           <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-            <SectionCard title="Recent Bookings" subtitle="Guest stays, nights, and payouts from the latest activity.">
+            <SectionCard title="Recent Bookings" subtitle="Latest stays entering the business right now.">
               <div className="space-y-3">
                 {view.recentBookings.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No bookings yet. Add one manually or import legacy spreadsheet data to start populating this view.
+                    No bookings yet. Upload a workbook or add the first stay to start reading the business.
                   </div>
                 ) : (
                   view.recentBookings.map((booking, index) => (
@@ -340,13 +313,10 @@ export function DashboardShell({
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="space-y-2">
                           <div>
-                            <p className="text-base font-semibold text-[var(--workspace-text)]">
-                              {booking.guestName}
-                            </p>
+                            <p className="text-base font-semibold text-[var(--workspace-text)]">{booking.guestName}</p>
                             <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                              {booking.propertyName}
+                              {booking.channel} • {booking.propertyName}
                               {booking.unitName ? ` • ${booking.unitName}` : ""}
-                              {` • ${booking.channel} • ${booking.rentalPeriod}`}
                             </p>
                           </div>
                           <p className="text-sm text-[var(--workspace-muted)]">
@@ -356,25 +326,15 @@ export function DashboardShell({
 
                         <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[300px]">
                           <div className="workspace-card rounded-[18px] px-3 py-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                              Guests
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                              {formatNumber(booking.guestCount)}
-                            </p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Guests</p>
+                            <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.guestCount)}</p>
                           </div>
                           <div className="workspace-card rounded-[18px] px-3 py-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                              Nights
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                              {formatNumber(booking.nights)}
-                            </p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Nights</p>
+                            <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.nights)}</p>
                           </div>
                           <div className="workspace-card rounded-[18px] px-3 py-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                              Payout
-                            </p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Payout</p>
                             <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
                               {formatCurrency(booking.payout, false, currencyCode)}
                             </p>
@@ -387,11 +347,11 @@ export function DashboardShell({
               </div>
             </SectionCard>
 
-            <SectionCard title="Recent Expenses" subtitle="Latest operating costs grouped by category and note.">
+            <SectionCard title="Recent Expenses" subtitle="The latest places where money left the business.">
               <div className="space-y-3">
                 {view.recentExpenses.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No expenses yet. Add them inside Hostlyx or import a prior workbook to populate expense reporting.
+                    No expenses yet. Add costs to understand where money is going.
                   </div>
                 ) : (
                   view.recentExpenses.map((expense, index) => (
@@ -401,17 +361,13 @@ export function DashboardShell({
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2">
-                          <p className="font-semibold text-[var(--workspace-text)]">
-                            {expense.description}
-                          </p>
+                          <p className="font-semibold text-[var(--workspace-text)]">{expense.description}</p>
                           <p className="text-sm text-[var(--workspace-muted)]">
-                            {expense.propertyName}
+                            {expense.category} • {expense.propertyName}
                             {expense.unitName ? ` • ${expense.unitName}` : ""}
-                            {` • ${expense.category} • ${formatDateLabel(expense.date)}`}
                           </p>
-                          {expense.note ? (
-                            <p className="text-sm text-[var(--workspace-muted)]">{expense.note}</p>
-                          ) : null}
+                          <p className="text-sm text-[var(--workspace-muted)]">{formatDateLabel(expense.date)}</p>
+                          {expense.note ? <p className="text-sm text-[var(--workspace-muted)]">{expense.note}</p> : null}
                         </div>
                         <span className="text-sm font-semibold text-[var(--workspace-text)]">
                           {formatCurrency(expense.amount, false, currencyCode)}
@@ -423,50 +379,12 @@ export function DashboardShell({
               </div>
             </SectionCard>
           </div>
-
-          <SectionCard title="Monthly Summary" subtitle="Revenue, payout, expenses, and profit across the selected window.">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                  <tr>
-                    <th className="pb-3 pr-4 font-medium">Month</th>
-                    <th className="pb-3 pr-4 font-medium">Bookings</th>
-                    <th className="pb-3 pr-4 font-medium">Revenue</th>
-                    <th className="pb-3 pr-4 font-medium">Payout</th>
-                    <th className="pb-3 pr-4 font-medium">Expenses</th>
-                    <th className="pb-3 pr-4 font-medium">Profit</th>
-                    <th className="pb-3 font-medium">Margin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.monthlySummary.map((month, index) => {
-                    const margin = month.revenue > 0 ? month.profit / month.revenue : 0;
-
-                    return (
-                      <tr
-                        key={`${month.label}-${index}`}
-                        className="border-t border-[var(--workspace-border)] text-[var(--workspace-text)]"
-                      >
-                        <td className="py-4 pr-4 font-medium">{month.label}</td>
-                        <td className="py-4 pr-4">{formatNumber(month.bookings)}</td>
-                        <td className="py-4 pr-4">{formatCurrency(month.revenue, false, currencyCode)}</td>
-                        <td className="py-4 pr-4">{formatCurrency(month.payout, false, currencyCode)}</td>
-                        <td className="py-4 pr-4">{formatCurrency(month.expenses, false, currencyCode)}</td>
-                        <td className="py-4 pr-4">{formatCurrency(month.profit, false, currencyCode)}</td>
-                        <td className="py-4">{formatPercent(margin)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </SectionCard>
         </div>
       </WorkspaceShell>
 
       <Modal
         open={isUploadOpen}
-        title="Import Spreadsheet Data"
+        title="Upload Spreadsheet Data"
         onClose={() => setIsUploadOpen(false)}
       >
         <UploadPanel properties={properties} />

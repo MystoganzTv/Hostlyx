@@ -15,11 +15,11 @@ import {
   YAxis,
 } from "recharts";
 import type { CategoryPoint, ChannelPoint, CurrencyCode, MonthlyPoint } from "@/lib/types";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { getLocaleForCurrency } from "@/lib/markets";
 import { SectionCard } from "./section-card";
 
-const pieColors = ["#58c4b6", "#7a94d6", "#7ccf99", "#f2b26b", "#ec8f96", "#8d81d9"];
+const pieColors = ["#58c4b6", "#82d3c8", "#7a94d6", "#f2b26b", "#ec8f96", "#8d81d9"];
 
 function compactCurrency(value: number, currencyCode: CurrencyCode) {
   return new Intl.NumberFormat(getLocaleForCurrency(currencyCode), {
@@ -47,68 +47,60 @@ function EmptyChartState({ label }: { label: string }) {
   );
 }
 
+function topCostShare(expensesByCategory: CategoryPoint[]) {
+  const total = expensesByCategory.reduce((sum, item) => sum + item.value, 0);
+  return expensesByCategory.map((item) => ({
+    ...item,
+    share: total > 0 ? item.value / total : 0,
+  }));
+}
+
 export function ChartsPanel({
-  revenueByMonth,
-  profitByMonth,
+  monthlySummary,
   expensesByCategory,
   revenueByChannel,
   currencyCode,
   mixedCurrencyMode = false,
 }: {
-  revenueByMonth: MonthlyPoint[];
-  profitByMonth: MonthlyPoint[];
+  monthlySummary: MonthlyPoint[];
   expensesByCategory: CategoryPoint[];
   revenueByChannel: ChannelPoint[];
   currencyCode: CurrencyCode;
   mixedCurrencyMode?: boolean;
 }) {
+  const costStructure = topCostShare(expensesByCategory);
+
   if (mixedCurrencyMode) {
     return (
-      <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard
-          title="Amount-based charts paused"
-          subtitle="Cross-market view combines properties from different currencies."
-          className="min-w-0"
-        >
-          <EmptyChartState label="Choose one market to unlock revenue, profit, expense, and channel amount charts." />
-        </SectionCard>
-        <SectionCard
-          title="FX conversion"
-          subtitle="Consolidated amount charts need a real currency conversion layer."
-          className="min-w-0"
-        >
-          <EmptyChartState label="For now, Hostlyx keeps All markets as a portfolio view instead of guessing a converted total." />
-        </SectionCard>
-      </div>
+      <SectionCard
+        title="Portfolio View"
+        subtitle="All markets mixes real currencies, so Hostlyx pauses converted amount charts until you focus on one market."
+      >
+        <EmptyChartState label="Select a single market to unlock profit-over-time, revenue-vs-expenses, and cost charts." />
+      </SectionCard>
     );
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="space-y-6">
       <SectionCard
-        title="Revenue by month"
-        subtitle="Gross revenue trend from the filtered booking data."
-        className="min-w-0"
+        title="Profit Over Time"
+        subtitle="The fastest way to see if the business is actually becoming more profitable."
       >
-        {revenueByMonth.length === 0 ? (
-          <EmptyChartState label="No revenue data for the current filters." />
+        {monthlySummary.length === 0 ? (
+          <EmptyChartState label="No monthly data available for the current filters." />
         ) : (
-          <div className="h-[280px] min-w-0">
+          <div className="h-[320px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueByMonth}>
+              <AreaChart data={monthlySummary}>
                 <defs>
-                  <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#58c4b6" stopOpacity={0.7} />
+                  <linearGradient id="profit-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#58c4b6" stopOpacity={0.55} />
                     <stop offset="95%" stopColor="#58c4b6" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
+                <XAxis dataKey="label" tick={{ fill: "#93a4bf", fontSize: 12 }} tickLine={false} axisLine={false} />
                 <YAxis
                   tickFormatter={(value) => compactCurrency(value, currencyCode)}
                   tick={{ fill: "#93a4bf", fontSize: 12 }}
@@ -125,87 +117,33 @@ export function ChartsPanel({
                     color: "#e7edf5",
                   }}
                 />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#58c4b6"
-                  strokeWidth={3}
-                  fill="url(#revenue-fill)"
-                />
+                <Area type="monotone" dataKey="profit" stroke="#58c4b6" strokeWidth={3} fill="url(#profit-fill)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         )}
       </SectionCard>
 
-      <SectionCard
-        title="Profit by month"
-        subtitle="Net payout minus expenses for each month in view."
-        className="min-w-0"
-      >
-        {profitByMonth.length === 0 ? (
-          <EmptyChartState label="No profit data for the current filters." />
-        ) : (
-          <div className="h-[280px] min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profitByMonth}>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={72}
-                />
-                <Tooltip
-                  formatter={(value) => formatTooltipValue(value, currencyCode)}
-                  contentStyle={{
-                    borderRadius: 18,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "#101c2e",
-                    color: "#e7edf5",
-                  }}
-                />
-                <Bar dataKey="profit" radius={[10, 10, 0, 0]} fill="#7a94d6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </SectionCard>
-
-      <SectionCard
-        title="Expenses by category"
-        subtitle="Top expense groups based on imported operating costs."
-        className="min-w-0"
-      >
-        {expensesByCategory.length === 0 ? (
-          <EmptyChartState label="No expenses match the current filters." />
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="h-[280px] min-w-0">
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SectionCard
+          title="Revenue vs Expenses"
+          subtitle="See how top-line inflow compares against cost load each month."
+        >
+          {monthlySummary.length === 0 ? (
+            <EmptyChartState label="No revenue or expense data for the current filters." />
+          ) : (
+            <div className="h-[300px] min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expensesByCategory}
-                    dataKey="value"
-                    nameKey="label"
-                    innerRadius={72}
-                    outerRadius={108}
-                    paddingAngle={3}
-                  >
-                    {expensesByCategory.map((entry, index) => (
-                      <Cell
-                        key={entry.label}
-                        fill={pieColors[index % pieColors.length]}
-                      />
-                    ))}
-                  </Pie>
+                <BarChart data={monthlySummary} barGap={8}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: "#93a4bf", fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => compactCurrency(value, currencyCode)}
+                    tick={{ fill: "#93a4bf", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={72}
+                  />
                   <Tooltip
                     formatter={(value) => formatTooltipValue(value, currencyCode)}
                     contentStyle={{
@@ -215,76 +153,165 @@ export function ChartsPanel({
                       color: "#e7edf5",
                     }}
                   />
-                </PieChart>
+                  <Bar dataKey="revenue" radius={[10, 10, 0, 0]} fill="#58c4b6" />
+                  <Bar dataKey="expenses" radius={[10, 10, 0, 0]} fill="#ec8f96" />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-3">
-              {expensesByCategory.slice(0, 6).map((item, index) => (
-                <div
-                  key={item.label}
-                  className="workspace-soft-card flex items-center justify-between rounded-2xl px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{
-                        backgroundColor: pieColors[index % pieColors.length],
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Expenses Breakdown"
+          subtitle="Understand where money is actually leaving the business."
+        >
+          {expensesByCategory.length === 0 ? (
+            <EmptyChartState label="No expenses match the current filters." />
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-[1fr_0.95fr]">
+              <div className="h-[300px] min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={expensesByCategory} dataKey="value" nameKey="label" innerRadius={70} outerRadius={106} paddingAngle={3}>
+                      {expensesByCategory.map((entry, index) => (
+                        <Cell key={entry.label} fill={pieColors[index % pieColors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => formatTooltipValue(value, currencyCode)}
+                      contentStyle={{
+                        borderRadius: 18,
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "#101c2e",
+                        color: "#e7edf5",
                       }}
                     />
-                    <span className="text-sm text-[var(--workspace-text)]">{item.label}</span>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-3">
+                {costStructure.slice(0, 5).map((item, index) => (
+                  <div key={item.label} className="workspace-soft-card rounded-2xl px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />
+                        <span className="text-sm text-[var(--workspace-text)]">{item.label}</span>
+                      </div>
+                      <span className="text-sm font-medium text-[var(--workspace-text)]">
+                        {formatCurrency(item.value, false, currencyCode)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--workspace-muted)]">{formatPercent(item.share)} of total expenses</p>
                   </div>
-                  <span className="text-sm font-medium text-[var(--workspace-text)]">
-                    {formatCurrency(item.value, false, currencyCode)}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </SectionCard>
+          )}
+        </SectionCard>
+      </div>
 
-      <SectionCard
-        title="Revenue by channel"
-        subtitle="Channel mix across the filtered booking set."
-        className="min-w-0"
-      >
-        {revenueByChannel.length === 0 ? (
-          <EmptyChartState label="No channel data for the current filters." />
-        ) : (
-          <div className="h-[280px] min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueByChannel} layout="vertical" margin={{ left: 8 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tickFormatter={(value) => compactCurrency(value, currencyCode)}
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  tick={{ fill: "#93a4bf", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={92}
-                />
-                <Tooltip
-                  formatter={(value) => formatTooltipValue(value, currencyCode)}
-                  contentStyle={{
-                    borderRadius: 18,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "#101c2e",
-                    color: "#e7edf5",
-                  }}
-                />
-                <Bar dataKey="revenue" radius={[0, 12, 12, 0]} fill="#58c4b6" />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <SectionCard
+          title="Revenue By Channel"
+          subtitle="See which channels are actually driving the business."
+        >
+          {revenueByChannel.length === 0 ? (
+            <EmptyChartState label="No channel data for the current filters." />
+          ) : (
+            <div className="h-[260px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueByChannel} layout="vertical" margin={{ left: 8 }}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.08)" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(value) => compactCurrency(value, currencyCode)}
+                    tick={{ fill: "#93a4bf", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    tick={{ fill: "#93a4bf", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={90}
+                  />
+                  <Tooltip
+                    formatter={(value) => formatTooltipValue(value, currencyCode)}
+                    contentStyle={{
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "#101c2e",
+                      color: "#e7edf5",
+                    }}
+                  />
+                  <Bar dataKey="revenue" radius={[0, 12, 12, 0]} fill="#58c4b6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Monthly Performance"
+          subtitle="Quick compare of the months driving the strongest results."
+        >
+          <div className="space-y-3">
+            {monthlySummary.length === 0 ? (
+              <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
+                No monthly performance data yet.
+              </div>
+            ) : (
+              [...monthlySummary]
+                .sort((left, right) => right.profit - left.profit)
+                .slice(0, 5)
+                .map((month) => (
+                  <article key={month.label} className="workspace-soft-card rounded-[22px] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold text-[var(--workspace-text)]">{month.label}</p>
+                        <p className="mt-1 text-sm text-[var(--workspace-muted)]">
+                          {month.bookings} bookings • {month.nights} nights
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-300">
+                        {formatCurrency(month.profit, false, currencyCode)}
+                      </span>
+                    </div>
+                  </article>
+                ))
+            )}
           </div>
-        )}
-      </SectionCard>
+        </SectionCard>
+
+        <SectionCard
+          title="Cost Structure"
+          subtitle="The categories taking the largest share of your expense base."
+        >
+          <div className="space-y-3">
+            {costStructure.length === 0 ? (
+              <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
+                No cost structure yet.
+              </div>
+            ) : (
+              costStructure.slice(0, 5).map((item) => (
+                <article key={item.label} className="workspace-soft-card rounded-[22px] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold text-[var(--workspace-text)]">{item.label}</p>
+                      <p className="mt-1 text-sm text-[var(--workspace-muted)]">{formatPercent(item.share)} of total expenses</p>
+                    </div>
+                    <span className="text-sm font-semibold text-[var(--workspace-text)]">
+                      {formatCurrency(item.value, false, currencyCode)}
+                    </span>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 }

@@ -5,17 +5,14 @@ import Link from "next/link";
 import {
   BookOpenText,
   Building2,
-  CalendarDays,
-  CalendarRange,
   ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
-  DatabaseZap,
   LayoutDashboard,
   LogOut,
   ReceiptText,
-  Wallet,
   UserCircle2,
+  FileText,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/auth-buttons";
@@ -30,6 +27,7 @@ type ActivePage =
   | "expenses"
   | "cashflow"
   | "performance"
+  | "reports"
   | "imports"
   | "properties"
   | "profile";
@@ -42,15 +40,10 @@ const navItems: Array<{
   icon: typeof LayoutDashboard;
 }> = [
   { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { id: "calendar", label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-  { id: "monthly", label: "Monthly", href: "/dashboard/monthly", icon: CalendarRange },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
-  { id: "cashflow", label: "Cashflow", href: "/dashboard/cashflow", icon: Wallet },
   { id: "performance", label: "Performance", href: "/dashboard/performance", icon: ChartNoAxesCombined },
-  { id: "imports", label: "Import History", href: "/dashboard/imports", icon: DatabaseZap },
-  { id: "properties", label: "Properties", href: "/dashboard/properties", icon: Building2 },
-  { id: "profile", label: "Profile", href: "/profile", icon: UserCircle2 },
+  { id: "reports", label: "Reports", href: "/dashboard/reports", icon: FileText },
 ];
 
 function navClassName(active: boolean) {
@@ -157,6 +150,27 @@ export function WorkspaceShell({
           <div className={`border-t border-white/8 ${isCollapsed ? "pt-4" : "space-y-4 pt-6"}`}>
             {!isCollapsed ? (
               <>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/dashboard/properties"
+                    className={`workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
+                      activePage === "properties" ? "workspace-sidebar-link-active" : ""
+                    }`}
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Properties
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className={`workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition ${
+                      activePage === "profile" ? "workspace-sidebar-link-active" : ""
+                    }`}
+                  >
+                    <UserCircle2 className="h-3.5 w-3.5" />
+                    Profile
+                  </Link>
+                </div>
+
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
                     Last import
