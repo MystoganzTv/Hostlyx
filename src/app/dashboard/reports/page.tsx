@@ -100,7 +100,8 @@ export default async function ReportsPage({
       latestImport={latestImport}
       subscriptionBadge={subscriptionBadge}
       actions={
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
+        <div className="rounded-[28px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
           <FilterBar
             channels={view.availableChannels}
             countries={view.availableCountries}
@@ -109,10 +110,12 @@ export default async function ReportsPage({
             selectedEndDate={view.filters.endDate}
             selectedChannel={view.filters.channel}
             selectedCountryCode={view.filters.countryCode}
+            embedded
           />
           <ExportReportLink
-            className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+            className="inline-flex min-h-[52px] min-w-[176px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-[var(--workspace-accent)]/22 bg-[linear-gradient(180deg,rgba(88,196,182,0.2)_0%,rgba(88,196,182,0.12)_100%)] px-5 py-3 text-sm font-semibold text-[var(--workspace-text)] shadow-[0_12px_24px_rgba(6,20,35,0.16)] transition hover:border-[var(--workspace-accent)]/34 hover:bg-[linear-gradient(180deg,rgba(88,196,182,0.28)_0%,rgba(88,196,182,0.16)_100%)]"
           />
+        </div>
         </div>
       }
     >

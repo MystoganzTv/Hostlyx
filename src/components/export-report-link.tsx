@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { FileOutput } from "lucide-react";
 
 export function ExportReportLink({
   className,
@@ -24,7 +25,8 @@ export function ExportReportLink({
       className={className}
       rel={target === "_blank" ? "noreferrer" : undefined}
     >
-      {label}
+      <FileOutput className="h-4 w-4 shrink-0" />
+      <span>{label}</span>
     </Link>
   );
 }
