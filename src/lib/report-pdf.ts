@@ -192,8 +192,8 @@ function drawMetricCard(
     emphasis?: boolean;
   },
 ) {
-  const fill = options.emphasis ? rgb(0.93, 0.99, 0.97) : rgb(1, 1, 1);
-  const border = options.emphasis ? rgb(0.76, 0.92, 0.86) : rgb(0.87, 0.9, 0.94);
+  const fill = options.emphasis ? rgb(0.93, 0.985, 0.97) : rgb(0.995, 0.998, 1);
+  const border = options.emphasis ? rgb(0.73, 0.88, 0.83) : rgb(0.84, 0.88, 0.93);
   const labelColor = rgb(0.44, 0.5, 0.61);
   const valueColor = rgb(0.03, 0.07, 0.15);
   const helperColor = rgb(0.4, 0.45, 0.53);
@@ -262,8 +262,8 @@ function drawDetailCard(
     y: options.y,
     width: options.width,
     height: options.height,
-    fill: rgb(1, 1, 1),
-    border: rgb(0.87, 0.9, 0.94),
+    fill: rgb(0.995, 0.998, 1),
+    border: rgb(0.84, 0.88, 0.93),
     borderWidth: 1,
     radius: 16,
   });
@@ -353,8 +353,8 @@ export async function generateShareReportPdf(input: ShareReportPdfInput) {
     y: pageMargin,
     width: sheetWidth,
     height: sheetHeight,
-    fill: rgb(0.99, 0.995, 1),
-    border: rgb(0.88, 0.91, 0.95),
+    fill: rgb(0.985, 0.992, 0.998),
+    border: rgb(0.86, 0.9, 0.95),
     borderWidth: 1,
     radius: 24,
   });
@@ -401,8 +401,8 @@ export async function generateShareReportPdf(input: ShareReportPdfInput) {
       y,
       width: metaCardWidth,
       height: metaCardHeight,
-      fill: rgb(1, 1, 1),
-      border: rgb(0.87, 0.9, 0.94),
+      fill: rgb(0.995, 0.998, 1),
+      border: rgb(0.84, 0.88, 0.93),
       borderWidth: 1,
       radius: 14,
     });
