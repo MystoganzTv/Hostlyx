@@ -351,10 +351,17 @@ select {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
   body {
     background: white !important;
     color: #0f172a !important;
     background-image: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   body::before {
@@ -376,5 +383,93 @@ select {
     border-radius: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
+    background: white !important;
+  }
+
+  .report-sheet-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
+    gap: 18px !important;
+    align-items: start;
+    padding-bottom: 18px !important;
+  }
+
+  .report-sheet-meta {
+    gap: 10px !important;
+  }
+
+  .report-meta-card,
+  .report-metric-card,
+  .report-detail-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .report-sheet-summary {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 10px !important;
+    margin-top: 18px !important;
+  }
+
+  .report-sheet-summary-aside {
+    gap: 10px !important;
+  }
+
+  .report-sheet-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px !important;
+    margin-top: 10px !important;
+  }
+
+  .report-sheet-details {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+
+  .report-metric-card {
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .report-metric-card--primary {
+    padding: 18px !important;
+  }
+
+  .report-metric-label {
+    font-size: 10px !important;
+    letter-spacing: 0.18em !important;
+  }
+
+  .report-metric-value {
+    margin-top: 10px !important;
+    font-size: 1.9rem !important;
+    line-height: 1 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  .report-metric-card--primary .report-metric-value {
+    font-size: 3rem !important;
+  }
+
+  .report-metric-helper {
+    margin-top: 10px !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+
+  .report-detail-card {
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .report-sheet-footer {
+    margin-top: 12px !important;
+    padding-top: 12px !important;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
   }
 }

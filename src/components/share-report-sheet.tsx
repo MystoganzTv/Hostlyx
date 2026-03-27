@@ -14,23 +14,23 @@ function ShareMetricCard({
 }) {
   return (
     <article
-      className={`rounded-[24px] border px-5 py-5 ${
+      className={`report-metric-card rounded-[24px] border px-5 py-5 ${
         emphasis
-          ? "border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.95)_0%,rgba(240,249,255,0.96)_100%)]"
+          ? "report-metric-card--primary border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.95)_0%,rgba(240,249,255,0.96)_100%)]"
           : "border-slate-200 bg-white"
       }`}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <p className="report-metric-label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
       <p
-        className={`mt-4 font-semibold tracking-[-0.05em] ${
+        className={`report-metric-value mt-4 font-semibold tracking-[-0.05em] ${
           emphasis ? "text-5xl text-slate-950 sm:text-6xl" : "text-3xl text-slate-900"
         }`}
       >
         {value}
       </p>
-      <p className={`mt-3 text-sm leading-6 ${emphasis ? "max-w-xl text-slate-600" : "text-slate-500"}`}>
+      <p className={`report-metric-helper mt-3 text-sm leading-6 ${emphasis ? "max-w-xl text-slate-600" : "text-slate-500"}`}>
         {helper}
       </p>
     </article>
@@ -70,7 +70,7 @@ export function ShareReportSheet({
 
   return (
     <section className="report-sheet mx-auto max-w-5xl rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.98)_100%)] p-8 shadow-[0_18px_46px_rgba(15,23,42,0.08)] sm:p-10">
-      <div className="flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-start sm:justify-between">
+      <div className="report-sheet-header flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -86,21 +86,21 @@ export function ShareReportSheet({
           </p>
         </div>
 
-        <div className="grid gap-4 sm:min-w-[260px]">
-          <div>
+        <div className="report-sheet-meta grid gap-4 sm:min-w-[260px]">
+          <div className="report-meta-card rounded-[20px] border border-slate-200 bg-white px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Reporting period
             </p>
             <p className="mt-2 text-base font-semibold text-slate-900">{view.rangeLabel}</p>
           </div>
-          <div>
+          <div className="report-meta-card rounded-[20px] border border-slate-200 bg-white px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Generated
             </p>
             <p className="mt-2 text-base font-semibold text-slate-900">{generatedAt}</p>
           </div>
           {latestImportFileName ? (
-            <div>
+            <div className="report-meta-card rounded-[20px] border border-slate-200 bg-white px-4 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Source file
               </p>
@@ -110,7 +110,7 @@ export function ShareReportSheet({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(250px,0.7fr)]">
+      <div className="report-sheet-summary mt-8 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(250px,0.7fr)]">
         <ShareMetricCard
           label="You Keep"
           value={formatCurrency(view.metrics.profitAfterTax, false, view.displayCurrencyCode)}
@@ -118,7 +118,7 @@ export function ShareReportSheet({
           emphasis
         />
 
-        <div className="grid gap-4">
+        <div className="report-sheet-summary-aside grid gap-4">
           <ShareMetricCard
             label="Set Aside"
             value={formatCurrency(view.metrics.estimatedTaxes, false, view.displayCurrencyCode)}
@@ -132,7 +132,7 @@ export function ShareReportSheet({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="report-sheet-metrics mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ShareMetricCard
           label="Revenue"
           value={formatCurrency(view.metrics.totalRevenue, false, view.displayCurrencyCode)}
@@ -155,8 +155,8 @@ export function ShareReportSheet({
         />
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-2">
-        <article className="rounded-[24px] border border-slate-200 bg-white px-5 py-5">
+      <div className="report-sheet-details mt-8 grid gap-6 xl:grid-cols-2">
+        <article className="report-detail-card rounded-[24px] border border-slate-200 bg-white px-5 py-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Revenue by channel
           </p>
@@ -177,7 +177,7 @@ export function ShareReportSheet({
           </div>
         </article>
 
-        <article className="rounded-[24px] border border-slate-200 bg-white px-5 py-5">
+        <article className="report-detail-card rounded-[24px] border border-slate-200 bg-white px-5 py-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Expense structure
           </p>
@@ -203,7 +203,7 @@ export function ShareReportSheet({
         </article>
       </div>
 
-      <div className="mt-8 border-t border-slate-200 pt-5 text-sm text-slate-500">
+      <div className="report-sheet-footer mt-8 border-t border-slate-200 pt-5 text-sm text-slate-500">
         Report generated by Hostlyx from imported bookings and expenses.
         {latestImportFileName ? ` Latest source: ${latestImportFileName}.` : ""}
         {view.monthlySummary[0]?.label ? ` Period covered includes ${view.monthlySummary[0].label} to ${view.monthlySummary.at(-1)?.label}.` : ""}
