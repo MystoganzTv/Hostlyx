@@ -239,21 +239,42 @@ export function ChartsPanel({
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-3">
-                {costStructure.slice(0, 5).map((item, index) => (
-                  <div key={item.label} className="workspace-soft-card rounded-2xl px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />
-                        <span className="text-sm text-[var(--workspace-text)]">{item.label}</span>
-                      </div>
-                      <span className="text-sm font-medium text-[var(--workspace-text)]">
-                        {formatCurrency(item.value, false, currencyCode)}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-[var(--workspace-muted)]">{formatPercent(item.share)} of total expenses</p>
+              <div className="workspace-soft-card rounded-[22px] p-4">
+                <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--workspace-text)]">Cost Table</p>
+                    <p className="mt-1 text-xs text-[var(--workspace-muted)]">Top categories by weight in the business.</p>
                   </div>
-                ))}
+                  <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                    Top 5
+                  </span>
+                </div>
+
+                <div className="mt-3 overflow-hidden rounded-[18px] border border-white/8">
+                  <div className="grid grid-cols-[1.3fr_0.9fr_0.8fr] gap-3 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                    <span>Category</span>
+                    <span>Amount</span>
+                    <span>Share</span>
+                  </div>
+
+                  <div className="divide-y divide-white/8">
+                    {costStructure.slice(0, 5).map((item, index) => (
+                      <div
+                        key={`cost-table-${item.label}`}
+                        className="grid grid-cols-[1.3fr_0.9fr_0.8fr] gap-3 px-4 py-3 text-sm"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />
+                          <span className="truncate font-medium text-[var(--workspace-text)]">{item.label}</span>
+                        </div>
+                        <span className="font-medium text-[var(--workspace-text)]">
+                          {formatCurrency(item.value, false, currencyCode)}
+                        </span>
+                        <span className="text-[var(--workspace-muted)]">{formatPercent(item.share)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
