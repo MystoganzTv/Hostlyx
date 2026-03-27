@@ -221,6 +221,11 @@ export function UploadPanel({
           ]),
         );
         setSelectedFileMeta(nextMeta);
+        setToast({
+          tone: "info",
+          message:
+            "Hostlyx could not verify duplicate content right now, but you can still import the selected files.",
+        });
       }
     }
 
@@ -233,6 +238,7 @@ export function UploadPanel({
 
   const selectionSummary = useMemo(() => {
     let readyCount = 0;
+    let unverifiableCount = 0;
     let duplicateExistingCount = 0;
     let duplicateSelectionCount = 0;
     let checkingCount = 0;
@@ -243,6 +249,9 @@ export function UploadPanel({
       switch (meta?.status) {
         case "ready":
           readyCount += 1;
+          break;
+        case "error":
+          unverifiableCount += 1;
           break;
         case "duplicate-existing":
           duplicateExistingCount += 1;
@@ -260,6 +269,7 @@ export function UploadPanel({
 
     return {
       readyCount,
+      unverifiableCount,
       duplicateExistingCount,
       duplicateSelectionCount,
       checkingCount,
@@ -268,7 +278,7 @@ export function UploadPanel({
 
   const importableFiles = selectedFiles.filter((file) => {
     const status = selectedFileMeta[getFileKey(file)]?.status;
-    return status === "ready";
+    return status === "ready" || status === "error";
   });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -514,9 +524,11 @@ export function UploadPanel({
                 {selectedFiles.length > 0
                   ? selectionSummary.checkingCount > 0
                     ? `Checking ${selectionSummary.checkingCount} file${selectionSummary.checkingCount === 1 ? "" : "s"} for duplicate content...`
-                    : selectionSummary.readyCount === 1
-                      ? "1 new file ready to import."
-                      : `${selectionSummary.readyCount} new files ready to import.`
+                    : selectionSummary.readyCount + selectionSummary.unverifiableCount === 1
+                      ? selectionSummary.unverifiableCount === 1
+                        ? "1 file ready to import without duplicate verification."
+                        : "1 new file ready to import."
+                      : `${selectionSummary.readyCount + selectionSummary.unverifiableCount} files ready to import.`
                   : "Choose one or more .xlsx workbooks to migrate legacy data in."}
               </p>
             </div>
@@ -598,7 +610,7 @@ export function UploadPanel({
                               ) : null}
                               {meta?.status === "error" ? (
                                 <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200">
-                                  Could not verify
+                                  Could not verify, still importable
                                 </span>
                               ) : null}
                             </div>
@@ -610,6 +622,11 @@ export function UploadPanel({
                             {meta?.status === "duplicate-selection" ? (
                               <p className="mt-2 text-xs text-amber-100/85">
                                 This workbook has the same content as another file in the current selection.
+                              </p>
+                            ) : null}
+                            {meta?.status === "error" ? (
+                              <p className="mt-2 text-xs text-amber-100/85">
+                                Duplicate checking failed for this file, but Hostlyx can still try to import it.
                               </p>
                             ) : null}
                           </div>
