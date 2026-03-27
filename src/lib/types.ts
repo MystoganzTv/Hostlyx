@@ -1,6 +1,12 @@
 export type ImportSource = "demo" | "upload" | "manual";
 export type CurrencyCode = "USD" | "EUR" | "GBP";
 export type CountryCode = "US" | "ES" | "GB";
+export type DashboardDateRangePreset =
+  | "all-time"
+  | "this-year"
+  | "this-month"
+  | "last-90-days"
+  | "custom";
 export type RevenueByChannelTotals = {
   airbnb: number;
   booking: number;
@@ -94,6 +100,9 @@ export type DashboardFilters = {
   month: number | "all";
   channel: string | "all";
   countryCode: CountryCode | "all";
+  rangePreset: DashboardDateRangePreset;
+  startDate: string;
+  endDate: string;
 };
 
 export type MetricCard = {
@@ -131,6 +140,7 @@ export type DashboardView = {
   availableChannels: string[];
   availableCountries: CountryCode[];
   filters: DashboardFilters;
+  rangeLabel: string;
   displayCurrencyCode: CurrencyCode;
   mixedCurrencyMode: boolean;
   marketBreakdown: Array<{

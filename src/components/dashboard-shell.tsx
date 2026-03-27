@@ -119,11 +119,11 @@ export function DashboardShell({
         <div className="space-y-6">
           <div className="flex justify-end">
             <FilterBar
-              years={view.availableYears}
               channels={view.availableChannels}
               countries={view.availableCountries}
-              selectedYear={view.filters.year}
-              selectedMonth={view.filters.month}
+              selectedRangePreset={view.filters.rangePreset}
+              selectedStartDate={view.filters.startDate}
+              selectedEndDate={view.filters.endDate}
               selectedChannel={view.filters.channel}
               selectedCountryCode={view.filters.countryCode}
             />

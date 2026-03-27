@@ -50,21 +50,15 @@ export default async function MonthlyPage({
     properties,
     userSettings.primaryCountryCode,
   );
-  const monthlyFilters = {
-    ...filters,
-    month: "all" as const,
-  };
   const view = buildDashboardView({
     bookings,
     expenses,
-    filters: monthlyFilters,
+    filters,
     properties,
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
   });
-  const rangeLabel =
-    monthlyFilters.year === "all" ? "All imported months" : String(monthlyFilters.year);
 
   return (
     <WorkspaceShell
@@ -78,21 +72,20 @@ export default async function MonthlyPage({
       latestImport={latestImport}
       actions={
         <FilterBar
-          years={view.availableYears}
           channels={view.availableChannels}
           countries={view.availableCountries}
-          selectedYear={view.filters.year}
-          selectedMonth="all"
+          selectedRangePreset={view.filters.rangePreset}
+          selectedStartDate={view.filters.startDate}
+          selectedEndDate={view.filters.endDate}
           selectedChannel={view.filters.channel}
           selectedCountryCode={view.filters.countryCode}
-          showMonthSelect={false}
         />
       }
     >
       <MonthlySummaryPanel
         view={view}
         currencyCode={view.displayCurrencyCode}
-        rangeLabel={rangeLabel}
+        rangeLabel={view.rangeLabel}
       />
     </WorkspaceShell>
   );

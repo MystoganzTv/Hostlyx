@@ -3,9 +3,10 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect } from "react";
 import { Funnel } from "lucide-react";
+import { WorkspaceDateField } from "@/components/workspace-date-field";
 import { WorkspaceSelect } from "@/components/workspace-select";
 import { getMarketDefinition } from "@/lib/markets";
-import type { CountryCode } from "@/lib/types";
+import type { CountryCode, DashboardDateRangePreset } from "@/lib/types";
 
 const monthOptions = [
   { value: "all", label: "All months" },
@@ -23,65 +24,101 @@ const monthOptions = [
   { value: "12", label: "December" },
 ];
 
-const filterStorageKey = "hostlyx:filters";
+const rangeOptions: Array<{ value: DashboardDateRangePreset; label: string }> = [
+  { value: "all-time", label: "All time" },
+  { value: "this-year", label: "This year" },
+  { value: "this-month", label: "This month" },
+  { value: "last-90-days", label: "Last 90 days" },
+  { value: "custom", label: "Custom" },
+];
 
-export function FilterBar({
-  years,
-  channels,
-  countries,
-  selectedYear,
-  selectedMonth,
-  selectedChannel,
-  selectedCountryCode,
-  showMonthSelect = true,
-  showChannelSelect = true,
-}: {
-  years: number[];
-  channels: string[];
+const rangeFilterStorageKey = "hostlyx:filters:range";
+const calendarFilterStorageKey = "hostlyx:filters:calendar";
+
+type FilterBarProps = {
   countries: CountryCode[];
-  selectedYear: number | "all";
-  selectedMonth: number | "all";
+  channels: string[];
   selectedChannel: string | "all";
   selectedCountryCode: CountryCode | "all";
-  showMonthSelect?: boolean;
   showChannelSelect?: boolean;
-}) {
+} & (
+  | {
+      mode?: "range";
+      selectedRangePreset: DashboardDateRangePreset;
+      selectedStartDate: string;
+      selectedEndDate: string;
+      years?: never;
+      selectedYear?: never;
+      selectedMonth?: never;
+      showMonthSelect?: never;
+    }
+  | {
+      mode: "calendar";
+      years: number[];
+      selectedYear: number | "all";
+      selectedMonth: number | "all";
+      selectedRangePreset?: never;
+      selectedStartDate?: never;
+      selectedEndDate?: never;
+      showMonthSelect?: boolean;
+    }
+);
+
+export function FilterBar(props: FilterBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const mode = props.mode ?? "range";
+  const rangeProps = mode === "range" ? (props as Extract<FilterBarProps, { mode?: "range" }>) : null;
+  const calendarProps =
+    mode === "calendar" ? (props as Extract<FilterBarProps, { mode: "calendar" }>) : null;
 
   useEffect(() => {
     const hasExplicitFilters =
-      searchParams.has("year") ||
-      searchParams.has("month") ||
-      searchParams.has("channel") ||
-      searchParams.has("country");
+      mode === "range"
+        ? searchParams.has("range") ||
+          searchParams.has("start") ||
+          searchParams.has("end") ||
+          searchParams.has("channel") ||
+          searchParams.has("country")
+        : searchParams.has("year") ||
+          searchParams.has("month") ||
+          searchParams.has("channel") ||
+          searchParams.has("country");
 
     if (hasExplicitFilters) {
       return;
     }
 
-    const savedFilters = window.localStorage.getItem(filterStorageKey);
+    const savedFilters = window.localStorage.getItem(
+      mode === "range" ? rangeFilterStorageKey : calendarFilterStorageKey,
+    );
 
     if (!savedFilters) {
       return;
     }
 
     try {
-      const parsed = JSON.parse(savedFilters) as {
-        year?: string;
-        month?: string;
-        channel?: string;
-        country?: string;
-      };
+      const parsed = JSON.parse(savedFilters) as Record<string, string | undefined>;
       const params = new URLSearchParams(searchParams.toString());
 
-      if (parsed.year) {
-        params.set("year", parsed.year);
-      }
-
-      if (parsed.month) {
-        params.set("month", parsed.month);
+      if (mode === "range") {
+        if (parsed.range) {
+          params.set("range", parsed.range);
+        }
+        if (parsed.start) {
+          params.set("start", parsed.start);
+        }
+        if (parsed.end) {
+          params.set("end", parsed.end);
+        }
+      } else {
+        if (parsed.year) {
+          params.set("year", parsed.year);
+        }
+        if (parsed.month) {
+          params.set("month", parsed.month);
+        }
       }
 
       if (parsed.channel) {
@@ -96,20 +133,28 @@ export function FilterBar({
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
       }
     } catch {
-      window.localStorage.removeItem(filterStorageKey);
+      window.localStorage.removeItem(
+        mode === "range" ? rangeFilterStorageKey : calendarFilterStorageKey,
+      );
     }
-  }, [pathname, router, searchParams]);
+  }, [mode, pathname, router, searchParams]);
 
-  function updateFilter(key: "year" | "month" | "channel" | "country", value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(key, value);
-
-    if (key === "year" && value === "all") {
-      params.set("month", "all");
-    }
-
+  function persistRangeFilters(params: URLSearchParams) {
     window.localStorage.setItem(
-      filterStorageKey,
+      rangeFilterStorageKey,
+      JSON.stringify({
+        range: params.get("range") ?? "all-time",
+        start: params.get("start") ?? "",
+        end: params.get("end") ?? "",
+        channel: params.get("channel") ?? "all",
+        country: params.get("country") ?? "all",
+      }),
+    );
+  }
+
+  function persistCalendarFilters(params: URLSearchParams) {
+    window.localStorage.setItem(
+      calendarFilterStorageKey,
       JSON.stringify({
         year: params.get("year") ?? "all",
         month: params.get("month") ?? "all",
@@ -117,10 +162,42 @@ export function FilterBar({
         country: params.get("country") ?? "all",
       }),
     );
+  }
 
+  function replaceParams(params: URLSearchParams) {
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
+  }
+
+  function updateRangeFilter(key: "range" | "start" | "end" | "channel" | "country", value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("year");
+    params.delete("month");
+    params.set(key, value);
+
+    if (key === "range" && value !== "custom") {
+      params.delete("start");
+      params.delete("end");
+    }
+
+    persistRangeFilters(params);
+    replaceParams(params);
+  }
+
+  function updateCalendarFilter(key: "year" | "month" | "channel" | "country", value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("range");
+    params.delete("start");
+    params.delete("end");
+    params.set(key, value);
+
+    if (key === "year" && value === "all") {
+      params.set("month", "all");
+    }
+
+    persistCalendarFilters(params);
+    replaceParams(params);
   }
 
   return (
@@ -129,28 +206,37 @@ export function FilterBar({
         <Funnel className="h-4 w-4 text-[var(--workspace-accent)]" />
         Filters
       </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => updateFilter("country", "all")}
+          onClick={() =>
+            mode === "range"
+              ? updateRangeFilter("country", "all")
+              : updateCalendarFilter("country", "all")
+          }
           className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-            selectedCountryCode === "all"
+            props.selectedCountryCode === "all"
               ? "workspace-button-primary"
               : "workspace-button-secondary"
           }`}
         >
           All markets
         </button>
-        {countries.map((countryCode) => {
+        {props.countries.map((countryCode) => {
           const market = getMarketDefinition(countryCode);
 
           return (
             <button
               key={countryCode}
               type="button"
-              onClick={() => updateFilter("country", countryCode)}
+              onClick={() =>
+                mode === "range"
+                  ? updateRangeFilter("country", countryCode)
+                  : updateCalendarFilter("country", countryCode)
+              }
               className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                selectedCountryCode === countryCode
+                props.selectedCountryCode === countryCode
                   ? "workspace-button-primary"
                   : "workspace-button-secondary"
               }`}
@@ -160,34 +246,78 @@ export function FilterBar({
           );
         })}
       </div>
-      <WorkspaceSelect
-        compact
-        className="min-w-[150px]"
-        value={String(selectedYear)}
-        onChange={(value) => updateFilter("year", value)}
-        options={[
-          { value: "all", label: "All Years" },
-          ...years.map((year) => ({ value: String(year), label: String(year) })),
-        ]}
-      />
-      {showMonthSelect ? (
+
+      {rangeProps ? (
+        <>
+          <WorkspaceSelect
+            compact
+            className="min-w-[170px]"
+            value={rangeProps.selectedRangePreset}
+            onChange={(value) => updateRangeFilter("range", value)}
+            options={rangeOptions}
+          />
+          {rangeProps.selectedRangePreset === "custom" ? (
+            <>
+              <WorkspaceDateField
+                name="start"
+                label="Start date"
+                value={rangeProps.selectedStartDate}
+                onChange={(value) => updateRangeFilter("start", value)}
+                placeholder="Start date"
+                compact
+                hideLabel
+                className="min-w-[170px]"
+              />
+              <WorkspaceDateField
+                name="end"
+                label="End date"
+                value={rangeProps.selectedEndDate}
+                onChange={(value) => updateRangeFilter("end", value)}
+                placeholder="End date"
+                compact
+                hideLabel
+                className="min-w-[170px]"
+              />
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <WorkspaceSelect
+            compact
+            className="min-w-[150px]"
+            value={String(calendarProps?.selectedYear ?? "all")}
+            onChange={(value) => updateCalendarFilter("year", value)}
+            options={[
+              { value: "all", label: "All years" },
+              ...(calendarProps?.years ?? []).map((year) => ({ value: String(year), label: String(year) })),
+            ]}
+          />
+          {(calendarProps?.showMonthSelect ?? true) ? (
+            <WorkspaceSelect
+              compact
+              className="min-w-[170px]"
+              value={String(calendarProps?.selectedMonth ?? "all")}
+              onChange={(value) => updateCalendarFilter("month", value)}
+              options={monthOptions}
+            />
+          ) : null}
+        </>
+      )}
+
+      {props.showChannelSelect ?? true ? (
         <WorkspaceSelect
           compact
           className="min-w-[170px]"
-          value={String(selectedMonth)}
-          onChange={(value) => updateFilter("month", value)}
-          options={monthOptions}
-        />
-      ) : null}
-      {showChannelSelect ? (
-        <WorkspaceSelect
-          compact
-          className="min-w-[170px]"
-          value={selectedChannel}
-          onChange={(value) => updateFilter("channel", value)}
+          value={props.selectedChannel}
+          onChange={(value) =>
+            mode === "range"
+              ? updateRangeFilter("channel", value)
+              : updateCalendarFilter("channel", value)
+          }
           options={[
             { value: "all", label: "All Channels" },
-            ...channels.map((channel) => ({ value: channel, label: channel })),
+            ...props.channels.map((channel) => ({ value: channel, label: channel })),
           ]}
         />
       ) : null}

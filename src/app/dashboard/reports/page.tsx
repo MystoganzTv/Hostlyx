@@ -51,14 +51,10 @@ export default async function ReportsPage({
     properties,
     userSettings.primaryCountryCode,
   );
-  const reportFilters = {
-    ...filters,
-    month: "all" as const,
-  };
   const view = buildDashboardView({
     bookings,
     expenses,
-    filters: reportFilters,
+    filters,
     properties,
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
@@ -77,14 +73,13 @@ export default async function ReportsPage({
       latestImport={latestImport}
       actions={
         <FilterBar
-          years={view.availableYears}
           channels={view.availableChannels}
           countries={view.availableCountries}
-          selectedYear={view.filters.year}
-          selectedMonth="all"
+          selectedRangePreset={view.filters.rangePreset}
+          selectedStartDate={view.filters.startDate}
+          selectedEndDate={view.filters.endDate}
           selectedChannel={view.filters.channel}
           selectedCountryCode={view.filters.countryCode}
-          showMonthSelect={false}
         />
       }
     >

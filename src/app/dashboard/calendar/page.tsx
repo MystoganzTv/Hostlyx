@@ -155,6 +155,7 @@ export default async function CalendarPage({
       latestImport={latestImport}
       actions={
         <FilterBar
+          mode="calendar"
           years={Array.from(
             new Set([
               ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),

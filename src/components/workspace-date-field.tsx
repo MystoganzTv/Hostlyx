@@ -40,18 +40,31 @@ export function WorkspaceDateField({
   name,
   label,
   defaultValue,
+  value,
+  onChange,
   placeholder = "Select date",
   required = false,
+  compact = false,
+  className = "",
+  hideLabel = false,
 }: {
-  name: string;
+  name?: string;
   label: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  compact?: boolean;
+  className?: string;
+  hideLabel?: boolean;
 }) {
   const normalizedDefaultValue = normalizeDateValue(defaultValue);
-  const [value, setValue] = useState(normalizedDefaultValue);
-  const initialMonth = normalizedDefaultValue ? parseISO(normalizedDefaultValue) : new Date();
+  const normalizedControlledValue = normalizeDateValue(value);
+  const [internalValue, setInternalValue] = useState(normalizedDefaultValue);
+  const currentValue = value !== undefined ? normalizedControlledValue : internalValue;
+  const initialMonthValue = normalizedControlledValue || normalizedDefaultValue;
+  const initialMonth = initialMonthValue ? parseISO(initialMonthValue) : new Date();
   const [visibleMonth, setVisibleMonth] = useState(startOfMonth(initialMonth));
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -82,33 +95,46 @@ export function WorkspaceDateField({
     };
   }, [isOpen]);
 
-  const selectedDate = value ? parseISO(value) : null;
+  const selectedDate = currentValue ? parseISO(currentValue) : null;
   const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
 
   function chooseDate(nextDate: Date) {
-    setValue(format(nextDate, "yyyy-MM-dd"));
+    const nextValue = format(nextDate, "yyyy-MM-dd");
+    if (value !== undefined) {
+      onChange?.(nextValue);
+    } else {
+      setInternalValue(nextValue);
+    }
     setVisibleMonth(startOfMonth(nextDate));
     setIsOpen(false);
   }
 
   function clearDate() {
-    setValue("");
+    if (value !== undefined) {
+      onChange?.("");
+    } else {
+      setInternalValue("");
+    }
     setIsOpen(false);
   }
 
   return (
-    <div ref={rootRef} className="relative space-y-2">
-      <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </label>
-      <input type="hidden" name={name} value={value} required={required} />
+    <div ref={rootRef} className={`relative space-y-2 ${className}`}>
+      {!hideLabel ? (
+        <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+          {label}
+        </label>
+      ) : null}
+      {name ? <input type="hidden" name={name} value={currentValue} required={required} /> : null}
 
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="input-surface flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm"
+        className={`input-surface flex w-full items-center justify-between rounded-2xl text-left text-sm ${
+          compact ? "min-w-[170px] px-4 py-3" : "px-4 py-3"
+        }`}
       >
-        <span className={value ? "text-[var(--workspace-text)]" : "text-[var(--workspace-muted)]"}>
+        <span className={currentValue ? "text-[var(--workspace-text)]" : "text-[var(--workspace-muted)]"}>
           {selectedDate ? format(selectedDate, "MMM d, yyyy") : placeholder}
         </span>
         <CalendarDays className="h-4 w-4 text-[var(--workspace-muted)]" />

@@ -1,11 +1,14 @@
 import {
   eachMonthOfInterval,
+  endOfDay,
   endOfMonth,
   endOfYear,
   format,
   parseISO,
+  startOfDay,
   startOfMonth,
   startOfYear,
+  subDays,
 } from "date-fns";
 import {
   calculateChannelData,
@@ -19,6 +22,7 @@ import type {
   BookingRecord,
   CategoryPoint,
   CountryCode,
+  DashboardDateRangePreset,
   DashboardFilters,
   DashboardView,
   ExpenseRecord,
@@ -27,11 +31,29 @@ import type {
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function matchesDateFilter(dateValue: string, year: number | "all", month: number | "all") {
-  const date = parseISO(dateValue);
-  const yearMatches = year === "all" || date.getFullYear() === year;
-  const monthMatches = month === "all" || date.getMonth() + 1 === month;
-  return yearMatches && monthMatches;
+function normalizeDateInput(value: string | undefined) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function getDateBounds(bookings: BookingRecord[], expenses: ExpenseRecord[]) {
+  const allDates = [
+    ...bookings.map((booking) => parseISO(booking.checkIn)),
+    ...expenses.map((expense) => parseISO(expense.date)),
+  ].filter((date) => !Number.isNaN(date.getTime()));
+
+  if (allDates.length === 0) {
+    const today = new Date();
+
+    return {
+      earliestDate: startOfMonth(today),
+      latestDate: endOfDay(today),
+    };
+  }
+
+  return {
+    earliestDate: new Date(Math.min(...allDates.map((date) => date.getTime()))),
+    latestDate: new Date(Math.max(...allDates.map((date) => date.getTime()))),
+  };
 }
 
 function createPropertyCountryMap(
@@ -54,27 +76,15 @@ function resolveRecordCountryCode(
   return propertyCountryMap.get(propertyName.trim().toLowerCase()) ?? fallbackCountryCode;
 }
 
-function getRangeFromFilters(
-  filters: DashboardFilters,
+function getRangeFromYearMonth(
+  year: number | "all",
+  month: number | "all",
   bookings: BookingRecord[],
   expenses: ExpenseRecord[],
 ) {
-  const allDates = [
-    ...bookings.map((booking) => parseISO(booking.checkIn)),
-    ...expenses.map((expense) => parseISO(expense.date)),
-  ].filter((date) => !Number.isNaN(date.getTime()));
+  const { earliestDate, latestDate } = getDateBounds(bookings, expenses);
 
-  const latestDate =
-    allDates.length > 0
-      ? new Date(Math.max(...allDates.map((date) => date.getTime())))
-      : new Date();
-
-  if (filters.year === "all") {
-    const earliestDate =
-      allDates.length > 0
-        ? new Date(Math.min(...allDates.map((date) => date.getTime())))
-        : startOfYear(latestDate);
-
+  if (year === "all") {
     return {
       start: startOfMonth(earliestDate),
       end: endOfMonth(latestDate),
@@ -82,21 +92,93 @@ function getRangeFromFilters(
     };
   }
 
-  if (filters.month === "all") {
-    const anchor = new Date(filters.year, 0, 1);
+  if (month === "all") {
+    const anchor = new Date(year, 0, 1);
     return {
       start: startOfYear(anchor),
       end: endOfYear(anchor),
-      label: String(filters.year),
+      label: String(year),
     };
   }
 
-  const anchor = new Date(filters.year, filters.month - 1, 1);
+  const anchor = new Date(year, month - 1, 1);
   return {
     start: startOfMonth(anchor),
     end: endOfMonth(anchor),
     label: format(anchor, "MMMM yyyy"),
   };
+}
+
+function getRangeFromFilters(
+  filters: DashboardFilters,
+  bookings: BookingRecord[],
+  expenses: ExpenseRecord[],
+) {
+  const { earliestDate, latestDate } = getDateBounds(bookings, expenses);
+  const today = new Date();
+
+  if (filters.rangePreset === "this-year") {
+    return {
+      start: startOfYear(today),
+      end: endOfDay(today),
+      label: "This year",
+    };
+  }
+
+  if (filters.rangePreset === "this-month") {
+    return {
+      start: startOfMonth(today),
+      end: endOfDay(today),
+      label: "This month",
+    };
+  }
+
+  if (filters.rangePreset === "last-90-days") {
+    return {
+      start: startOfDay(subDays(today, 89)),
+      end: endOfDay(today),
+      label: "Last 90 days",
+    };
+  }
+
+  if (filters.rangePreset === "custom") {
+    const startCandidate = normalizeDateInput(filters.startDate);
+    const endCandidate = normalizeDateInput(filters.endDate);
+    const parsedStart = startCandidate ? parseISO(startCandidate) : earliestDate;
+    const parsedEnd = endCandidate ? parseISO(endCandidate) : latestDate;
+    const safeStart =
+      Number.isNaN(parsedStart.getTime()) ? startOfDay(earliestDate) : startOfDay(parsedStart);
+    const safeEnd =
+      Number.isNaN(parsedEnd.getTime()) ? endOfDay(latestDate) : endOfDay(parsedEnd);
+    const start = safeStart <= safeEnd ? safeStart : safeEnd;
+    const end = safeStart <= safeEnd ? safeEnd : safeStart;
+
+    return {
+      start,
+      end,
+      label: `${format(start, "MMM d, yyyy")} - ${format(end, "MMM d, yyyy")}`,
+    };
+  }
+
+  if (filters.rangePreset === "all-time") {
+    return {
+      start: startOfMonth(earliestDate),
+      end: endOfMonth(latestDate),
+      label: "All time",
+    };
+  }
+
+  return getRangeFromYearMonth(filters.year, filters.month, bookings, expenses);
+}
+
+function matchesDateFilter(dateValue: string, range: { start: Date; end: Date }) {
+  const date = parseISO(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return date >= range.start && date <= range.end;
 }
 
 function clampRatio(value: number) {
@@ -129,6 +211,9 @@ export function getDashboardFilters(
   const monthParam = Array.isArray(searchParams.month) ? searchParams.month[0] : searchParams.month;
   const channelParam = Array.isArray(searchParams.channel) ? searchParams.channel[0] : searchParams.channel;
   const countryParam = Array.isArray(searchParams.country) ? searchParams.country[0] : searchParams.country;
+  const rangeParam = Array.isArray(searchParams.range) ? searchParams.range[0] : searchParams.range;
+  const startParam = Array.isArray(searchParams.start) ? searchParams.start[0] : searchParams.start;
+  const endParam = Array.isArray(searchParams.end) ? searchParams.end[0] : searchParams.end;
 
   const year =
     yearParam === "all"
@@ -149,12 +234,43 @@ export function getDashboardFilters(
   const defaultCountry = availableCountries[0] ?? fallbackCountryCode;
   const normalizedCountryCode =
     countryParam === "all" ? "all" : normalizeCountryCode(countryParam ?? defaultCountry);
+  const startDate = normalizeDateInput(startParam);
+  const endDate = normalizeDateInput(endParam);
+
+  let rangePreset: DashboardDateRangePreset;
+
+  if (
+    rangeParam === "all-time" ||
+    rangeParam === "this-year" ||
+    rangeParam === "this-month" ||
+    rangeParam === "last-90-days" ||
+    rangeParam === "custom"
+  ) {
+    rangePreset = rangeParam;
+  } else if (yearParam || monthParam) {
+    rangePreset = year === "all" && month === "all" ? "all-time" : "custom";
+  } else {
+    rangePreset = "all-time";
+  }
+
+  const legacyRange =
+    rangeParam || (!yearParam && !monthParam)
+      ? null
+      : getRangeFromYearMonth(
+          year,
+          month !== "all" && (month < 1 || month > 12) ? "all" : month,
+          bookings,
+          expenses,
+        );
 
   return {
     year,
     month: month !== "all" && (month < 1 || month > 12) ? "all" : month,
     channel: channelParam?.trim() ? channelParam : "all",
     countryCode: normalizedCountryCode,
+    rangePreset,
+    startDate: rangePreset === "custom" ? startDate || format(legacyRange?.start ?? new Date(), "yyyy-MM-dd") : "",
+    endDate: rangePreset === "custom" ? endDate || format(legacyRange?.end ?? new Date(), "yyyy-MM-dd") : "",
   };
 }
 
@@ -170,6 +286,7 @@ export function filterBookingsForFilters({
   fallbackCountryCode: CountryCode;
 }) {
   const propertyCountryMap = createPropertyCountryMap(properties, fallbackCountryCode);
+  const range = getRangeFromFilters(filters, bookings, []);
 
   return bookings
     .filter((booking) => {
@@ -181,7 +298,7 @@ export function filterBookingsForFilters({
 
       return filters.countryCode === "all" || countryCode === filters.countryCode;
     })
-    .filter((booking) => matchesDateFilter(booking.checkIn, filters.year, filters.month))
+    .filter((booking) => matchesDateFilter(booking.checkIn, range))
     .filter((booking) => filters.channel === "all" || booking.channel === filters.channel);
 }
 
@@ -197,6 +314,7 @@ export function filterExpensesForFilters({
   fallbackCountryCode: CountryCode;
 }) {
   const propertyCountryMap = createPropertyCountryMap(properties, fallbackCountryCode);
+  const range = getRangeFromFilters(filters, [], expenses);
 
   return expenses
     .filter((expense) => {
@@ -208,7 +326,7 @@ export function filterExpensesForFilters({
 
       return filters.countryCode === "all" || countryCode === filters.countryCode;
     })
-    .filter((expense) => matchesDateFilter(expense.date, filters.year, filters.month));
+    .filter((expense) => matchesDateFilter(expense.date, range));
 }
 
 export function buildDashboardView({
@@ -270,8 +388,13 @@ export function buildDashboardView({
     return filters.countryCode === "all" || countryCode === filters.countryCode;
   });
 
+  const activeRange = getRangeFromFilters(
+    filters,
+    countryFilteredBookings,
+    countryFilteredExpenses,
+  );
   const dateFilteredBookings = countryFilteredBookings.filter((booking) =>
-    matchesDateFilter(booking.checkIn, filters.year, filters.month),
+    matchesDateFilter(booking.checkIn, activeRange),
   );
 
   const filteredBookings = dateFilteredBookings.filter(
@@ -279,17 +402,14 @@ export function buildDashboardView({
   );
 
   const filteredExpenses = countryFilteredExpenses.filter((expense) =>
-    matchesDateFilter(expense.date, filters.year, filters.month),
+    matchesDateFilter(expense.date, activeRange),
   );
-  const monthlyRange = getRangeFromFilters(
-    filters,
-    countryFilteredBookings,
-    countryFilteredExpenses,
-  );
+  const monthlyRange = activeRange;
   const monthKeys = eachMonthOfInterval({
     start: monthlyRange.start,
     end: monthlyRange.end,
   }).map((month) => format(month, "yyyy-MM"));
+  const useYearInLabel = new Set(monthKeys.map((key) => key.slice(0, 4))).size > 1;
   const totals = calculateTotals(
     filteredBookings,
     filteredExpenses,
@@ -297,7 +417,7 @@ export function buildDashboardView({
   );
   const monthlyData = calculateMonthlyData(filteredBookings, filteredExpenses, {
     monthKeys,
-    useYearInLabel: filters.year === "all",
+    useYearInLabel,
   });
   const channelData = calculateChannelData(filteredBookings);
   const expenseCategoryTotals = calculateExpenseCategories(filteredExpenses);
@@ -399,6 +519,7 @@ export function buildDashboardView({
     availableChannels,
     availableCountries,
     filters,
+    rangeLabel: monthlyRange.label,
     displayCurrencyCode,
     mixedCurrencyMode: filters.countryCode === "all" && availableCountries.length > 1,
     marketBreakdown,

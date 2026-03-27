@@ -88,11 +88,11 @@ export default async function ExpensesPage({
       <div className="space-y-6">
         <div className="flex justify-end">
           <FilterBar
-            years={view.availableYears}
             channels={view.availableChannels}
             countries={view.availableCountries}
-            selectedYear={view.filters.year}
-            selectedMonth={view.filters.month}
+            selectedRangePreset={view.filters.rangePreset}
+            selectedStartDate={view.filters.startDate}
+            selectedEndDate={view.filters.endDate}
             selectedChannel={view.filters.channel}
             selectedCountryCode={view.filters.countryCode}
             showChannelSelect={false}
@@ -129,7 +129,7 @@ export default async function ExpensesPage({
 
         <SectionCard
           title="All Expenses"
-          subtitle="Use the filters above to focus by market, year, and month."
+          subtitle="Use the filters above to focus by market and date range."
         >
           <ExpensesManager
             expenses={filteredExpenses}

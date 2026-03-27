@@ -50,21 +50,15 @@ export default async function PerformancePage({
     properties,
     userSettings.primaryCountryCode,
   );
-  const performanceFilters = {
-    ...filters,
-    month: "all" as const,
-  };
   const view = buildDashboardView({
     bookings,
     expenses,
-    filters: performanceFilters,
+    filters,
     properties,
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
   });
-  const rangeLabel =
-    performanceFilters.year === "all" ? "All imported months" : String(performanceFilters.year);
 
   return (
     <WorkspaceShell
@@ -78,21 +72,20 @@ export default async function PerformancePage({
       latestImport={latestImport}
       actions={
         <FilterBar
-          years={view.availableYears}
           channels={view.availableChannels}
           countries={view.availableCountries}
-          selectedYear={view.filters.year}
-          selectedMonth="all"
+          selectedRangePreset={view.filters.rangePreset}
+          selectedStartDate={view.filters.startDate}
+          selectedEndDate={view.filters.endDate}
           selectedChannel={view.filters.channel}
           selectedCountryCode={view.filters.countryCode}
-          showMonthSelect={false}
         />
       }
     >
       <PerformancePanel
         view={view}
         currencyCode={view.displayCurrencyCode}
-        rangeLabel={rangeLabel}
+        rangeLabel={view.rangeLabel}
       />
     </WorkspaceShell>
   );
