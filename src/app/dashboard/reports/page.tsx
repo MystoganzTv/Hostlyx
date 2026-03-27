@@ -100,22 +100,22 @@ export default async function ReportsPage({
       latestImport={latestImport}
       subscriptionBadge={subscriptionBadge}
       actions={
-        <div className="rounded-[28px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
-          <FilterBar
-            channels={view.availableChannels}
-            countries={view.availableCountries}
-            selectedRangePreset={view.filters.rangePreset}
-            selectedStartDate={view.filters.startDate}
-            selectedEndDate={view.filters.endDate}
-            selectedChannel={view.filters.channel}
-            selectedCountryCode={view.filters.countryCode}
-            embedded
-          />
+        <div className="flex flex-col gap-3 xl:items-end">
+          <div className="rounded-[28px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+            <FilterBar
+              channels={view.availableChannels}
+              countries={view.availableCountries}
+              selectedRangePreset={view.filters.rangePreset}
+              selectedStartDate={view.filters.startDate}
+              selectedEndDate={view.filters.endDate}
+              selectedChannel={view.filters.channel}
+              selectedCountryCode={view.filters.countryCode}
+              embedded
+            />
+          </div>
           <ExportReportLink
-            className="inline-flex min-h-[52px] min-w-[176px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-[var(--workspace-accent)]/22 bg-[linear-gradient(180deg,rgba(88,196,182,0.2)_0%,rgba(88,196,182,0.12)_100%)] px-5 py-3 text-sm font-semibold text-[var(--workspace-text)] shadow-[0_12px_24px_rgba(6,20,35,0.16)] transition hover:border-[var(--workspace-accent)]/34 hover:bg-[linear-gradient(180deg,rgba(88,196,182,0.28)_0%,rgba(88,196,182,0.16)_100%)]"
+            className="h-14 rounded-[22px] border border-[var(--workspace-border)] bg-[rgba(255,255,255,0.045)] px-4 text-[15px] font-semibold text-[var(--workspace-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition hover:border-[var(--workspace-accent)]/28 hover:bg-[rgba(255,255,255,0.072)]"
           />
-        </div>
         </div>
       }
     >

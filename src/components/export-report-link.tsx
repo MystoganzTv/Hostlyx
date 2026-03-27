@@ -22,11 +22,13 @@ export function ExportReportLink({
       href={href}
       target={target}
       prefetch={false}
-      className={className}
+      className={`inline-flex items-center justify-center gap-2.5 whitespace-nowrap leading-none ${className}`}
       rel={target === "_blank" ? "noreferrer" : undefined}
     >
-      <FileOutput className="h-4 w-4 shrink-0" />
-      <span>{label}</span>
+      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/4 text-[var(--workspace-text)]">
+        <FileOutput className="h-4 w-4 shrink-0 opacity-90" />
+      </span>
+      <span className="translate-y-[0.5px]">{label}</span>
     </Link>
   );
 }
