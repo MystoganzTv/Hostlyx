@@ -11,7 +11,7 @@ export function MarketingHeader({
   activePage,
   signedIn,
 }: {
-  activePage: "home" | "pricing" | "showcase";
+  activePage: "home" | "pricing";
   signedIn: boolean;
 }) {
   return (
@@ -31,9 +31,6 @@ export function MarketingHeader({
             </Link>
             <Link href="/pricing" className={navLinkClassName(activePage === "pricing")}>
               Pricing
-            </Link>
-            <Link href="/showcase" className={navLinkClassName(activePage === "showcase")}>
-              Showcase
             </Link>
           </nav>
 

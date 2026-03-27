@@ -174,7 +174,7 @@ export default async function LandingPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  href="/showcase"
+                  href="#solution"
                   className="brand-button-secondary inline-flex h-13 items-center justify-center gap-2 rounded-2xl px-8 text-base font-semibold transition"
                 >
                   <Play className="h-4 w-4" />

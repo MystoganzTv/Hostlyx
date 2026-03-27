@@ -18,9 +18,6 @@ export function MarketingFooter() {
           <Link href="/pricing" className="transition hover:text-slate-100">
             Pricing
           </Link>
-          <Link href="/showcase" className="transition hover:text-slate-100">
-            Showcase
-          </Link>
           <Link href="/login" className="transition hover:text-slate-100">
             Login
           </Link>

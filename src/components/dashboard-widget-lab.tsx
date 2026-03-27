@@ -617,7 +617,7 @@ function PublicPreviewShell({
       <div className="mx-auto w-full max-w-[1680px]">
         <div className="mb-4 flex flex-col gap-4 rounded-[30px] border border-white/8 bg-[rgba(10,19,33,0.72)] px-5 py-4 shadow-[0_20px_40px_rgba(2,6,23,0.18)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
-            <BrandLogo href="/showcase" compact />
+            <BrandLogo href="/dashboard" compact />
             <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
               Mystodev lab
             </span>
@@ -626,8 +626,8 @@ function PublicPreviewShell({
             <p className="text-sm text-[var(--workspace-muted)]">
               Experimental grid canvas for testing widget-based dashboard layouts.
             </p>
-            <Link href="/showcase" className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition">
-              Back to showcase
+            <Link href="/dashboard" className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition">
+              Back to dashboard
             </Link>
           </div>
         </div>
