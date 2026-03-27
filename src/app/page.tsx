@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CircleCheckBig, Sparkles } from "lucide-react";
 import { getAuthSession } from "@/lib/auth";
 import { MarketingFooter } from "@/components/marketing-footer";
+import { MarketingDashboardPreview } from "@/components/marketing-dashboard-preview";
 import { MarketingHeader } from "@/components/marketing-header";
 
 const problemPoints = [
@@ -66,76 +67,7 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <div className="marketing-panel rounded-[34px] p-6 sm:p-7">
-            <div className="rounded-[28px] bg-[linear-gradient(180deg,rgba(14,26,44,0.98)_0%,rgba(8,17,30,0.96)_100%)] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.26)]">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Hostlyx preview</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-100">Financial overview</p>
-                </div>
-                <span className="rounded-full bg-emerald-400/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">
-                  Profit first
-                </span>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-[1.25fr_0.75fr_0.75fr]">
-                <div className="rounded-[24px] bg-[linear-gradient(180deg,rgba(29,78,60,0.28)_0%,rgba(11,29,24,0.88)_100%)] p-5 ring-1 ring-emerald-300/18">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/80">
-                    Net Profit
-                  </p>
-                  <p className="mt-4 text-4xl font-semibold tracking-tight text-white">€9,654</p>
-                  <p className="mt-3 text-sm text-emerald-100/80">Your clearest answer to whether the business is really working.</p>
-                </div>
-                <div className="rounded-[24px] bg-white/[0.04] p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Revenue</p>
-                  <p className="mt-4 text-3xl font-semibold text-slate-100">€46,857</p>
-                </div>
-                <div className="rounded-[24px] bg-white/[0.04] p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Expenses</p>
-                  <p className="mt-4 text-3xl font-semibold text-slate-100">€37,203</p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 xl:grid-cols-[1.06fr_0.94fr]">
-                <div className="rounded-[24px] bg-white/[0.04] p-5">
-                  <div className="flex items-end justify-between gap-3">
-                    {[
-                      ["Jan", 34],
-                      ["Feb", 48],
-                      ["Mar", 58],
-                      ["Apr", 62],
-                      ["May", 55],
-                      ["Jun", 76],
-                    ].map(([label, value]) => (
-                      <div key={label as string} className="flex flex-1 flex-col items-center gap-3">
-                        <div className="flex h-32 w-full items-end">
-                          <div
-                            className="w-full rounded-t-[18px] bg-[linear-gradient(180deg,rgba(88,196,182,0.95)_0%,rgba(56,146,133,0.92)_100%)]"
-                            style={{ height: `${value}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-500">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-4 text-sm text-slate-400">Profit over time</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-[24px] bg-white/[0.04] p-5">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Profit Margin</p>
-                    <p className="mt-4 text-3xl font-semibold text-slate-100">20.6%</p>
-                  </div>
-                  <div className="rounded-[24px] bg-white/[0.04] p-5">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Expense Drain</p>
-                    <p className="mt-4 text-base leading-7 text-slate-300">
-                      Utilities, cleaning, mortgage and host fees are the biggest cost drivers this month.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <MarketingDashboardPreview />
         </section>
 
         <div className="marketing-divider my-14" />

@@ -7,6 +7,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { getAuthSession } from "@/lib/auth";
+import { MarketingDashboardPreview } from "@/components/marketing-dashboard-preview";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
 
@@ -87,6 +88,22 @@ export default async function ShowcasePage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <div className="marketing-divider my-14" />
+
+        <section className="grid items-center gap-10 xl:grid-cols-[1.04fr_0.96fr]">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent-text)]/80">Product preview</p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-100 sm:text-4xl">
+              The preview should feel like the actual software someone would pay for.
+            </h2>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
+              That means a real command-center layout, a clear `profit first` hierarchy, and financial modules that instantly explain what is working and what is not.
+            </p>
+          </div>
+
+          <MarketingDashboardPreview compact />
         </section>
 
         <div className="marketing-divider my-14" />
