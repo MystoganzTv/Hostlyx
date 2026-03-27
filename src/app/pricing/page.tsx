@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { getAuthSession } from "@/lib/auth";
+import { MarketingDashboardPreview } from "@/components/marketing-dashboard-preview";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
 
@@ -53,7 +54,7 @@ export default async function PricingPage() {
       <MarketingHeader activePage="pricing" signedIn={signedIn} />
 
       <main className="mx-auto w-full max-w-7xl px-4 pb-8 pt-10 sm:px-6 xl:px-8">
-        <section className="grid items-end gap-10 xl:grid-cols-[0.98fr_1.02fr]">
+        <section className="grid items-end gap-10 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent-text)]/80">Pricing</p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-100 sm:text-5xl">
@@ -64,24 +65,7 @@ export default async function PricingPage() {
             </p>
           </div>
 
-          <div
-            className="marketing-photo-panel min-h-[340px] rounded-[34px] p-8 sm:p-10"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            <div className="relative z-[1] max-w-sm">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent-text)]/80">
-                Premium product, clear pricing
-              </p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                One product language across every tier.
-              </p>
-            </div>
-          </div>
+          <MarketingDashboardPreview compact variant="value" />
         </section>
 
         <div className="marketing-divider my-14" />

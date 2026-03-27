@@ -103,7 +103,7 @@ export default async function ShowcasePage() {
             </p>
           </div>
 
-          <MarketingDashboardPreview compact />
+          <MarketingDashboardPreview compact variant="feature" />
         </section>
 
         <div className="marketing-divider my-14" />

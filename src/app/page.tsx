@@ -67,7 +67,7 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <MarketingDashboardPreview />
+          <MarketingDashboardPreview variant="profit" />
         </section>
 
         <div className="marketing-divider my-14" />

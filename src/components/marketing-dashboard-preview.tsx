@@ -1,5 +1,6 @@
 type MarketingDashboardPreviewProps = {
   compact?: boolean;
+  variant?: "profit" | "feature" | "value";
 };
 
 const monthlyBars = [
@@ -20,7 +21,64 @@ const expenses = [
 
 export function MarketingDashboardPreview({
   compact = false,
+  variant = "profit",
 }: MarketingDashboardPreviewProps) {
+  const sidebarItems =
+    variant === "value"
+      ? ["Dashboard", "Performance", "Reports", "Imports", "Profile"]
+      : ["Dashboard", "Bookings", "Expenses", "Performance", "Reports"];
+
+  const topBadge =
+    variant === "feature"
+      ? { label: "Operator clarity", className: "bg-cyan-400/12 text-cyan-100" }
+      : variant === "value"
+        ? { label: "Worth paying for", className: "bg-indigo-400/14 text-indigo-100" }
+        : { label: "Profit first", className: "bg-emerald-400/14 text-emerald-200" };
+
+  const previewTitle =
+    variant === "feature"
+      ? "Operator workflow"
+      : variant === "value"
+        ? "Business value"
+        : "Financial overview";
+
+  const chartTitle =
+    variant === "feature"
+      ? "Business performance"
+      : variant === "value"
+        ? "Return on visibility"
+        : "Profit over time";
+
+  const chartSubtitle =
+    variant === "feature"
+      ? "Signals that help operators act fast"
+      : variant === "value"
+        ? "What better financial decisions compound into"
+        : "How the business is performing";
+
+  const bookingsBlockTitle =
+    variant === "feature"
+      ? "Operational detail"
+      : variant === "value"
+        ? "Owner-ready view"
+        : "Recent bookings";
+
+  const moneySignalsTitle =
+    variant === "value" ? "Why hosts pay" : "Money signals";
+
+  const moneySignalItems =
+    variant === "value"
+      ? [
+          ["Time saved", "12h/mo"],
+          ["Margin clarity", "20.6%"],
+          ["Decision speed", "Faster"],
+        ]
+      : [
+          ["ADR", "€212"],
+          ["Occupancy", "73.8%"],
+          ["RevPAR", "€156"],
+        ];
+
   return (
     <div className={`marketing-dashboard-preview relative overflow-hidden rounded-[30px] ${compact ? "p-4 sm:p-5" : "p-5 sm:p-6"}`}>
       <div className="grid gap-4 lg:grid-cols-[188px_1fr]">
@@ -36,7 +94,7 @@ export function MarketingDashboardPreview({
           </div>
 
           <div className="mt-6 space-y-2">
-            {["Dashboard", "Bookings", "Expenses", "Performance", "Reports"].map((item, index) => (
+            {sidebarItems.map((item, index) => (
               <div
                 key={item}
                 className={`rounded-2xl px-4 py-3 text-sm font-medium ${
@@ -53,7 +111,9 @@ export function MarketingDashboardPreview({
           <div className="mt-6 rounded-[20px] bg-white/[0.04] p-4">
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">This month</p>
             <p className="mt-3 text-2xl font-semibold text-white">€9,654</p>
-            <p className="mt-2 text-xs text-emerald-200">Net profit is positive</p>
+            <p className="mt-2 text-xs text-emerald-200">
+              {variant === "value" ? "Clear value, every month" : "Net profit is positive"}
+            </p>
           </div>
         </div>
 
@@ -61,7 +121,12 @@ export function MarketingDashboardPreview({
           <div className="flex flex-col gap-4 border-b border-white/8 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Financial command center</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-white">Dashboard</p>
+              <span
+                className={`mt-3 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${topBadge.className}`}
+              >
+                {topBadge.label}
+              </span>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-white">{previewTitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {["2026", "All months", "Airbnb + Booking"].map((item) => (
@@ -79,7 +144,9 @@ export function MarketingDashboardPreview({
             <div className="rounded-[22px] bg-[linear-gradient(180deg,rgba(29,78,60,0.28)_0%,rgba(11,29,24,0.88)_100%)] p-5 ring-1 ring-emerald-300/18">
               <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">Net Profit</p>
               <p className="mt-4 text-4xl font-semibold tracking-tight text-white">€9,654</p>
-              <p className="mt-2 text-xs text-emerald-100/80">Most important number</p>
+              <p className="mt-2 text-xs text-emerald-100/80">
+                {variant === "feature" ? "The number operators check first" : variant === "value" ? "A number worth paying to understand" : "Most important number"}
+              </p>
             </div>
             <div className="rounded-[22px] bg-white/[0.04] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Revenue</p>
@@ -99,8 +166,8 @@ export function MarketingDashboardPreview({
             <div className="rounded-[22px] bg-white/[0.04] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">Profit over time</p>
-                  <p className="mt-1 text-xs text-slate-500">How the business is performing</p>
+                  <p className="text-sm font-semibold text-white">{chartTitle}</p>
+                  <p className="mt-1 text-xs text-slate-500">{chartSubtitle}</p>
                 </div>
                 <span className="rounded-full bg-emerald-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
                   +18%
@@ -169,7 +236,7 @@ export function MarketingDashboardPreview({
           {!compact ? (
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
               <div className="rounded-[22px] bg-white/[0.04] p-5">
-                <p className="text-sm font-semibold text-white">Recent bookings</p>
+                <p className="text-sm font-semibold text-white">{bookingsBlockTitle}</p>
                 <div className="mt-4 space-y-3">
                   {[
                     ["John Rivera", "4 nights", "€612 payout"],
@@ -187,13 +254,9 @@ export function MarketingDashboardPreview({
               </div>
 
               <div className="rounded-[22px] bg-white/[0.04] p-5">
-                <p className="text-sm font-semibold text-white">Money signals</p>
+                <p className="text-sm font-semibold text-white">{moneySignalsTitle}</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["ADR", "€212"],
-                    ["Occupancy", "73.8%"],
-                    ["RevPAR", "€156"],
-                  ].map(([label, value]) => (
+                  {moneySignalItems.map(([label, value]) => (
                     <div key={label} className="rounded-[18px] bg-white/[0.03] px-4 py-4">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
                       <p className="mt-3 text-lg font-semibold text-white">{value}</p>
