@@ -1,17 +1,13 @@
-"use client";
-
 export function ShareReportPrintButton({
   className,
+  href,
 }: {
   className: string;
+  href: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => window.print()}
-      className={className}
-    >
+    <a href={href} className={className}>
       Export PDF
-    </button>
+    </a>
   );
 }

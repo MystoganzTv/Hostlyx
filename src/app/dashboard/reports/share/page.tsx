@@ -42,6 +42,29 @@ function createBackHref(searchParams: Record<string, string | string[] | undefin
   return search ? `/dashboard/reports?${search}` : "/dashboard/reports";
 }
 
+function createPdfHref(searchParams: Record<string, string | string[] | undefined>) {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item) {
+          query.append(key, item);
+        }
+      }
+
+      continue;
+    }
+
+    if (value) {
+      query.set(key, value);
+    }
+  }
+
+  const search = query.toString();
+  return search ? `/dashboard/reports/share/pdf?${search}` : "/dashboard/reports/share/pdf";
+}
+
 export default async function SharedReportPage({
   searchParams,
 }: {
@@ -92,6 +115,7 @@ export default async function SharedReportPage({
   });
   const generatedAt = formatDateLabel(new Date().toISOString().slice(0, 10));
   const backHref = createBackHref(resolvedSearchParams);
+  const pdfHref = createPdfHref(resolvedSearchParams);
 
   return (
     <main className="report-print-shell min-h-screen bg-[#eef3f7] px-4 py-6 text-slate-950 sm:px-6 sm:py-8">
@@ -112,7 +136,10 @@ export default async function SharedReportPage({
           >
             Back to reports
           </Link>
-          <ShareReportPrintButton className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800" />
+          <ShareReportPrintButton
+            href={pdfHref}
+            className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          />
         </div>
       </div>
 
