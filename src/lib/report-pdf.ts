@@ -154,10 +154,10 @@ function drawMetricCard(
     ? options.y + options.height - 78
     : options.y + options.height - (compactCard ? 42 : 46);
   const helperTop = options.emphasis
-    ? options.y + 30
+    ? options.y + 18
     : options.y + (compactCard ? 14 : 16);
   const helperSize = compactCard ? 8.8 : 9.5;
-  const helperLines = options.emphasis ? 2 : 1;
+  const helperLines = options.emphasis ? 2 : compactCard ? 0 : 1;
 
   drawRect(page, {
     x: options.x,
@@ -178,18 +178,20 @@ function drawMetricCard(
     color: valueColor,
   });
 
-  drawTextBlock(
-    page,
-    fonts.regular,
-    options.helper,
-    options.x + 16,
-    helperTop,
-    options.width - 32,
-    helperSize,
-    helperColor,
-    compactCard ? 10.5 : 12,
-    helperLines,
-  );
+  if (helperLines > 0) {
+    drawTextBlock(
+      page,
+      fonts.regular,
+      options.helper,
+      options.x + 16,
+      helperTop,
+      options.width - 32,
+      helperSize,
+      helperColor,
+      compactCard ? 10.5 : 12,
+      helperLines,
+    );
+  }
 }
 
 function drawDetailCard(
