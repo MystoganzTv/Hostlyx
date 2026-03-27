@@ -152,19 +152,19 @@ export function ChartsPanel({
           </div>
         ) : (
           <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max items-end gap-5 px-1">
+            <div className="flex min-w-max items-end gap-4 px-1">
             {monthlySummary.map((month) => {
-              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 74, 18)}%`;
+              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 72, 16)}%`;
               const isPositive = month.profit >= 0;
 
               return (
                 <div
                   key={`profit-pill-${month.label}`}
-                  className="flex w-[74px] shrink-0 flex-col items-center gap-3"
+                  className="flex w-[62px] shrink-0 flex-col items-center gap-2.5"
                 >
-                  <div className="flex h-[172px] w-[52px] items-end rounded-[22px] bg-white/[0.03] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                  <div className="flex h-[132px] w-[42px] items-end rounded-[18px] bg-white/[0.03] p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
                     <div
-                      className={`w-full rounded-[16px] shadow-[0_14px_28px_rgba(2,6,23,0.24)] ${
+                      className={`w-full rounded-[14px] shadow-[0_12px_22px_rgba(2,6,23,0.2)] ${
                         isPositive
                           ? "bg-[linear-gradient(180deg,#67d4c7_0%,#2f8f84_100%)]"
                           : "bg-[linear-gradient(180deg,#f2a6ae_0%,#c66474_100%)]"
@@ -175,7 +175,7 @@ export function ChartsPanel({
                   </div>
 
                   <div className="space-y-1 text-center">
-                    <p className="text-xs font-medium text-[var(--workspace-text)]">{month.label}</p>
+                    <p className="text-[11px] font-medium text-[var(--workspace-text)]">{month.label}</p>
                     <p className={`text-[11px] ${isPositive ? "text-emerald-300" : "text-rose-200"}`}>
                       {formatCurrency(month.profit, false, currencyCode)}
                     </p>
