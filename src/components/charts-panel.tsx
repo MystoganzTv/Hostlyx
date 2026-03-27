@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -56,6 +56,15 @@ function topCostShare(expensesByCategory: CategoryPoint[]) {
   }));
 }
 
+function buildBarsLabel(month: MonthlyPoint, index: number, months: MonthlyPoint[]) {
+  const currentKey = month.key ?? month.label;
+  const currentYear = currentKey.slice(0, 4);
+  const previousYear = index > 0 ? (months[index - 1]?.key ?? months[index - 1]?.label).slice(0, 4) : null;
+  const baseMonth = month.label.slice(0, 3);
+
+  return previousYear !== currentYear ? `${baseMonth} '${currentYear.slice(2)}` : baseMonth;
+}
+
 export function ChartsPanel({
   monthlySummary,
   expensesByCategory,
@@ -70,9 +79,11 @@ export function ChartsPanel({
   mixedCurrencyMode?: boolean;
 }) {
   const [profitChartMode, setProfitChartMode] = useState<"trend" | "bars">("trend");
+  const [activeProfitBarKey, setActiveProfitBarKey] = useState<string | null>(null);
   const costStructure = topCostShare(expensesByCategory);
+  const barsSummary = useMemo(() => monthlySummary.slice(-12), [monthlySummary]);
   const largestProfitMagnitude = Math.max(
-    ...monthlySummary.map((month) => Math.abs(month.profit)),
+    ...barsSummary.map((month) => Math.abs(month.profit)),
     1,
   );
 
@@ -152,17 +163,22 @@ export function ChartsPanel({
           </div>
         ) : (
           <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max items-end gap-4 px-1">
-            {monthlySummary.map((month) => {
-              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 72, 16)}%`;
+            <div className="flex min-w-max items-end gap-3 px-1">
+            {barsSummary.map((month, index) => {
+              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 68, 14)}%`;
               const isPositive = month.profit >= 0;
+              const isActive = activeProfitBarKey === (month.key ?? month.label);
 
               return (
                 <div
-                  key={`profit-pill-${month.label}`}
-                  className="flex w-[62px] shrink-0 flex-col items-center gap-2.5"
+                  key={`profit-pill-${month.key ?? month.label}`}
+                  className="flex w-[54px] shrink-0 flex-col items-center gap-2"
                 >
-                  <div className="flex h-[132px] w-[42px] items-end rounded-[18px] bg-white/[0.03] p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                  <div
+                    className="flex h-[118px] w-[36px] items-end rounded-[16px] bg-white/[0.03] p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
+                    onMouseEnter={() => setActiveProfitBarKey(month.key ?? month.label)}
+                    onMouseLeave={() => setActiveProfitBarKey((current) => (current === (month.key ?? month.label) ? null : current))}
+                  >
                     <div
                       className={`w-full rounded-[14px] shadow-[0_12px_22px_rgba(2,6,23,0.2)] ${
                         isPositive
@@ -171,14 +187,25 @@ export function ChartsPanel({
                       }`}
                       style={{ height: barHeight }}
                       title={`${month.label}: ${formatCurrency(month.profit, false, currencyCode)}`}
+                      onClick={() =>
+                        setActiveProfitBarKey((current) =>
+                          current === (month.key ?? month.label) ? null : month.key ?? month.label,
+                        )
+                      }
                     />
                   </div>
 
                   <div className="space-y-1 text-center">
-                    <p className="text-[11px] font-medium text-[var(--workspace-text)]">{month.label}</p>
-                    <p className={`text-[11px] ${isPositive ? "text-emerald-300" : "text-rose-200"}`}>
-                      {formatCurrency(month.profit, false, currencyCode)}
+                    <p className="text-[11px] font-medium text-[var(--workspace-text)]">
+                      {buildBarsLabel(month, index, barsSummary)}
                     </p>
+                    <div className="h-4">
+                      {isActive ? (
+                        <p className={`text-[11px] ${isPositive ? "text-emerald-300" : "text-rose-200"}`}>
+                          {formatCurrency(month.profit, false, currencyCode)}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );
