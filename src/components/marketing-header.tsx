@@ -16,11 +16,11 @@ export function MarketingHeader({
 }) {
   return (
     <header className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6 xl:px-8">
-      <div className="card-surface flex flex-col gap-4 rounded-[28px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-3">
+      <div className="marketing-shell flex flex-col gap-4 rounded-[28px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-center gap-4">
           <BrandLogo href="/" showTagline />
-          <span className="text-sm text-slate-400">
-            Accounting SaaS for short-term rentals
+          <span className="hidden text-sm text-slate-400 lg:inline">
+            The financial operating system for short-term rental hosts
           </span>
         </div>
 

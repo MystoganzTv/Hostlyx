@@ -91,6 +91,45 @@ select {
   backdrop-filter: blur(18px);
 }
 
+.marketing-shell {
+  background: linear-gradient(180deg, rgba(12, 23, 39, 0.82) 0%, rgba(8, 17, 28, 0.68) 100%);
+  box-shadow:
+    0 24px 60px rgba(2, 6, 23, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(18px);
+}
+
+.marketing-panel {
+  background: linear-gradient(180deg, rgba(12, 23, 39, 0.76) 0%, rgba(8, 17, 28, 0.6) 100%);
+  box-shadow:
+    0 20px 46px rgba(2, 6, 23, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+}
+
+.marketing-photo-panel {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px rgba(2, 6, 23, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.marketing-photo-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 17, 28, 0.08) 0%, rgba(7, 17, 28, 0.72) 100%),
+    radial-gradient(circle at top right, rgba(88, 196, 182, 0.18), transparent 34%);
+  pointer-events: none;
+}
+
+.marketing-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 18%, rgba(255, 255, 255, 0.14) 82%, transparent 100%);
+}
+
 .workspace-card {
   background: linear-gradient(180deg, rgba(16, 28, 46, 0.96) 0%, rgba(11, 22, 38, 0.98) 100%);
   border: 1px solid var(--workspace-border);
