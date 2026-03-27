@@ -734,6 +734,7 @@ async function ensureDatabase() {
 
 function mapImportSummary(row: Record<string, unknown>): ImportSummary {
   const importedAt = getRowValue(row, "importedAt", "importedat");
+  const importedAtFallback = new Date().toISOString();
 
   return {
     id: Number(getRowValue(row, "id")),
@@ -741,10 +742,7 @@ function mapImportSummary(row: Record<string, unknown>): ImportSummary {
     propertyName:
       String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
     source: String(getRowValue(row, "source")) as ImportSource,
-    importedAt:
-      importedAt instanceof Date
-        ? importedAt.toISOString()
-        : String(importedAt),
+    importedAt: normalizeTimestampValue(importedAt, importedAtFallback),
     bookingsCount: Number(getRowValue(row, "bookingsCount", "bookingscount")),
     expensesCount: Number(getRowValue(row, "expensesCount", "expensescount")),
   };
@@ -825,6 +823,19 @@ function getRowValue(row: Record<string, unknown>, ...keys: string[]) {
   }
 
   return undefined;
+}
+
+function normalizeTimestampValue(value: unknown, fallback: string) {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+  }
+
+  return fallback;
 }
 
 function cloneImportSummary(importSummary: StoredImport): ImportSummary {
@@ -1992,7 +2003,10 @@ export async function getImportedWorkbookMatches(
       propertyName:
         String(getRowValue(row as Record<string, unknown>, "propertyName", "propertyname")) ||
         "Default Property",
-      importedAt: String(getRowValue(row as Record<string, unknown>, "importedAt", "importedat")),
+      importedAt: normalizeTimestampValue(
+        getRowValue(row as Record<string, unknown>, "importedAt", "importedat"),
+        new Date().toISOString(),
+      ),
     }));
   }
 
@@ -2036,7 +2050,10 @@ export async function getImportedWorkbookMatches(
     workbookHash: String(getRowValue(row, "workbookHash", "workbookhash")),
     fileName: String(getRowValue(row, "fileName", "filename")),
     propertyName: String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
-    importedAt: String(getRowValue(row, "importedAt", "importedat")),
+    importedAt: normalizeTimestampValue(
+      getRowValue(row, "importedAt", "importedat"),
+      new Date().toISOString(),
+    ),
   }));
 }
 
@@ -3840,8 +3857,14 @@ export async function getAuthUserByEmail(email: string) {
       ownerEmail: String(result.rows[0].owneremail ?? result.rows[0].ownerEmail),
       fullName: String(result.rows[0].fullname ?? result.rows[0].fullName),
       passwordHash: String(result.rows[0].passwordhash ?? result.rows[0].passwordHash),
-      createdAt: String(result.rows[0].createdat ?? result.rows[0].createdAt),
-      updatedAt: String(result.rows[0].updatedat ?? result.rows[0].updatedAt),
+      createdAt: normalizeTimestampValue(
+        result.rows[0].createdat ?? result.rows[0].createdAt,
+        new Date().toISOString(),
+      ),
+      updatedAt: normalizeTimestampValue(
+        result.rows[0].updatedat ?? result.rows[0].updatedAt,
+        new Date().toISOString(),
+      ),
     };
   }
 
@@ -3875,8 +3898,14 @@ export async function getAuthUserByEmail(email: string) {
     ownerEmail: String(getRowValue(row, "ownerEmail", "owneremail")),
     fullName: String(getRowValue(row, "fullName", "fullname")),
     passwordHash: String(getRowValue(row, "passwordHash", "passwordhash")),
-    createdAt: String(getRowValue(row, "createdAt", "createdat")),
-    updatedAt: String(getRowValue(row, "updatedAt", "updatedat")),
+    createdAt: normalizeTimestampValue(
+      getRowValue(row, "createdAt", "createdat"),
+      new Date().toISOString(),
+    ),
+    updatedAt: normalizeTimestampValue(
+      getRowValue(row, "updatedAt", "updatedat"),
+      new Date().toISOString(),
+    ),
   };
 }
 
@@ -3963,6 +3992,16 @@ function normalizeStoredSubscription(
   ownerEmail: string,
   row: Record<string, unknown> | StoredSubscription,
 ): StoredSubscription {
+  const trialStartedAtFallback = new Date().toISOString();
+  const trialEndsAtFallback = getTrialEndDate(trialStartedAtFallback);
+  const updatedAtFallback = trialStartedAtFallback;
+  const activatedAtValue = getRowValue(
+    row as Record<string, unknown>,
+    "activatedAt",
+    "activated_at",
+    "activatedat",
+  );
+
   return {
     ownerEmail,
     plan: normalizeSubscriptionPlan(
@@ -3971,24 +4010,21 @@ function normalizeStoredSubscription(
     status: normalizeSubscriptionStatus(
       String(getRowValue(row as Record<string, unknown>, "status") ?? "trialing"),
     ),
-    trialStartedAt: String(
-      getRowValue(row as Record<string, unknown>, "trialStartedAt", "trial_started_at", "trialstartedat") ??
-        new Date().toISOString(),
+    trialStartedAt: normalizeTimestampValue(
+      getRowValue(row as Record<string, unknown>, "trialStartedAt", "trial_started_at", "trialstartedat"),
+      trialStartedAtFallback,
     ),
-    trialEndsAt: String(
-      getRowValue(row as Record<string, unknown>, "trialEndsAt", "trial_ends_at", "trialendsat") ??
-        getTrialEndDate(new Date().toISOString()),
+    trialEndsAt: normalizeTimestampValue(
+      getRowValue(row as Record<string, unknown>, "trialEndsAt", "trial_ends_at", "trialendsat"),
+      trialEndsAtFallback,
     ),
     activatedAt:
-      (getRowValue(
-        row as Record<string, unknown>,
-        "activatedAt",
-        "activated_at",
-        "activatedat",
-      ) as string | null | undefined) ?? null,
-    updatedAt: String(
-      getRowValue(row as Record<string, unknown>, "updatedAt", "updated_at", "updatedat") ??
-        new Date().toISOString(),
+      activatedAtValue == null
+        ? null
+        : normalizeTimestampValue(activatedAtValue, trialStartedAtFallback),
+    updatedAt: normalizeTimestampValue(
+      getRowValue(row as Record<string, unknown>, "updatedAt", "updated_at", "updatedat"),
+      updatedAtFallback,
     ),
   };
 }
