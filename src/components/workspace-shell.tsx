@@ -7,12 +7,14 @@ import {
   Building2,
   CalendarDays,
   CalendarRange,
+  ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
   DatabaseZap,
   LayoutDashboard,
   LogOut,
   ReceiptText,
+  Wallet,
   UserCircle2,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
@@ -20,7 +22,17 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { formatDateLabel } from "@/lib/format";
 import type { CurrencyCode, ImportSummary } from "@/lib/types";
 
-type ActivePage = "dashboard" | "calendar" | "monthly" | "bookings" | "expenses" | "imports" | "properties" | "profile";
+type ActivePage =
+  | "dashboard"
+  | "calendar"
+  | "monthly"
+  | "bookings"
+  | "expenses"
+  | "cashflow"
+  | "performance"
+  | "imports"
+  | "properties"
+  | "profile";
 const sidebarStorageKey = "hostlyx:sidebar-collapsed";
 
 const navItems: Array<{
@@ -34,6 +46,8 @@ const navItems: Array<{
   { id: "monthly", label: "Monthly", href: "/dashboard/monthly", icon: CalendarRange },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
+  { id: "cashflow", label: "Cashflow", href: "/dashboard/cashflow", icon: Wallet },
+  { id: "performance", label: "Performance", href: "/dashboard/performance", icon: ChartNoAxesCombined },
   { id: "imports", label: "Import History", href: "/dashboard/imports", icon: DatabaseZap },
   { id: "properties", label: "Properties", href: "/dashboard/properties", icon: Building2 },
   { id: "profile", label: "Profile", href: "/profile", icon: UserCircle2 },
