@@ -151,16 +151,20 @@ export function ChartsPanel({
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="grid min-h-[320px] grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="overflow-x-auto pb-2">
+            <div className="flex min-w-max items-end gap-5 px-1">
             {monthlySummary.map((month) => {
-              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 72, 20)}%`;
+              const barHeight = `${Math.max((Math.abs(month.profit) / largestProfitMagnitude) * 74, 18)}%`;
               const isPositive = month.profit >= 0;
 
               return (
-                <div key={`profit-pill-${month.label}`} className="flex flex-col items-center gap-4">
-                  <div className="flex h-[220px] w-full max-w-[84px] items-end rounded-[26px] bg-white/[0.03] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                <div
+                  key={`profit-pill-${month.label}`}
+                  className="flex w-[74px] shrink-0 flex-col items-center gap-3"
+                >
+                  <div className="flex h-[172px] w-[52px] items-end rounded-[22px] bg-white/[0.03] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
                     <div
-                      className={`w-full rounded-[22px] shadow-[0_18px_35px_rgba(2,6,23,0.28)] ${
+                      className={`w-full rounded-[16px] shadow-[0_14px_28px_rgba(2,6,23,0.24)] ${
                         isPositive
                           ? "bg-[linear-gradient(180deg,#67d4c7_0%,#2f8f84_100%)]"
                           : "bg-[linear-gradient(180deg,#f2a6ae_0%,#c66474_100%)]"
@@ -171,14 +175,15 @@ export function ChartsPanel({
                   </div>
 
                   <div className="space-y-1 text-center">
-                    <p className="text-sm font-medium text-[var(--workspace-text)]">{month.label}</p>
-                    <p className={`text-xs ${isPositive ? "text-emerald-300" : "text-rose-200"}`}>
+                    <p className="text-xs font-medium text-[var(--workspace-text)]">{month.label}</p>
+                    <p className={`text-[11px] ${isPositive ? "text-emerald-300" : "text-rose-200"}`}>
                       {formatCurrency(month.profit, false, currencyCode)}
                     </p>
                   </div>
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </SectionCard>
