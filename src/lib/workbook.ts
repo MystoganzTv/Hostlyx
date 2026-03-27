@@ -11,6 +11,7 @@ import type {
   CalendarClosureRecord,
   ExpenseRecord,
 } from "./types";
+import { normalizeExpenseFields } from "./expense-normalization";
 
 type CellValue = string | number | boolean | Date | null | undefined;
 type SheetRow = CellValue[];
@@ -488,15 +489,23 @@ export function parseWorkbook(buffer: ArrayBuffer) {
   const expenses: ExpenseRecord[] = expenseRows
     .slice(expenseHeaderRowIndex + 1)
     .filter((row) => !rowIsEmpty(row))
-    .map((row) => ({
-      propertyName: "Default Property",
-      unitName: "",
-      date: parseExcelDate(row[expenseIndexes.date]),
-      category: String(row[expenseIndexes.category] ?? "").trim() || "Other",
-      amount: parseCurrency(row[expenseIndexes.amount]),
-      description: String(row[expenseIndexes.description] ?? "").trim() || "Expense import entry",
-      note: String(row[expenseIndexes.note] ?? "").trim(),
-    }))
+    .map((row) => {
+      const normalizedExpenseFields = normalizeExpenseFields({
+        amountValue: row[expenseIndexes.amount],
+        descriptionValue: row[expenseIndexes.description],
+        noteValue: row[expenseIndexes.note],
+      });
+
+      return {
+        propertyName: "Default Property",
+        unitName: "",
+        date: parseExcelDate(row[expenseIndexes.date]),
+        category: String(row[expenseIndexes.category] ?? "").trim() || "Other",
+        amount: normalizedExpenseFields.amount,
+        description: normalizedExpenseFields.description,
+        note: normalizedExpenseFields.note,
+      };
+    })
     .filter((expense) => expense.date);
 
   const closures = calendarRows.length > 0 ? parseCalendarClosures(calendarRows) : [];

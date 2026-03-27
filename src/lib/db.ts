@@ -13,6 +13,7 @@ import type {
   PropertyUnit,
   UserSettings,
 } from "./types";
+import { normalizeExpenseFields } from "./expense-normalization";
 import {
   getCountryForCurrency,
   getCurrencyForCountry,
@@ -658,6 +659,12 @@ function mapBookingRecord(row: Record<string, unknown>): BookingRecord {
 }
 
 function mapExpenseRecord(row: Record<string, unknown>): ExpenseRecord {
+  const normalizedExpenseFields = normalizeExpenseFields({
+    amountValue: getRowValue(row, "amount"),
+    descriptionValue: getRowValue(row, "description"),
+    noteValue: getRowValue(row, "note"),
+  });
+
   return {
     id: Number(getRowValue(row, "id")),
     importId: Number(getRowValue(row, "importId", "importid")),
@@ -666,9 +673,9 @@ function mapExpenseRecord(row: Record<string, unknown>): ExpenseRecord {
     unitName: String(getRowValue(row, "unitName", "unitname")),
     date: String(getRowValue(row, "date")),
     category: String(getRowValue(row, "category")),
-    amount: Number(getRowValue(row, "amount")),
-    description: String(getRowValue(row, "description")),
-    note: String(getRowValue(row, "note")),
+    amount: normalizedExpenseFields.amount,
+    description: normalizedExpenseFields.description,
+    note: normalizedExpenseFields.note,
   };
 }
 
