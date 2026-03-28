@@ -23,11 +23,7 @@ export function Modal({
     }
 
     const frameId = window.requestAnimationFrame(() => {
-      modalCardRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
-      });
+      modalCardRef.current?.focus({ preventScroll: true });
     });
 
     return () => {
@@ -40,7 +36,8 @@ export function Modal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6">
+      <div className="flex min-h-full items-center justify-center">
       {dismissible ? (
         <button
           type="button"
@@ -53,7 +50,8 @@ export function Modal({
       )}
       <div
         ref={modalCardRef}
-        className="workspace-card relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] p-5 sm:p-6"
+        tabIndex={-1}
+        className="workspace-card relative z-10 my-auto max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] p-5 outline-none sm:p-6"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold tracking-tight text-[var(--workspace-text)]">{title}</h2>
@@ -68,6 +66,7 @@ export function Modal({
           ) : null}
         </div>
         {children}
+      </div>
       </div>
     </div>
   );
