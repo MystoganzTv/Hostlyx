@@ -9,7 +9,12 @@ import {
   rowIsEmpty,
   toRawRow,
 } from "./columnMatchers";
-import { calculateNights, parseImportDateDetailed, parseNights } from "./dates";
+import {
+  calculateNights,
+  inferDatePreferenceFromSheet,
+  parseImportDateDetailed,
+  parseNights,
+} from "./dates";
 import { inferCurrency, parseMoney } from "./money";
 import { validateBookingRow, validateExpenseRow } from "./validators";
 import type {
@@ -59,6 +64,16 @@ export function normalizeGeneric(workbook: ParsedImportWorkbook): ImportNormaliz
     note: genericExpenseColumns.note,
   });
   const expenseOptional = mapOptionalColumns(expenseHeaders, genericExpenseColumns);
+  const bookingDatePreference = inferDatePreferenceFromSheet(
+    bookingHeaders,
+    bookingsSheet.rows.slice(bookingHeaderRowIndex + 1).filter((row) => !rowIsEmpty(row)),
+    [bookingIndexes.checkIn, bookingIndexes.checkOut],
+  );
+  const expenseDatePreference = inferDatePreferenceFromSheet(
+    expenseHeaders,
+    expensesSheet.rows.slice(expenseHeaderRowIndex + 1).filter((row) => !rowIsEmpty(row)),
+    [expenseIndexes.date],
+  );
 
   const warnings: ImportValidationWarning[] = [];
   const bookings: ImportBookingCandidate[] = [];
@@ -73,8 +88,12 @@ export function normalizeGeneric(workbook: ParsedImportWorkbook): ImportNormaliz
       const payoutMoney = parseMoney(getCell(row, bookingOptional.payout));
       const feeMoney = parseMoney(getCell(row, bookingOptional.hostFee));
       const cleaningMoney = parseMoney(getCell(row, bookingOptional.cleaningFee));
-      const checkInMeta = parseImportDateDetailed(getCell(row, bookingIndexes.checkIn));
-      const checkOutMeta = parseImportDateDetailed(getCell(row, bookingIndexes.checkOut));
+      const checkInMeta = parseImportDateDetailed(getCell(row, bookingIndexes.checkIn), {
+        datePreference: bookingDatePreference,
+      });
+      const checkOutMeta = parseImportDateDetailed(getCell(row, bookingIndexes.checkOut), {
+        datePreference: bookingDatePreference,
+      });
       const derivedNights =
         parseNights(getCell(row, bookingOptional.rentalPeriod)) ||
         calculateNights(checkInMeta.value, checkOutMeta.value);
@@ -141,7 +160,9 @@ export function normalizeGeneric(workbook: ParsedImportWorkbook): ImportNormaliz
         descriptionValue: getCell(row, expenseIndexes.description),
         noteValue: getCell(row, expenseIndexes.note),
       });
-      const expenseDateMeta = parseImportDateDetailed(getCell(row, expenseIndexes.date));
+      const expenseDateMeta = parseImportDateDetailed(getCell(row, expenseIndexes.date), {
+        datePreference: expenseDatePreference,
+      });
       const amountMeta = parseMoney(getCell(row, expenseIndexes.amount));
       const expense: NormalizedImportExpense = {
         source: "generic",

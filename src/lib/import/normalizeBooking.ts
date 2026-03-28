@@ -8,6 +8,7 @@ import {
 import {
   calculateNights,
   deriveCheckOut,
+  inferDatePreferenceFromSheet,
   parseImportDateDetailed,
   parseNights,
 } from "./dates";
@@ -58,6 +59,11 @@ export function normalizeBooking(workbook: ParsedImportWorkbook): ImportNormaliz
   }
 
   const headers = selectedSheet.rows[selectedHeaderRowIndex];
+  const datePreference = inferDatePreferenceFromSheet(
+    headers,
+    selectedSheet.rows.slice(selectedHeaderRowIndex + 1).filter((row) => !rowIsEmpty(row)),
+    [selectedIndexes.checkIn, selectedIndexes.checkOut],
+  );
   const warnings: ImportValidationWarning[] = [];
   const bookings: ImportBookingCandidate[] = [];
 
@@ -71,8 +77,12 @@ export function normalizeBooking(workbook: ParsedImportWorkbook): ImportNormaliz
       const feeMoney = parseMoney(getCell(row, selectedIndexes.platformFee));
       const cleaningMoney = parseMoney(getCell(row, selectedIndexes.cleaningFee));
       const explicitNights = parseNights(getCell(row, selectedIndexes.nights));
-      const checkInMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkIn));
-      let checkOutMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkOut));
+      const checkInMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkIn), {
+        datePreference,
+      });
+      let checkOutMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkOut), {
+        datePreference,
+      });
 
       if (!checkOutMeta.value && checkInMeta.value && explicitNights > 0) {
         checkOutMeta = {

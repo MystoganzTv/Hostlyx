@@ -1,5 +1,9 @@
 import { getCell, rowIsEmpty, toRawRow } from "./columnMatchers";
-import { calculateNights, parseImportDateDetailed } from "./dates";
+import {
+  calculateNights,
+  inferDatePreferenceFromSheet,
+  parseImportDateDetailed,
+} from "./dates";
 import { inferCurrency, parseMoney } from "./money";
 import { validateBookingRow } from "./validators";
 import type {
@@ -32,14 +36,20 @@ export function normalizeManual(
 
   const warnings: ImportValidationWarning[] = [];
   const bookings: ImportBookingCandidate[] = [];
+  const dataRows = sheet.rows.slice(mapping.headerRowIndex + 1).filter((row) => !rowIsEmpty(row));
+  const datePreference = inferDatePreferenceFromSheet(headers, dataRows, [
+    mapping.checkIn ?? undefined,
+    mapping.checkOut ?? undefined,
+  ]);
 
-  sheet.rows
-    .slice(mapping.headerRowIndex + 1)
-    .filter((row) => !rowIsEmpty(row))
-    .forEach((row, index) => {
+  dataRows.forEach((row, index) => {
       const rowIndex = mapping.headerRowIndex + index + 2;
-      const checkInMeta = parseImportDateDetailed(getCell(row, mapping.checkIn ?? undefined));
-      const checkOutMeta = parseImportDateDetailed(getCell(row, mapping.checkOut ?? undefined));
+      const checkInMeta = parseImportDateDetailed(getCell(row, mapping.checkIn ?? undefined), {
+        datePreference,
+      });
+      const checkOutMeta = parseImportDateDetailed(getCell(row, mapping.checkOut ?? undefined), {
+        datePreference,
+      });
       const grossMoney = parseMoney(getCell(row, mapping.grossRevenue ?? undefined));
       const payoutMoney =
         mapping.payout != null
@@ -100,6 +110,6 @@ export function normalizeManual(
     warnings,
     duplicates: [],
     skippedRows: 0,
-    totalRowsRead: sheet.rows.slice(mapping.headerRowIndex + 1).filter((row) => !rowIsEmpty(row)).length,
+    totalRowsRead: dataRows.length,
   };
 }

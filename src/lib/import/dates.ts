@@ -1,5 +1,6 @@
 import { addDays, differenceInCalendarDays, formatISO, isValid, parse } from "date-fns";
 import * as XLSX from "xlsx";
+import { normalizeHeader } from "./columnMatchers";
 import type { ImportCellValue } from "./types";
 
 export type ParsedImportDate = {
@@ -7,6 +8,8 @@ export type ParsedImportDate = {
   ambiguous: boolean;
   malformed: boolean;
 };
+
+export type ImportDatePreference = "day-first" | "month-first" | null;
 
 function normalizeParsedDate(value: Date) {
   return formatISO(value, { representation: "date" });
@@ -23,7 +26,11 @@ function parseDateUsingPatterns(raw: string, patterns: string[]) {
   return null;
 }
 
-function buildDatePatterns(raw: string, ambiguous: boolean) {
+function buildDatePatterns(
+  raw: string,
+  ambiguous: boolean,
+  datePreference: ImportDatePreference = null,
+) {
   const slashOrDashMatch = raw.match(/^(\d{1,2})([/-])(\d{1,2})\2(\d{2}|\d{4})$/);
 
   if (slashOrDashMatch) {
@@ -31,6 +38,14 @@ function buildDatePatterns(raw: string, ambiguous: boolean) {
     const yearToken = slashOrDashMatch[4].length === 2 ? "yy" : "yyyy";
     const dayFirstBase = [`d${separator}M${separator}${yearToken}`, `dd${separator}MM${separator}${yearToken}`];
     const monthFirstBase = [`M${separator}d${separator}${yearToken}`, `MM${separator}dd${separator}${yearToken}`];
+
+    if (datePreference === "day-first") {
+      return [...dayFirstBase, ...monthFirstBase];
+    }
+
+    if (datePreference === "month-first") {
+      return [...monthFirstBase, ...dayFirstBase];
+    }
 
     return ambiguous ? [...dayFirstBase, ...monthFirstBase] : [...monthFirstBase, ...dayFirstBase];
   }
@@ -45,7 +60,12 @@ function buildDatePatterns(raw: string, ambiguous: boolean) {
   ];
 }
 
-export function parseImportDateDetailed(value: ImportCellValue): ParsedImportDate {
+export function parseImportDateDetailed(
+  value: ImportCellValue,
+  options?: {
+    datePreference?: ImportDatePreference;
+  },
+): ParsedImportDate {
   if (!value && value !== 0) {
     return {
       value: "",
@@ -91,13 +111,14 @@ export function parseImportDateDetailed(value: ImportCellValue): ParsedImportDat
     Number(ambiguousMatch[2]) <= 12 &&
     ambiguousMatch[1] !== ambiguousMatch[2];
 
-  const prioritizedPatterns = buildDatePatterns(raw, ambiguous);
+  const datePreference = options?.datePreference ?? null;
+  const prioritizedPatterns = buildDatePatterns(raw, ambiguous, datePreference);
 
   const parsed = parseDateUsingPatterns(raw, prioritizedPatterns);
   if (parsed) {
     return {
       value: normalizeParsedDate(parsed),
-      ambiguous,
+      ambiguous: ambiguous && !datePreference,
       malformed: false,
     };
   }
@@ -120,6 +141,93 @@ export function parseImportDateDetailed(value: ImportCellValue): ParsedImportDat
 
 export function parseImportDate(value: ImportCellValue) {
   return parseImportDateDetailed(value).value;
+}
+
+export function inferDatePreferenceFromSheet(
+  headers: ImportCellValue[],
+  rows: ImportCellValue[][],
+  columnIndexes: Array<number | undefined>,
+): ImportDatePreference {
+  const normalizedHeaders = headers.map((header) => normalizeHeader(header));
+  const spanishSignals = normalizedHeaders.filter((header) =>
+    [
+      "fechadeinicio",
+      "fechadefinalizacion",
+      "fechaentrada",
+      "fechadesalida",
+      "nombredelhuesped",
+      "ganancias",
+      "reservas",
+      "gastos",
+      "numerodereserva",
+      "anuncio",
+      "alojamiento",
+    ].includes(header),
+  ).length;
+  const englishSignals = normalizedHeaders.filter((header) =>
+    [
+      "checkin",
+      "checkout",
+      "arrival",
+      "departure",
+      "guestname",
+      "confirmationcode",
+      "reservationnumber",
+      "listing",
+      "propertyname",
+    ].includes(header),
+  ).length;
+
+  let dayFirstVotes = 0;
+  let monthFirstVotes = 0;
+
+  for (const row of rows.slice(0, 40)) {
+    for (const index of columnIndexes) {
+      if (typeof index !== "number") {
+        continue;
+      }
+
+      const raw = String(row[index] ?? "").trim();
+      const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
+
+      if (!match) {
+        continue;
+      }
+
+      const first = Number(match[1]);
+      const second = Number(match[2]);
+
+      if (first > 12 && second <= 12) {
+        dayFirstVotes += 2;
+      } else if (second > 12 && first <= 12) {
+        monthFirstVotes += 2;
+      } else if (first <= 12 && second <= 12 && first !== second) {
+        if (spanishSignals > englishSignals) {
+          dayFirstVotes += 1;
+        } else if (englishSignals > spanishSignals) {
+          monthFirstVotes += 1;
+        }
+      }
+    }
+  }
+
+  if (dayFirstVotes > monthFirstVotes) {
+    return "day-first";
+  }
+
+  if (monthFirstVotes > dayFirstVotes) {
+    return "month-first";
+  }
+
+  if (spanishSignals > englishSignals) {
+    return "day-first";
+  }
+
+  if (englishSignals > spanishSignals) {
+    return "month-first";
+  }
+
+  return null;
 }
 
 export function parseNights(value: ImportCellValue) {
