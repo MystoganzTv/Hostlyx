@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { LoaderCircle, Send } from "lucide-react";
+import { Clock3, LoaderCircle, Mail, MessageSquareText, Send, ShieldCheck } from "lucide-react";
 
 type ContactFormState = "idle" | "submitting" | "success" | "error";
 
@@ -15,7 +15,7 @@ const topicOptions = [
 ];
 
 function inputClassName() {
-  return "input-surface w-full rounded-2xl px-4 py-3 text-sm";
+  return "input-surface w-full rounded-2xl px-4 py-3.5 text-sm";
 }
 
 export function ContactForm() {
@@ -66,22 +66,39 @@ export function ContactForm() {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-      <div className="workspace-soft-card rounded-[28px] p-6 sm:p-7">
-        <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
-            Send a message
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-100">
-            We will get back to you by email.
+    <section className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="workspace-card relative overflow-hidden rounded-[30px] p-6 sm:p-8">
+        <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(88,196,182,0.16)_0%,rgba(88,196,182,0.02)_68%,transparent_74%)]" />
+
+        <div className="relative max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--workspace-accent)]/20 bg-[var(--workspace-accent)]/10 px-3 py-1.5">
+            <MessageSquareText className="h-3.5 w-3.5 text-[var(--workspace-accent)]" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
+              Contact Hostlyx
+            </p>
+          </div>
+
+          <h2 className="mt-5 text-[2rem] font-semibold tracking-[-0.05em] text-slate-100 sm:text-[2.35rem]">
+            Tell us what you need.
           </h2>
-          <p className="mt-3 text-sm leading-7 text-slate-300">
-            Use this form for billing, imports, dashboard questions, partnerships, or anything else
-            related to Hostlyx.
+          <p className="mt-4 max-w-xl text-[15px] leading-8 text-slate-300">
+            Reach out for billing, imports, dashboard questions, partnerships, or anything else
+            related to your Hostlyx workspace.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300">
+              <Clock3 className="h-3.5 w-3.5 text-[var(--workspace-accent)]" />
+              Typical reply within 1 business day
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300">
+              <ShieldCheck className="h-3.5 w-3.5 text-[var(--workspace-accent)]" />
+              Best for support and billing
+            </div>
+          </div>
         </div>
 
-        <form className="mt-8 grid gap-4" onSubmit={handleSubmit}>
+        <form className="relative mt-8 grid gap-5" onSubmit={handleSubmit}>
           <input
             type="text"
             name="company"
@@ -151,8 +168,8 @@ export function ContactForm() {
             />
           </label>
 
-          <div className="flex flex-col gap-3 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm leading-6 text-slate-400">
+          <div className="grid gap-4 border-t border-white/8 pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="rounded-[22px] border border-white/6 bg-white/[0.025] px-4 py-3 text-sm leading-6 text-slate-400">
               {status === "success" ? (
                 <p className="font-medium text-emerald-200">
                   Message sent. We will reply as soon as possible.
@@ -167,7 +184,7 @@ export function ContactForm() {
             <button
               type="submit"
               disabled={status === "submitting"}
-              className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+              className="workspace-button-primary inline-flex min-h-[54px] items-center justify-center gap-2 self-start whitespace-nowrap rounded-2xl px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 lg:self-center"
             >
               {status === "submitting" ? (
                 <>
@@ -187,24 +204,57 @@ export function ContactForm() {
 
       <div className="space-y-4">
         <article className="workspace-soft-card rounded-[28px] p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
-            Contact email
-          </p>
-          <p className="mt-4 text-lg font-semibold text-slate-100">hello@hostlyx.com</p>
-          <p className="mt-3 text-sm leading-7 text-slate-300">
-            If you prefer, you can still write to us directly from your inbox.
-          </p>
+          <div className="flex items-start gap-4">
+            <div className="brand-icon rounded-[18px] p-3">
+              <Mail className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
+                Direct email
+              </p>
+              <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-100">
+                hello@hostlyx.com
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-300">
+                Prefer inbox-to-inbox? You can still contact us directly.
+              </p>
+            </div>
+          </div>
         </article>
 
         <article className="workspace-soft-card rounded-[28px] p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
-            Helpful context
-          </p>
-          <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
-            <li>Include the account email tied to your workspace.</li>
-            <li>Mention whether the issue is billing, imports, reporting, or product feedback.</li>
-            <li>Add screenshots or file names in your message when relevant.</li>
-          </ul>
+          <div className="flex items-start gap-4">
+            <div className="brand-icon rounded-[18px] p-3">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
+                What helps most
+              </p>
+              <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
+                <li>Include the account email tied to your workspace.</li>
+                <li>Mention whether it is billing, imports, reporting, or product feedback.</li>
+                <li>Add screenshots or file names when they help explain the issue.</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article className="workspace-soft-card rounded-[28px] p-6">
+          <div className="flex items-start gap-4">
+            <div className="brand-icon rounded-[18px] p-3">
+              <Clock3 className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-text)]">
+                Support flow
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-300">
+                Messages arrive by email so billing threads, import issues, and follow-ups stay in
+                one place.
+              </p>
+            </div>
+          </div>
         </article>
       </div>
     </section>
