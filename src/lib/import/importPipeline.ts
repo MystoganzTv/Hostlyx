@@ -26,6 +26,7 @@ import {
   type ImportManualMapping,
   type ImportManualMappingField,
   type ImportPreview,
+  type ImportRowDecision,
   type ImportPreviewTableRow,
   type ImportRowResolution,
   type ImportReviewRow,
@@ -36,6 +37,170 @@ import { normalizeHeader, rowIsEmpty } from "./columnMatchers";
 
 function hasBlockingIssues(warnings: ImportValidationWarning[]) {
   return warnings.some((warning) => warning.severity === "error");
+}
+
+function normalizeComparableText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isExistingBookingDuplicate(
+  candidate: ImportBookingCandidate,
+  existingBookings: BookingRecord[],
+) {
+  const reference = normalizeComparableText(candidate.booking.bookingReference);
+  if (reference) {
+    return existingBookings.some(
+      (existing) => normalizeComparableText(existing.bookingNumber) === reference,
+    );
+  }
+
+  const guestName = normalizeComparableText(candidate.booking.guestName);
+  return existingBookings.some((existing) => {
+    return (
+      normalizeComparableText(existing.guestName) === guestName &&
+      existing.checkIn === candidate.booking.checkIn &&
+      existing.checkout === candidate.booking.checkOut &&
+      Math.abs(existing.payout - candidate.booking.payout) < 0.01
+    );
+  });
+}
+
+function hasMissingKeyData(candidate: ImportBookingCandidate) {
+  return (
+    !candidate.booking.guestName.trim() ||
+    !candidate.booking.propertyName.trim() ||
+    !candidate.booking.channel.trim()
+  );
+}
+
+function getDecisionReason(fallback: string, context?: { message: string } | null) {
+  if (context?.message) {
+    return context.message;
+  }
+
+  return fallback;
+}
+
+export function classifyImportRow(
+  row: ImportBookingCandidate,
+  matchResult: ImportBookingCandidate["calendarMatch"],
+  existingBookings: BookingRecord[],
+): ImportRowDecision {
+  const isDuplicate = Boolean(row.duplicate) || isExistingBookingDuplicate(row, existingBookings);
+  const matchScore = matchResult?.score ?? 0;
+  const matchType = matchResult?.matchType ?? "none";
+  const isConflict = Boolean(matchResult?.isConflict);
+  const invalidWarning =
+    row.warnings.find((warning) => warning.severity === "error") ??
+    row.warnings.find((warning) => warning.code === "negative_payout");
+  const missingKeyData = hasMissingKeyData(row);
+
+  if (isDuplicate) {
+    return {
+      status: "blocked",
+      reason: getDecisionReason(
+        "This booking already exists in Hostlyx and will stay blocked to avoid duplicates.",
+        row.duplicate,
+      ),
+      matchScore,
+      matchType,
+      isConflict,
+      isDuplicate: true,
+    };
+  }
+
+  if (invalidWarning) {
+    return {
+      status: "blocked",
+      reason: getDecisionReason(
+        "This row has invalid date or payout data and cannot be imported yet.",
+        invalidWarning,
+      ),
+      matchScore,
+      matchType,
+      isConflict,
+      isDuplicate: false,
+    };
+  }
+
+  if (isConflict) {
+    return {
+      status: "needs-review",
+      reason: "This booking overlaps a blocked calendar event and needs review before import.",
+      matchScore,
+      matchType,
+      isConflict: true,
+      isDuplicate: false,
+    };
+  }
+
+  if (missingKeyData) {
+    return {
+      status: "needs-review",
+      reason: "Some key booking details are missing, so this row should be reviewed before import.",
+      matchScore,
+      matchType,
+      isConflict: false,
+      isDuplicate: false,
+    };
+  }
+
+  if (matchResult?.eventType === "booking" && matchScore >= 90) {
+    return {
+      status: "auto-approved",
+      reason: "This booking is an exact operational match and is ready to import.",
+      matchScore,
+      matchType,
+      isConflict: false,
+      isDuplicate: false,
+    };
+  }
+
+  if (matchResult?.eventType === "booking" && matchScore >= 70 && !isConflict) {
+    return {
+      status: "auto-approved",
+      reason: "This booking matched the synced calendar strongly enough to auto-approve.",
+      matchScore,
+      matchType,
+      isConflict: false,
+      isDuplicate: false,
+    };
+  }
+
+  if (matchScore >= 40 && matchScore < 70) {
+    return {
+      status: "needs-review",
+      reason: "This row has a partial calendar match, so Hostlyx is asking for a quick review.",
+      matchScore,
+      matchType,
+      isConflict: false,
+      isDuplicate: false,
+    };
+  }
+
+  if (matchScore < 40 && !isDuplicate && !isConflict) {
+    return {
+      status: "auto-approved",
+      reason: "No strong existing match was found, so this row is ready as a new booking.",
+      matchScore,
+      matchType,
+      isConflict: false,
+      isDuplicate: false,
+    };
+  }
+
+  return {
+    status: "needs-review",
+    reason: "This row needs a quick review before Hostlyx includes it.",
+    matchScore,
+    matchType,
+    isConflict,
+    isDuplicate,
+  };
 }
 
 function describeBookingCandidate(
@@ -140,19 +305,19 @@ function getMatchLabel(candidate: ImportBookingCandidate) {
 }
 
 function categorizeBookingCandidate(candidate: ImportBookingCandidate): ImportReviewSection {
-  if (hasBlockingIssues(candidate.warnings)) {
+  if (candidate.decision?.status === "blocked") {
+    if (candidate.duplicate) {
+      return "duplicates";
+    }
+
     return "errors";
   }
 
-  if (candidate.calendarMatch?.isConflict) {
+  if (candidate.decision?.status === "needs-review" && candidate.calendarMatch?.isConflict) {
     return "conflicts";
   }
 
-  if (candidate.duplicate) {
-    return "duplicates";
-  }
-
-  if (candidate.warnings.length > 0) {
+  if (candidate.decision?.status === "needs-review" || candidate.warnings.length > 0) {
     return "warnings";
   }
 
@@ -704,6 +869,14 @@ export function buildImportPreview(
         : duplicatesByRowIndex.has(candidate.rowIndex)
           ? "duplicate"
           : candidate.rowStatus ?? "new",
+    decision: classifyImportRow(
+      {
+        ...candidate,
+        duplicate: duplicatesByRowIndex.get(candidate.rowIndex),
+      },
+      candidate.calendarMatch,
+      existingBookings,
+    ),
   }));
 
   const reviewRows: Record<ImportReviewSection, ImportReviewRow[]> = {
@@ -767,6 +940,10 @@ export function buildImportPreview(
     },
     calendarMatch: row.calendarMatch ?? null,
     canResolve: !row.duplicate || hasBlockingIssues(row.warnings) || Boolean(row.calendarMatch?.isConflict),
+    decisionStatus: row.decision?.status ?? "needs-review",
+    decisionReason: row.decision?.reason ?? "This row needs review before import.",
+    isSelectedByDefault: row.decision?.status === "auto-approved",
+    isDisabled: row.decision?.status === "blocked",
   }));
 
   return {
@@ -832,21 +1009,22 @@ export function mapPreviewToHostlyxRecords(
   preview: ImportPreview,
   propertyName: string,
   options?: {
-    duplicateStrategy?: "skip" | "import";
+    approvedRowIndexes?: number[];
   },
 ): {
   importedSource: ImportedFileSource;
   bookings: BookingRecord[];
   expenses: ExpenseRecord[];
 } {
-  const duplicateStrategy = options?.duplicateStrategy ?? "skip";
+  const approvedRowIndexSet = new Set(options?.approvedRowIndexes ?? []);
 
   return {
     importedSource: mapDetectedSourceToStoredSource(preview.source),
     bookings: preview.bookings
+      .filter((row) => approvedRowIndexSet.size === 0 || approvedRowIndexSet.has(row.rowIndex))
       .filter((row) => !hasBlockingIssues(row.warnings))
       .filter((row) => row.rowStatus !== "conflict")
-      .filter((row) => duplicateStrategy === "import" || !row.duplicate)
+      .filter((row) => !row.duplicate)
       .map((row) => ({
         propertyId: row.booking.propertyId ?? null,
         propertyName,

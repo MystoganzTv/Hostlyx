@@ -139,6 +139,10 @@ type PreviewTableRow = {
   booking: ImportEditableBooking;
   calendarMatch: PreviewCalendarMatch | null;
   canResolve: boolean;
+  decisionStatus: "auto-approved" | "needs-review" | "blocked";
+  decisionReason: string;
+  isSelectedByDefault: boolean;
+  isDisabled: boolean;
 };
 
 type ImportPreviewPayload = {
@@ -381,7 +385,6 @@ export function UploadPanel({
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [preview, setPreview] = useState<ImportPreviewPayload | null>(null);
   const [manualMapping, setManualMapping] = useState<ManualMappingPayload | null>(null);
-  const [duplicateStrategy, setDuplicateStrategy] = useState<"skip" | "import">("skip");
   const [toast, setToast] = useState<UploadToast | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [committed, setCommitted] = useState<ImportCommittedPayload | null>(null);
@@ -389,19 +392,19 @@ export function UploadPanel({
   const [rowResolutions, setRowResolutions] = useState<ImportRowResolution[]>([]);
   const [bookingFixDraft, setBookingFixDraft] = useState<BookingFixDraft | null>(null);
   const [selectedTableRowId, setSelectedTableRowId] = useState<string | null>(null);
-  const [flagConflictsForReview] = useState(true);
+  const [approvedRowIds, setApprovedRowIds] = useState<string[]>([]);
+
+  const validExpenseRows = useMemo(() => {
+    return preview?.reviewRows.valid.filter((row) => row.rowType === "expense").length ?? 0;
+  }, [preview?.reviewRows.valid]);
 
   const actionableRows = useMemo(() => {
     if (!preview) {
       return 0;
     }
 
-    return (
-      preview.validRows +
-      preview.warningRows +
-      (duplicateStrategy === "import" ? preview.duplicateRows : 0)
-    );
-  }, [duplicateStrategy, preview]);
+    return approvedRowIds.length + validExpenseRows;
+  }, [approvedRowIds.length, preview, validExpenseRows]);
 
   const isFinancialPreview = preview?.source === "financial_statement";
   const isFinancialStatementReady = Boolean(
@@ -430,7 +433,7 @@ export function UploadPanel({
     }
 
     if (actionableRows > 0) {
-      return `Import ${actionableRows} clean row${actionableRows === 1 ? "" : "s"}`;
+      return `Import ${actionableRows} approved row${actionableRows === 1 ? "" : "s"}`;
     }
 
     return "Map columns manually";
@@ -565,7 +568,6 @@ export function UploadPanel({
             }
           : null,
       );
-      setDuplicateStrategy("skip");
       setPhase("ready");
       setShouldFocusImportAction(options?.focusImportAction ?? true);
       return payload.preview;
@@ -586,7 +588,7 @@ export function UploadPanel({
     setRowResolutions([]);
     setBookingFixDraft(null);
     setSelectedTableRowId(null);
-    setDuplicateStrategy("skip");
+    setApprovedRowIds([]);
     setToast(null);
     setCommitted(null);
     setPhase(nextFile ? "idle" : "idle");
@@ -639,7 +641,7 @@ export function UploadPanel({
         tone: "error",
         message: needsFocusedMapping
           ? "We need a quick column check before Hostlyx can continue."
-          : "This file needs attention before Hostlyx can import it.",
+          : "Approve at least one safe row before importing, or fix the rows that still need review.",
       });
       return;
     }
@@ -651,7 +653,14 @@ export function UploadPanel({
       const formData = new FormData();
       formData.set("action", "commit");
       formData.set("propertyName", selectedPropertyName);
-      formData.set("duplicateStrategy", duplicateStrategy);
+      formData.set(
+        "approvedRowIndexes",
+        JSON.stringify(
+          preview.tableRows
+            .filter((row) => approvedRowIds.includes(row.id))
+            .map((row) => row.rowIndex),
+        ),
+      );
       if (manualMapping) {
         formData.set("manualMapping", JSON.stringify(manualMapping));
       }
@@ -674,7 +683,8 @@ export function UploadPanel({
       const hasRemainingIssues =
         preview.errorRows > 0 ||
         preview.skippedRows > 0 ||
-        (duplicateStrategy === "skip" && preview.duplicateRows > 0);
+        preview.duplicateRows > 0 ||
+        preview.conflictRows > 0;
 
       setToast({
         tone: "success",
@@ -712,6 +722,7 @@ export function UploadPanel({
       setManualMapping(null);
       setRowResolutions([]);
       setBookingFixDraft(null);
+      setApprovedRowIds([]);
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -843,6 +854,7 @@ export function UploadPanel({
     setRowResolutions(nextRowResolutions);
 
     setBookingFixDraft(null);
+    setApprovedRowIds((current) => current.filter((rowId) => rowId !== `booking-${rowIndex}`));
     await requestPreview({
       preserveToast: true,
       focusImportAction: false,
@@ -861,6 +873,17 @@ export function UploadPanel({
       reasons: selectedTableRow.reasons,
       booking: { ...selectedTableRow.booking },
     });
+  }
+
+  function toggleRowApproval(rowId: string) {
+    const row = preview?.tableRows.find((entry) => entry.id === rowId);
+    if (!row || row.isDisabled) {
+      return;
+    }
+
+    setApprovedRowIds((current) =>
+      current.includes(rowId) ? current.filter((entry) => entry !== rowId) : [...current, rowId],
+    );
   }
 
   function scrollToMapping() {
@@ -883,7 +906,11 @@ export function UploadPanel({
   function scrollToAttentionTarget() {
     const target =
       (needsFocusedMapping ? mappingRef.current : null) ??
-      (preview && (preview.errorRows > 0 || preview.warningRows > 0 || preview.duplicateRows > 0)
+      (preview &&
+      (preview.errorRows > 0 ||
+        preview.warningRows > 0 ||
+        preview.duplicateRows > 0 ||
+        preview.conflictRows > 0)
         ? reviewRef.current
         : null) ??
       sourceDetectedRef.current ??
@@ -952,8 +979,34 @@ export function UploadPanel({
     }
 
     setSelectedTableRowId((current) =>
-      preview.tableRows.some((row) => row.id === current) ? current : preview.tableRows[0]?.id ?? null,
+      preview.tableRows.some((row) => row.id === current)
+        ? current
+        : preview.tableRows.find((row) => row.decisionStatus === "needs-review")?.id ??
+          preview.tableRows[0]?.id ??
+          null,
     );
+  }, [preview?.tableRows]);
+
+  useEffect(() => {
+    if (!preview?.tableRows.length) {
+      setApprovedRowIds([]);
+      return;
+    }
+
+    setApprovedRowIds((current) => {
+      const visibleApproved = current.filter((rowId) =>
+        preview.tableRows.some((row) => row.id === rowId && !row.isDisabled),
+      );
+      const defaults = preview.tableRows
+        .filter((row) => row.isSelectedByDefault && !row.isDisabled)
+        .map((row) => row.id);
+
+      if (visibleApproved.length > 0) {
+        return Array.from(new Set([...visibleApproved, ...defaults]));
+      }
+
+      return defaults;
+    });
   }, [preview?.tableRows]);
 
   if (committed) {
@@ -1677,18 +1730,45 @@ export function UploadPanel({
                           <tbody className="divide-y divide-[var(--workspace-border)]/60 text-[var(--workspace-text)]">
                             {preview.tableRows.map((row) => {
                               const isSelected = selectedTableRow?.id === row.id;
+                              const isApproved = approvedRowIds.includes(row.id);
                               return (
                                 <tr
                                   key={row.id}
                                   onClick={() => setSelectedTableRowId(row.id)}
                                   className={`cursor-pointer transition ${
-                                    isSelected ? "bg-white/[0.05]" : "hover:bg-white/[0.03]"
+                                    row.isDisabled
+                                      ? "opacity-65"
+                                      : isSelected
+                                        ? "bg-white/[0.05]"
+                                        : "hover:bg-white/[0.03]"
                                   }`}
                                 >
                                   <td className="py-4 pr-4">
-                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
-                                      {getPreviewStatusLabel(row.status)}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          toggleRowApproval(row.id);
+                                        }}
+                                        disabled={row.isDisabled}
+                                        className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
+                                          row.isDisabled
+                                            ? "cursor-not-allowed border-white/8 bg-white/[0.03]"
+                                            : isApproved
+                                              ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
+                                              : "border-white/12 bg-white/[0.02]"
+                                        }`}
+                                        aria-pressed={isApproved}
+                                      >
+                                        {isApproved ? (
+                                          <CheckCircle2 className="h-3.5 w-3.5 text-teal-100" />
+                                        ) : null}
+                                      </button>
+                                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
+                                        {getPreviewStatusLabel(row.status)}
+                                      </span>
+                                    </div>
                                   </td>
                                   <td className="py-4 pr-4 font-medium">{row.guestName}</td>
                                   <td className="py-4 pr-4 text-[var(--workspace-muted)]">{row.propertyName}</td>
@@ -1794,6 +1874,31 @@ export function UploadPanel({
                                 {selectedTableRow.matchLabel}
                               </p>
                             </div>
+                            <div className="mt-4 rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
+                                Decision
+                              </p>
+                              <div className="mt-2 flex items-center gap-3">
+                                <span
+                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${
+                                    selectedTableRow.decisionStatus === "auto-approved"
+                                      ? "border-teal-300/24 bg-teal-300/[0.08] text-teal-100"
+                                      : selectedTableRow.decisionStatus === "blocked"
+                                        ? "border-rose-300/24 bg-rose-300/[0.08] text-rose-100"
+                                        : "border-amber-300/24 bg-amber-300/[0.08] text-amber-100"
+                                  }`}
+                                >
+                                  {selectedTableRow.decisionStatus === "auto-approved"
+                                    ? "Auto-approved"
+                                    : selectedTableRow.decisionStatus === "blocked"
+                                      ? "Blocked"
+                                      : "Needs review"}
+                                </span>
+                                <p className="text-sm text-[var(--workspace-text)]">
+                                  {selectedTableRow.decisionReason}
+                                </p>
+                              </div>
+                            </div>
                             <div className="mt-4 space-y-2">
                               {selectedTableRow.reasons.length > 0 ? (
                                 selectedTableRow.reasons.map((reason) => (
@@ -1820,27 +1925,31 @@ export function UploadPanel({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (selectedTableRow.status === "duplicate" && duplicateStrategy === "skip") {
-                                    setDuplicateStrategy("import");
-                                    scrollToImportAction();
+                                  if (selectedTableRow.isDisabled) {
                                     return;
                                   }
 
-                                  if (selectedTableRow.status === "conflict" || selectedTableRow.status === "warning") {
-                                    openSelectedRowFix();
-                                    return;
-                                  }
-
+                                  toggleRowApproval(selectedTableRow.id);
                                   scrollToImportAction();
                                 }}
-                                className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                                disabled={selectedTableRow.isDisabled}
+                                className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-55"
                               >
-                                {selectedTableRow.status === "duplicate" && duplicateStrategy === "skip"
-                                  ? "Import booking"
-                                  : selectedTableRow.status === "conflict" || selectedTableRow.status === "warning"
-                                    ? "Fix row"
-                                    : "Import booking"}
+                                {selectedTableRow.isDisabled
+                                  ? "Blocked"
+                                  : approvedRowIds.includes(selectedTableRow.id)
+                                    ? "Approved for import"
+                                    : "Approve booking"}
                               </button>
+                              {selectedTableRow.decisionStatus === "needs-review" ? (
+                                <button
+                                  type="button"
+                                  onClick={openSelectedRowFix}
+                                  className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                                >
+                                  Fix row
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 onClick={() => void skipBookingRow(selectedTableRow.rowIndex)}
@@ -1868,39 +1977,15 @@ export function UploadPanel({
                   >
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                       <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center">
-                        <label className="flex items-center gap-3 text-sm text-[var(--workspace-text)]">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDuplicateStrategy((current) => (current === "skip" ? "import" : "skip"))
-                            }
-                            className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
-                              duplicateStrategy === "skip"
-                                ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
-                                : "border-white/10 bg-white/10"
-                            }`}
-                            aria-pressed={duplicateStrategy === "skip"}
-                          >
-                            <span
-                              className={`h-5 w-5 rounded-full bg-white transition ${
-                                duplicateStrategy === "skip" ? "translate-x-6" : "translate-x-1"
-                              }`}
-                            />
-                          </button>
-                          Skip duplicates automatically
-                        </label>
-
-                        <label className="flex items-center gap-3 text-sm text-[var(--workspace-text)]/75">
-                          <button
-                            type="button"
-                            disabled
-                            className="relative inline-flex h-7 w-12 items-center rounded-full border border-rose-400/20 bg-rose-400/10 opacity-80"
-                            aria-pressed={flagConflictsForReview}
-                          >
-                            <span className="h-5 w-5 translate-x-6 rounded-full bg-white" />
-                          </button>
-                          Flag conflicts for review
-                        </label>
+                        <div className="rounded-full border border-teal-300/18 bg-teal-300/[0.08] px-3 py-2 text-sm text-teal-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} auto-approved
+                        </div>
+                        <div className="rounded-full border border-amber-300/18 bg-amber-300/[0.08] px-3 py-2 text-sm text-amber-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} need review
+                        </div>
+                        <div className="rounded-full border border-rose-300/18 bg-rose-300/[0.08] px-3 py-2 text-sm text-rose-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} blocked
+                        </div>
                       </div>
 
                       <p className="text-sm text-[var(--workspace-muted)]">

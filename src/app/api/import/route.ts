@@ -183,22 +183,31 @@ export async function POST(request: Request) {
       });
     }
 
-    const duplicateStrategy =
-      String(formData.get("duplicateStrategy") ?? "skip").trim().toLowerCase() === "import"
-        ? "import"
-        : "skip";
+    const approvedRowIndexes = (() => {
+      const value = formData.get("approvedRowIndexes");
+      if (!value) {
+        return [];
+      }
+
+      try {
+        const parsed = JSON.parse(String(value));
+        return Array.isArray(parsed)
+          ? parsed.filter((entry): entry is number => typeof entry === "number")
+          : [];
+      } catch {
+        return [];
+      }
+    })();
 
     const mapped = mapPreviewToHostlyxRecords(preview, targetPropertyName, {
-      duplicateStrategy,
+      approvedRowIndexes,
     });
 
     if (mapped.bookings.length === 0 && mapped.expenses.length === 0) {
       return NextResponse.json(
         {
           error:
-            duplicateStrategy === "skip"
-              ? "Everything in this file is currently blocked or marked as duplicate. Review the preview or allow duplicates before importing."
-              : "This file still needs attention before Hostlyx can import it.",
+            "Everything in this file is currently blocked or still unapproved. Review the preview and approve the rows you want Hostlyx to import.",
         },
         { status: 400 },
       );
@@ -214,7 +223,7 @@ export async function POST(request: Request) {
       bookings: mapped.bookings,
       expenses: mapped.expenses,
       closures: [],
-      allowDuplicateBookings: duplicateStrategy === "import",
+      allowDuplicateBookings: false,
     });
 
     return NextResponse.json({
@@ -224,7 +233,7 @@ export async function POST(request: Request) {
         sourceLabel: preview.sourceLabel,
         bookingsImported: result.bookingsCount,
         expensesImported: result.expensesCount,
-        skippedRows: preview.skippedRows + (duplicateStrategy === "skip" ? preview.duplicateRows : 0),
+        skippedRows: preview.skippedRows + preview.duplicateRows,
       },
     });
   } catch (error) {

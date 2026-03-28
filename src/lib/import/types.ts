@@ -46,6 +46,16 @@ export type ImportCalendarMatch = {
 };
 
 export type ImportBookingRowStatus = "new" | "matched" | "duplicate" | "conflict";
+export type ImportDecisionStatus = "auto-approved" | "needs-review" | "blocked";
+
+export type ImportRowDecision = {
+  status: ImportDecisionStatus;
+  reason: string;
+  matchScore: number;
+  matchType: ImportCalendarMatch["matchType"];
+  isConflict: boolean;
+  isDuplicate: boolean;
+};
 
 export type NormalizedImportBooking = {
   source: ImportDetectedSource;
@@ -86,6 +96,7 @@ export type ImportBookingCandidate = {
   duplicate?: ImportDuplicateFlag;
   calendarMatch?: ImportCalendarMatch;
   rowStatus?: ImportBookingRowStatus;
+  decision?: ImportRowDecision;
 };
 
 export type ImportExpenseCandidate = {
@@ -119,6 +130,10 @@ export type ImportPreviewTableRow = {
   booking: ImportEditableBooking;
   calendarMatch: ImportCalendarMatch | null;
   canResolve: boolean;
+  decisionStatus: ImportDecisionStatus;
+  decisionReason: string;
+  isSelectedByDefault: boolean;
+  isDisabled: boolean;
 };
 
 export type ImportEditableBooking = Pick<
