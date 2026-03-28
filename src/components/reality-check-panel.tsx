@@ -61,7 +61,7 @@ export function RealityCheckSummaryCard({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-            Reality check
+            Reconcile
           </p>
           <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
             Expected vs actual payout
@@ -140,7 +140,7 @@ export function RealityCheckPanel({
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-              Reality check
+              Reconcile
             </p>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
               {realityCheck.periodLabel}

@@ -63,7 +63,7 @@ const baseNavItems: Array<{
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
   { id: "cashflow", label: "Cashflow", href: "/dashboard/cashflow", icon: Wallet },
-  { id: "realityCheck", label: "Reality Check", href: "/dashboard/reality-check", icon: Scale },
+  { id: "realityCheck", label: "Reconcile", href: "/dashboard/reality-check", icon: Scale },
   { id: "performance", label: "Performance", href: "/dashboard/performance", icon: ChartNoAxesCombined },
   { id: "reports", label: "Reports", href: "/dashboard/reports", icon: FileText },
   { id: "imports", label: "Import Center", href: "/dashboard/imports", icon: DatabaseZap },

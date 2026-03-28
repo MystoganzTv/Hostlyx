@@ -1561,7 +1561,7 @@ export function UploadPanel({
                       </div>
                       <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Reality check preview
+                          Reconcile preview
                         </p>
                         <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
                           Expected payout vs actual payout

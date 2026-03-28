@@ -253,7 +253,7 @@ export default async function LandingPage() {
 
                 <div className="rounded-[28px] border border-[var(--accent-soft-strong)] bg-[linear-gradient(180deg,rgba(88,196,182,0.08)_0%,rgba(17,28,44,0.88)_42%,rgba(11,22,37,0.96)_100%)] p-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Reality check
+                    Reconcile
                   </p>
                   <div className="mt-6 space-y-4">
                     <div className="flex items-end justify-between gap-4 border-b border-white/8 pb-4">

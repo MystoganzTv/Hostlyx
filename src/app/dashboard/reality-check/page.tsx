@@ -70,8 +70,8 @@ export default async function RealityCheckPage({
   return (
     <WorkspaceShell
       activePage="realityCheck"
-      pageTitle="Reality Check"
-      pageSubtitle="Reconcile expected payout from bookings against what statements say actually landed."
+      pageTitle="Reconcile"
+      pageSubtitle="Compare expected payout from bookings against what statements say actually landed."
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -104,7 +104,7 @@ export default async function RealityCheckPage({
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-                Reality Check becomes available once Hostlyx has at least one imported financial
+                Reconcile becomes available once Hostlyx has at least one imported financial
                 statement that overlaps the selected reporting period.
               </p>
               <Link
