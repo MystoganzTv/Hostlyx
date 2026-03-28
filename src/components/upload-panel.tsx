@@ -1101,6 +1101,40 @@ export function UploadPanel({
                     <p className="text-sm leading-6 text-rose-50/75">
                       You can continue now and Hostlyx will import the clean rows only, or fix those specific rows in the spreadsheet and upload again.
                     </p>
+                    <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={handleImport}
+                        disabled={actionableRows <= 0 || phase === "importing" || phase === "previewing"}
+                        className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[220px]"
+                      >
+                        {phase === "importing" ? (
+                          <>
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                            {importButtonLabel}
+                          </>
+                        ) : (
+                          importButtonLabel
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const reviewElement = reviewRef.current;
+                          if (!reviewElement) {
+                            return;
+                          }
+                          reviewElement.open = true;
+                          reviewElement.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                        }}
+                        className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition sm:min-w-[180px]"
+                      >
+                        Review the {preview.errorRows} issue{preview.errorRows === 1 ? "" : "s"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
