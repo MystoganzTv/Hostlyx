@@ -88,6 +88,40 @@ export function CashflowPanel({
         </div>
       </SectionCard>
 
+      {!view.mixedCurrencyMode ? (
+        <SectionCard
+          title="Cash Health"
+          subtitle="Quick ways to read how comfortably the selected period funded itself."
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="workspace-soft-card rounded-[22px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                Coverage
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatPercent(coverageRatio)}
+              </p>
+            </div>
+            <div className="workspace-soft-card rounded-[22px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                Expense Share
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatPercent(view.metrics.netPayout > 0 ? view.metrics.totalExpenses / view.metrics.netPayout : 0)}
+              </p>
+            </div>
+            <div className="workspace-soft-card rounded-[22px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                Net Margin
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatPercent(view.metrics.profitMargin)}
+              </p>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
       {view.mixedCurrencyMode ? (
         <SectionCard
           title="Cashflow by Market"
@@ -202,39 +236,6 @@ export function CashflowPanel({
         </SectionCard>
       )}
 
-      {!view.mixedCurrencyMode ? (
-        <SectionCard
-          title="Cash Health"
-          subtitle="Quick ways to read how comfortably the selected period funded itself."
-        >
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="workspace-soft-card rounded-[22px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Coverage
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatPercent(coverageRatio)}
-              </p>
-            </div>
-            <div className="workspace-soft-card rounded-[22px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Expense Share
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatPercent(view.metrics.netPayout > 0 ? view.metrics.totalExpenses / view.metrics.netPayout : 0)}
-              </p>
-            </div>
-            <div className="workspace-soft-card rounded-[22px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Net Margin
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatPercent(view.metrics.profitMargin)}
-              </p>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
     </div>
   );
 }
