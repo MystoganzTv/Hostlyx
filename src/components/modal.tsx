@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 export function Modal({
   open,
@@ -15,6 +15,26 @@ export function Modal({
   dismissible?: boolean;
   children: ReactNode;
 }) {
+  const modalCardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open || !modalCardRef.current) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      modalCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [open]);
+
   if (!open) {
     return null;
   }
@@ -31,7 +51,10 @@ export function Modal({
       ) : (
         <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
       )}
-      <div className="workspace-card relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] p-5 sm:p-6">
+      <div
+        ref={modalCardRef}
+        className="workspace-card relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[30px] p-5 sm:p-6"
+      >
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold tracking-tight text-[var(--workspace-text)]">{title}</h2>
           {dismissible ? (
