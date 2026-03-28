@@ -228,13 +228,24 @@ export type DashboardView = {
   realityCheck: null | {
     source: FinancialDocumentSource;
     periodLabel: string;
+    statementCount: number;
     expectedPayout: number;
     actualPayout: number;
     difference: number;
     mismatchRatio: number | null;
+    grossRevenue: number;
+    adjustments: number;
     totalFees: number;
     totalTaxes: number;
     currency: string;
+    trustLabel: string;
+    message: string;
+    alertMessage: string | null;
+    insights: Array<{
+      title: string;
+      body: string;
+      tone: "neutral" | "caution" | "positive";
+    }>;
   };
   metrics: {
     totalRevenue: number;

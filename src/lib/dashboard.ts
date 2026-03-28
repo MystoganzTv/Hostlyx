@@ -201,6 +201,100 @@ function clampRatio(value: number) {
   return Math.min(value, 1);
 }
 
+function formatWholePercent(value: number) {
+  return `${Math.round(Math.abs(value) * 100)}%`;
+}
+
+function buildRealityCheckInsights({
+  expectedPayout,
+  totalFees,
+  totalTaxes,
+  adjustments,
+  mismatchRatio,
+}: {
+  expectedPayout: number;
+  totalFees: number;
+  totalTaxes: number;
+  adjustments: number;
+  mismatchRatio: number | null;
+}) {
+  const insights: Array<{
+    title: string;
+    body: string;
+    tone: "neutral" | "caution" | "positive";
+  }> = [];
+
+  if (expectedPayout > 0 && totalFees > expectedPayout * 0.18) {
+    insights.push({
+      title: "Platform fees are elevated",
+      body: "The statement shows a larger fee drag than the booking view would suggest.",
+      tone: "caution",
+    });
+  }
+
+  if (expectedPayout > 0 && totalTaxes > expectedPayout * 0.08) {
+    insights.push({
+      title: "Taxes were retained at source",
+      body: "Part of the payout gap is being explained by taxes withheld before payout.",
+      tone: "neutral",
+    });
+  }
+
+  if (adjustments > Math.max(25, expectedPayout * 0.03)) {
+    insights.push({
+      title: "Adjustments are reducing payout",
+      body: "The statement includes deductions beyond fees and taxes.",
+      tone: "caution",
+    });
+  } else if (adjustments < -Math.max(25, expectedPayout * 0.03)) {
+    insights.push({
+      title: "Statement credits were detected",
+      body: "The statement includes positive adjustments lifting the payout above the simple model.",
+      tone: "positive",
+    });
+  }
+
+  if (mismatchRatio !== null && mismatchRatio < -0.08) {
+    insights.push({
+      title: "Possible missing bookings",
+      body: "Actual payout is materially below the booking-based expectation for this view.",
+      tone: "caution",
+    });
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      title: "Payouts look aligned",
+      body: "The statement is broadly matching what Hostlyx expected from the booking data.",
+      tone: "positive",
+    });
+  }
+
+  return insights.slice(0, 4);
+}
+
+function buildRealityCheckMessage({
+  difference,
+  mismatchRatio,
+}: {
+  difference: number;
+  mismatchRatio: number | null;
+}) {
+  if (mismatchRatio === null || Math.abs(difference) < 1) {
+    return "Your payouts match your data.";
+  }
+
+  if (Math.abs(mismatchRatio) <= 0.03) {
+    return "Your payouts are closely aligned with your data.";
+  }
+
+  if (difference < 0) {
+    return `You received ${formatWholePercent(mismatchRatio)} less than expected.`;
+  }
+
+  return `You received ${formatWholePercent(mismatchRatio)} more than expected.`;
+}
+
 function rangesOverlap(
   left: { start: Date; end: Date },
   right: { start: Date; end: Date },
@@ -570,25 +664,55 @@ export function buildDashboardView({
     0,
   );
   const latestStatement = overlappingFinancialDocuments[0] ?? null;
+  const statementCount = overlappingFinancialDocuments.length;
   const realityCheck =
     latestStatement && actualStatementPayout > 0
-      ? {
-          source: latestStatement.source,
-          periodLabel:
-            overlappingFinancialDocuments.length > 1
-              ? `${overlappingFinancialDocuments.length} statements in view`
-              : latestStatement.period.label,
-          expectedPayout: totals.totalPayout,
-          actualPayout: actualStatementPayout,
-          difference: actualStatementPayout - totals.totalPayout,
-          mismatchRatio:
-            totals.totalPayout !== 0
-              ? (actualStatementPayout - totals.totalPayout) / Math.abs(totals.totalPayout)
-              : null,
-          totalFees: actualStatementFees,
-          totalTaxes: actualStatementTaxes,
-          currency: latestStatement.currency || displayCurrencyCode,
-        }
+      ? (() => {
+          const difference = actualStatementPayout - totals.totalPayout;
+          const mismatchRatio =
+            totals.totalPayout !== 0 ? difference / Math.abs(totals.totalPayout) : null;
+          const adjustments =
+            totals.totalRevenue - actualStatementFees - actualStatementTaxes - actualStatementPayout;
+          const trustLabel =
+            statementCount > 1
+              ? `Based on ${statementCount} imported ${
+                  latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                } statements`
+              : `Based on imported ${
+                  latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                } statement`;
+
+          return {
+            source: latestStatement.source,
+            periodLabel:
+              statementCount > 1
+                ? `${statementCount} statements in view`
+                : latestStatement.period.label,
+            statementCount,
+            expectedPayout: totals.totalPayout,
+            actualPayout: actualStatementPayout,
+            difference,
+            mismatchRatio,
+            grossRevenue: totals.totalRevenue,
+            adjustments,
+            totalFees: actualStatementFees,
+            totalTaxes: actualStatementTaxes,
+            currency: latestStatement.currency || displayCurrencyCode,
+            trustLabel,
+            message: buildRealityCheckMessage({ difference, mismatchRatio }),
+            alertMessage:
+              mismatchRatio !== null && Math.abs(mismatchRatio) > 0.08
+                ? "Your payouts differ significantly from your expected revenue."
+                : null,
+            insights: buildRealityCheckInsights({
+              expectedPayout: totals.totalPayout,
+              totalFees: actualStatementFees,
+              totalTaxes: actualStatementTaxes,
+              adjustments,
+              mismatchRatio,
+            }),
+          };
+        })()
       : null;
 
   return {
