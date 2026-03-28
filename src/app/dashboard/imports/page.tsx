@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { FileSpreadsheet, Layers3 } from "lucide-react";
 import { ImportsManager } from "@/components/imports-manager";
-import { LatestImportDangerCard } from "@/components/latest-import-danger-card";
 import { SectionCard } from "@/components/section-card";
 import { UploadPanel } from "@/components/upload-panel";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -59,8 +58,6 @@ export default async function ImportsPage() {
       <div className="space-y-6">
         <UploadPanel properties={properties} />
 
-        <LatestImportDangerCard latestImport={latestImport} />
-
         <div className="grid gap-4 md:grid-cols-3">
           <SectionCard title="Imported files">
             <div className="flex items-center gap-3">
@@ -104,10 +101,10 @@ export default async function ImportsPage() {
         <SectionCard title="How to think about it">
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Use this page as your import control center. If the latest file was wrong, delete that batch first. After that, think of the remaining records as app data, not as something still owned by the spreadsheet.
+              Use this page as your import control center. Review what landed, keep the audit trail clean, and treat the imported records as live app data once they are inside Hostlyx.
             </p>
             <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              The easiest rollback path is the latest import card above. Older files still stay available below as audit trail and backup history.
+              Each file below stays visible as import history so you can understand what changed, when it landed, and which records it created.
             </div>
           </div>
         </SectionCard>
