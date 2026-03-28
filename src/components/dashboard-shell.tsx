@@ -298,8 +298,15 @@ export function DashboardShell({
   const insights = view.mixedCurrencyMode ? [] : buildDashboardInsights(view);
   const primaryHeroInsight = view.mixedCurrencyMode ? null : getPrimaryHeroInsight(view);
   const expenseRatio =
-    view.metrics.totalRevenue > 0 ? view.metrics.totalExpenses / view.metrics.totalRevenue : null;
+    view.metrics.totalPayout > 0 ? view.metrics.totalExpenses / view.metrics.totalPayout : null;
   const hasHighExpenseRatio = expenseRatio !== null && expenseRatio > 0.6;
+  const netProfitStrength =
+    view.metrics.totalPayout > 0 ? view.metrics.netProfit / view.metrics.totalPayout : null;
+  const hasStrongNetProfit =
+    netProfitStrength !== null && view.metrics.netProfit > 0 && netProfitStrength > 0.2;
+  const taxImpactRatio =
+    view.metrics.netProfit > 0 ? view.metrics.estimatedTaxes / view.metrics.netProfit : null;
+  const hasSignificantTaxImpact = taxImpactRatio !== null && taxImpactRatio > 0.25;
   const afterTaxChipLabel =
     view.metrics.profitAfterTax > 0
       ? "Profitable After Tax"
@@ -458,7 +465,7 @@ export function DashboardShell({
 
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--workspace-muted)]">
-                            Profit After Tax
+                            You Keep
                           </p>
                           <p
                             className={`mt-5 text-5xl font-semibold tracking-[-0.05em] sm:text-6xl ${afterTaxPositive ? "text-[var(--workspace-text)]" : "text-rose-100"}`}
@@ -471,16 +478,23 @@ export function DashboardShell({
                             </p>
                           ) : null}
                           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-                            The clearest signal of what the business actually keeps after operating costs and estimated taxes.
+                            After payout, operating expenses, and estimated taxes.
                           </p>
                         </div>
                       </div>
 
                       <div className="grid gap-3">
                         <div className="workspace-soft-card rounded-[26px] p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Estimated Taxes
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                              Set Aside
+                            </p>
+                            {hasSignificantTaxImpact ? (
+                              <span className="rounded-full border border-amber-200/14 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100/90">
+                                Significant tax impact
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
                             {formatCurrency(view.metrics.estimatedTaxes, false, currencyCode)}
                           </p>
@@ -560,8 +574,14 @@ export function DashboardShell({
                     )}
                   </SectionCard>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <article className="workspace-card rounded-[28px] p-6">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <article
+                      className={`rounded-[28px] p-6 transition ${
+                        hasStrongNetProfit
+                          ? "workspace-card border-emerald-300/14 bg-[linear-gradient(180deg,rgba(16,185,129,0.08)_0%,rgba(11,22,37,0.98)_100%)] shadow-[0_18px_34px_rgba(2,6,23,0.18),0_0_0_1px_rgba(16,185,129,0.04)]"
+                          : "workspace-card"
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
@@ -570,9 +590,18 @@ export function DashboardShell({
                           <p className={`mt-4 text-3xl font-semibold tracking-[-0.04em] ${profitMeta.valueClass}`}>
                             {formatCurrency(view.metrics.netProfit, false, currencyCode)}
                           </p>
+                          <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
+                            Based on payout, not gross revenue.
+                          </p>
                         </div>
-                        <div className="workspace-icon-chip rounded-[18px] p-3">
-                          <TrendingUp className="h-5 w-5" />
+                        <div
+                          className={`rounded-[18px] p-3 ${
+                            hasStrongNetProfit
+                              ? "border border-emerald-300/14 bg-emerald-400/10 text-emerald-100"
+                              : "workspace-icon-chip"
+                          }`}
+                        >
+                          <TrendingUp className="h-4 w-4" />
                         </div>
                       </div>
                     </article>
@@ -581,29 +610,53 @@ export function DashboardShell({
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-                            Total Revenue
+                            Net Payout
                           </p>
                           <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.totalRevenue, false, currencyCode)}
+                            {formatCurrency(view.metrics.totalPayout, false, currencyCode)}
+                          </p>
+                          <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
+                            Actual cash received after platform fees.
                           </p>
                         </div>
                         <div className="workspace-icon-chip rounded-[18px] p-3">
-                          <Wallet className="h-5 w-5" />
+                          <ArrowDownRight className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <article className="workspace-soft-card rounded-[26px] p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
+                            Gross Revenue
+                          </p>
+                          <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
+                            {formatCurrency(view.metrics.totalRevenue, false, currencyCode)}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                            Total booking value before platform fees.
+                          </p>
+                        </div>
+                        <div className="workspace-icon-chip rounded-[18px] p-3">
+                          <Wallet className="h-4 w-4" />
                         </div>
                       </div>
                     </article>
 
                     <article
-                      className={`rounded-[28px] p-6 transition ${
+                      className={`rounded-[26px] p-5 transition ${
                         hasHighExpenseRatio
-                          ? "workspace-card border-amber-200/16 bg-[linear-gradient(180deg,rgba(245,158,11,0.08)_0%,rgba(15,23,42,0.86)_100%)] shadow-[0_18px_36px_rgba(15,23,42,0.18),0_0_0_1px_rgba(245,158,11,0.04)]"
-                          : "workspace-card"
+                          ? "workspace-soft-card border-amber-200/16 bg-[linear-gradient(180deg,rgba(245,158,11,0.08)_0%,rgba(10,20,34,0.9)_100%)] shadow-[0_14px_30px_rgba(2,6,23,0.12),0_0_0_1px_rgba(245,158,11,0.04)]"
+                          : "workspace-soft-card"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
                               Total Expenses
                             </p>
                             {hasHighExpenseRatio ? (
@@ -612,12 +665,15 @@ export function DashboardShell({
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
+                          <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
                             {formatCurrency(view.metrics.totalExpenses, false, currencyCode)}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                            Operating costs in the selected period.
                           </p>
                           {hasHighExpenseRatio && expenseRatio !== null ? (
                             <p className="mt-3 text-sm font-medium leading-6 text-amber-100/88">
-                              Expenses are consuming {formatWholePercent(expenseRatio)} of revenue.
+                              Consumes {formatWholePercent(expenseRatio)} of payout.
                             </p>
                           ) : null}
                         </div>
@@ -629,48 +685,37 @@ export function DashboardShell({
                           }`}
                         >
                           {hasHighExpenseRatio ? (
-                            <TriangleAlert className="h-5 w-5" />
+                            <TriangleAlert className="h-4 w-4" />
                           ) : (
-                            <ReceiptText className="h-5 w-5" />
+                            <ReceiptText className="h-4 w-4" />
                           )}
                         </div>
                       </div>
                     </article>
 
-                    <article className="workspace-card rounded-[28px] p-6">
+                    <article className="workspace-soft-card rounded-[26px] p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
                             Profit Margin
                           </p>
                           <p
-                            className={`mt-4 text-3xl font-semibold tracking-[-0.04em] ${view.metrics.profitMargin >= 0 ? "text-[var(--workspace-text)]" : "text-rose-100"}`}
+                            className={`mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] ${view.metrics.profitMargin >= 0 ? "text-[var(--workspace-text)]" : "text-rose-100"}`}
                           >
                             {formatPercent(view.metrics.profitMargin)}
                           </p>
+                          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                            Net profit as a share of gross revenue.
+                          </p>
                         </div>
                         <div className="workspace-icon-chip rounded-[18px] p-3">
-                          <Percent className="h-5 w-5" />
+                          <Percent className="h-4 w-4" />
                         </div>
                       </div>
                     </article>
                   </div>
 
-                  <div className="grid gap-4 border-t border-white/6 pt-2 md:grid-cols-2 xl:grid-cols-5">
-                    <article className="workspace-soft-card rounded-[24px] p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="workspace-icon-chip rounded-[18px] p-3">
-                          <ArrowDownRight className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Net Payout</p>
-                          <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.totalPayout, false, currencyCode)}
-                          </p>
-                        </div>
-                      </div>
-                    </article>
-
+                  <div className="grid gap-4 border-t border-white/6 pt-4 md:grid-cols-2 xl:grid-cols-4">
                     <article className="workspace-soft-card rounded-[24px] p-5">
                       <div className="flex items-center gap-3">
                         <div className="rounded-[18px] border border-white/8 bg-white/[0.04] p-3 text-[var(--workspace-text)]">
