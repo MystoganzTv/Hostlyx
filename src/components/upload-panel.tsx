@@ -8,11 +8,9 @@ import {
   BedDouble,
   Building2,
   CheckCircle2,
-  ChevronDown,
   CircleDollarSign,
   FileSpreadsheet,
   LoaderCircle,
-  PencilLine,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -50,9 +48,13 @@ type PreviewCalendarMatch = {
   score: number;
   isConflict: boolean;
   calendarEventId: number;
+  source: "airbnb" | "booking" | "vrbo" | "other";
   summary: string;
+  startDate: string;
+  endDate: string;
   eventType: "booking" | "blocked" | "unknown";
   message: string;
+  reasons: string[];
 };
 
 type PreviewRow = {
@@ -62,7 +64,7 @@ type PreviewRow = {
   checkOut: string;
   grossRevenue: number;
   payout: number;
-  status: "new" | "matched" | "duplicate" | "conflict";
+  status: "new" | "matched" | "duplicate" | "conflict" | "warning";
 };
 
 type ReviewSection = "valid" | "warnings" | "duplicates" | "conflicts" | "errors";
@@ -119,6 +121,26 @@ type ReviewRow = {
   booking?: ImportEditableBooking;
 };
 
+type PreviewTableRow = {
+  id: string;
+  rowIndex: number;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  channel: string;
+  grossRevenue: number;
+  payout: number;
+  status: "new" | "matched" | "duplicate" | "conflict" | "warning";
+  matchLabel: string;
+  matchScore: number | null;
+  matchType: PreviewCalendarMatch["matchType"] | null;
+  reasons: string[];
+  booking: ImportEditableBooking;
+  calendarMatch: PreviewCalendarMatch | null;
+  canResolve: boolean;
+};
+
 type ImportPreviewPayload = {
   source: "airbnb" | "booking" | "generic" | "financial_statement" | "unknown";
   sourceLabel: string;
@@ -152,6 +174,7 @@ type ImportPreviewPayload = {
     rawData: string;
   };
   previewRows: PreviewRow[];
+  tableRows: PreviewTableRow[];
   reviewRows: Record<ReviewSection, ReviewRow[]>;
   warnings: PreviewWarning[];
   duplicates: PreviewDuplicate[];
@@ -215,6 +238,39 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatCompactDate(value: string) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function getMatchTone(matchType: PreviewCalendarMatch["matchType"] | null) {
+  if (matchType === "exact" || matchType === "probable") {
+    return "text-teal-100";
+  }
+
+  if (matchType === "weak") {
+    return "text-amber-100";
+  }
+
+  if (matchType === "conflict") {
+    return "text-rose-100";
+  }
+
+  return "text-[var(--workspace-muted)]";
+}
+
 async function parseResponse(response: Response) {
   const raw = await response.text();
 
@@ -274,7 +330,11 @@ function getPreviewStatusPill(status: PreviewRow["status"]) {
     return "border-rose-400/24 bg-rose-400/[0.08] text-rose-100";
   }
 
-  return "border-emerald-300/24 bg-emerald-300/[0.08] text-emerald-100";
+  if (status === "warning") {
+    return "border-amber-200/24 bg-amber-200/[0.08] text-amber-50";
+  }
+
+  return "border-white/10 bg-white/[0.04] text-[var(--workspace-text)]";
 }
 
 function getPreviewStatusLabel(status: PreviewRow["status"]) {
@@ -285,6 +345,8 @@ function getPreviewStatusLabel(status: PreviewRow["status"]) {
       return "Duplicate";
     case "conflict":
       return "Conflict";
+    case "warning":
+      return "Warning";
     default:
       return "New";
   }
@@ -311,7 +373,7 @@ export function UploadPanel({
   const toastRef = useRef<HTMLDivElement | null>(null);
   const sourceDetectedRef = useRef<HTMLDivElement | null>(null);
   const mappingRef = useRef<HTMLDivElement | null>(null);
-  const reviewRef = useRef<HTMLDetailsElement | null>(null);
+  const reviewRef = useRef<HTMLDivElement | null>(null);
   const readyToContinueRef = useRef<HTMLDivElement | null>(null);
   const importButtonRef = useRef<HTMLButtonElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -326,6 +388,8 @@ export function UploadPanel({
   const [shouldFocusImportAction, setShouldFocusImportAction] = useState(false);
   const [rowResolutions, setRowResolutions] = useState<ImportRowResolution[]>([]);
   const [bookingFixDraft, setBookingFixDraft] = useState<BookingFixDraft | null>(null);
+  const [selectedTableRowId, setSelectedTableRowId] = useState<string | null>(null);
+  const [flagConflictsForReview] = useState(true);
 
   const actionableRows = useMemo(() => {
     if (!preview) {
@@ -372,26 +436,17 @@ export function UploadPanel({
     return "Map columns manually";
   }, [actionableRows, isFinancialStatementReady, phase, preview]);
 
-  const reviewItems = useMemo(() => {
-    if (!preview) {
-      return [];
+  const selectedTableRow = useMemo(() => {
+    if (!preview?.tableRows.length) {
+      return null;
     }
 
-    if (preview.blocksImport) {
-      return [];
-    }
-
-    if (isFinancialPreview) {
-      return [];
-    }
-
-    return [
-      ...preview.reviewRows.errors,
-      ...preview.reviewRows.conflicts,
-      ...preview.reviewRows.duplicates,
-      ...preview.reviewRows.warnings,
-    ].slice(0, 8);
-  }, [isFinancialPreview, preview]);
+    return (
+      preview.tableRows.find((row) => row.id === selectedTableRowId) ??
+      preview.tableRows[0] ??
+      null
+    );
+  }, [preview?.tableRows, selectedTableRowId]);
 
   const needsFocusedMapping = useMemo(() => {
     if (!preview?.manualMapping) {
@@ -530,6 +585,7 @@ export function UploadPanel({
     setManualMapping(null);
     setRowResolutions([]);
     setBookingFixDraft(null);
+    setSelectedTableRowId(null);
     setDuplicateStrategy("skip");
     setToast(null);
     setCommitted(null);
@@ -794,6 +850,19 @@ export function UploadPanel({
     });
   }
 
+  function openSelectedRowFix() {
+    if (!selectedTableRow) {
+      return;
+    }
+
+    setBookingFixDraft({
+      rowIndex: selectedTableRow.rowIndex,
+      title: selectedTableRow.guestName,
+      reasons: selectedTableRow.reasons,
+      booking: { ...selectedTableRow.booking },
+    });
+  }
+
   function scrollToMapping() {
     mappingRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -875,6 +944,17 @@ export function UploadPanel({
 
     return () => window.clearTimeout(timer);
   }, [actionableRows, needsFocusedMapping, shouldFocusImportAction]);
+
+  useEffect(() => {
+    if (!preview?.tableRows.length) {
+      setSelectedTableRowId(null);
+      return;
+    }
+
+    setSelectedTableRowId((current) =>
+      preview.tableRows.some((row) => row.id === current) ? current : preview.tableRows[0]?.id ?? null,
+    );
+  }, [preview?.tableRows]);
 
   if (committed) {
     return (
@@ -1521,391 +1601,339 @@ export function UploadPanel({
                   </div>
                 </div>
               ) : !needsFocusedMapping && !preview.blocksImport ? (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {(preview.financialStatement
-                    ? [
-                        ["Statement source", preview.financialStatement.source === "airbnb" ? "Airbnb" : "Booking.com", "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                        ["Payout detected", formatCurrency(preview.financialStatement.totalPayout), "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                        ["Fees detected", formatCurrency(preview.financialStatement.totalFees), "text-amber-100", "border-amber-400/20 bg-amber-300/[0.08]"],
-                        ["Taxes detected", formatCurrency(preview.financialStatement.totalTaxes), "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                      ]
-                    : [
-                        ["New bookings", String(preview.newRows), "text-emerald-100", "border-emerald-400/18 bg-emerald-300/[0.08]"],
-                        ["Matched to calendar", String(preview.matchedRows), "text-teal-100", "border-teal-400/18 bg-teal-300/[0.08]"],
-                        [
-                          "Conflicts",
-                          String(preview.conflictRows),
-                          "text-rose-100",
-                          "border-rose-400/20 bg-rose-300/[0.08]",
-                        ],
-                        ["Duplicates", String(preview.duplicateRows), "text-amber-100", "border-amber-400/20 bg-amber-300/[0.08]"],
-                        ["Warnings", String(preview.warningRows + preview.errorRows), "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                        ["Expenses detected", String(preview.expensesDetected), "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                      ]
-                  ).map(([label, value, tone, surface]) => (
+                <div className="space-y-5">
+                  <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                          Import review
+                        </p>
+                        <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
+                          {preview.sourceLabel} · {preview.fileName}
+                        </p>
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--workspace-muted)]">
+                          We checked your file against synced calendar data to catch duplicates and conflicts before import.
+                        </p>
+                      </div>
+                      <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.03] px-4 py-4 text-right">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                          Total rows found
+                        </p>
+                        <p className="mt-2 text-3xl font-semibold text-[var(--workspace-text)]">
+                          {preview.totalRowsRead}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      {[
+                        ["New bookings", String(preview.newRows), "border-white/10 bg-white/[0.02] text-[var(--workspace-text)]"],
+                        ["Matched to calendar", String(preview.matchedRows), "border-teal-400/18 bg-teal-300/[0.08] text-teal-100"],
+                        ["Duplicates", String(preview.duplicateRows), "border-amber-400/18 bg-amber-300/[0.08] text-amber-100"],
+                        ["Conflicts", String(preview.conflictRows), "border-rose-400/18 bg-rose-300/[0.08] text-rose-100"],
+                        ["Warnings", String(preview.warningRows + preview.errorRows), "border-yellow-300/18 bg-yellow-300/[0.08] text-yellow-100"],
+                      ].map(([label, value, classes]) => (
+                        <div key={String(label)} className={`rounded-[20px] border px-4 py-4 ${classes}`}>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                            {label}
+                          </p>
+                          <p className="mt-3 text-3xl font-semibold">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+                    <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                            Main preview
+                          </p>
+                          <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
+                            Booking rows before import
+                          </p>
+                        </div>
+                        <p className="text-sm text-[var(--workspace-muted)]">
+                          Select a row to inspect the match and decide what to do.
+                        </p>
+                      </div>
+
+                      <div className="mt-5 overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                            <tr>
+                              <th className="pb-3 pr-4 font-medium">Status</th>
+                              <th className="pb-3 pr-4 font-medium">Guest</th>
+                              <th className="pb-3 pr-4 font-medium">Property</th>
+                              <th className="pb-3 pr-4 font-medium">Check-in</th>
+                              <th className="pb-3 pr-4 font-medium">Check-out</th>
+                              <th className="pb-3 pr-4 font-medium">Channel</th>
+                              <th className="pb-3 pr-4 font-medium">Gross Revenue</th>
+                              <th className="pb-3 pr-4 font-medium">Payout</th>
+                              <th className="pb-3 font-medium">Match</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--workspace-border)]/60 text-[var(--workspace-text)]">
+                            {preview.tableRows.map((row) => {
+                              const isSelected = selectedTableRow?.id === row.id;
+                              return (
+                                <tr
+                                  key={row.id}
+                                  onClick={() => setSelectedTableRowId(row.id)}
+                                  className={`cursor-pointer transition ${
+                                    isSelected ? "bg-white/[0.05]" : "hover:bg-white/[0.03]"
+                                  }`}
+                                >
+                                  <td className="py-4 pr-4">
+                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
+                                      {getPreviewStatusLabel(row.status)}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 pr-4 font-medium">{row.guestName}</td>
+                                  <td className="py-4 pr-4 text-[var(--workspace-muted)]">{row.propertyName}</td>
+                                  <td className="py-4 pr-4">{formatCompactDate(row.checkIn)}</td>
+                                  <td className="py-4 pr-4">{formatCompactDate(row.checkOut)}</td>
+                                  <td className="py-4 pr-4">{row.channel}</td>
+                                  <td className="py-4 pr-4">{formatCurrency(row.grossRevenue)}</td>
+                                  <td className="py-4 pr-4">{formatCurrency(row.payout)}</td>
+                                  <td className={`py-4 ${getMatchTone(row.matchType)}`}>{row.matchLabel}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
                     <div
-                      key={String(label)}
-                      className={`rounded-[22px] border px-4 py-5 ${surface}`}
+                      ref={reviewRef}
+                      className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5"
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        {label}
+                        Detail panel
                       </p>
-                      <p className={`mt-3 text-3xl font-semibold ${tone}`}>
-                        {value}
+                      <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
+                        {selectedTableRow ? selectedTableRow.guestName : "Choose a row"}
                       </p>
-                      {label === "Conflicts" && preview.conflictRows > 0 ? (
-                        <p className="mt-2 text-xs leading-5 text-rose-100/75">These bookings overlap blocked dates and need review before import.</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                        {selectedTableRow
+                          ? "Review the imported booking, the closest synced event, and why Hostlyx matched or flagged it."
+                          : "Select a row from the table to inspect the booking and decide whether to import, skip, or fix it."}
+                      </p>
+
+                      {selectedTableRow ? (
+                        <div className="mt-5 space-y-4">
+                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                              Booking being imported
+                            </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <p className="text-xs text-[var(--workspace-muted)]">Guest</p>
+                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.guestName}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-[var(--workspace-muted)]">Property</p>
+                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.propertyName}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-[var(--workspace-muted)]">Dates</p>
+                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.checkIn)} to {formatCompactDate(selectedTableRow.checkOut)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-[var(--workspace-muted)]">Gross / payout</p>
+                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCurrency(selectedTableRow.grossRevenue)} · {formatCurrency(selectedTableRow.payout)}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                              Closest synced calendar event
+                            </p>
+                            {selectedTableRow.calendarMatch ? (
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                  <p className="text-xs text-[var(--workspace-muted)]">Source</p>
+                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.source}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-[var(--workspace-muted)]">Event type</p>
+                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.eventType}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-[var(--workspace-muted)]">Start date</p>
+                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.calendarMatch.startDate)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-[var(--workspace-muted)]">End date</p>
+                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.calendarMatch.endDate)}</p>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <p className="text-xs text-[var(--workspace-muted)]">Summary</p>
+                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.summary || "No summary"}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-3 rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4 text-sm text-[var(--workspace-muted)]">
+                                No synced calendar event was close enough to link this booking.
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                              Match result
+                            </p>
+                            <div className="mt-3 flex items-center gap-3">
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(selectedTableRow.status)}`}>
+                                {getPreviewStatusLabel(selectedTableRow.status)}
+                              </span>
+                              <p className={`text-sm font-medium ${getMatchTone(selectedTableRow.matchType)}`}>
+                                {selectedTableRow.matchLabel}
+                              </p>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              {selectedTableRow.reasons.length > 0 ? (
+                                selectedTableRow.reasons.map((reason) => (
+                                  <div
+                                    key={`${selectedTableRow.id}-${reason}`}
+                                    className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-2 text-sm text-[var(--workspace-text)]"
+                                  >
+                                    {reason}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-2 text-sm text-[var(--workspace-muted)]">
+                                  No matching signals were found.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                              Actions
+                            </p>
+                            <div className="mt-4 flex flex-col gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (selectedTableRow.status === "duplicate" && duplicateStrategy === "skip") {
+                                    setDuplicateStrategy("import");
+                                    scrollToImportAction();
+                                    return;
+                                  }
+
+                                  if (selectedTableRow.status === "conflict" || selectedTableRow.status === "warning") {
+                                    openSelectedRowFix();
+                                    return;
+                                  }
+
+                                  scrollToImportAction();
+                                }}
+                                className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                              >
+                                {selectedTableRow.status === "duplicate" && duplicateStrategy === "skip"
+                                  ? "Import booking"
+                                  : selectedTableRow.status === "conflict" || selectedTableRow.status === "warning"
+                                    ? "Fix row"
+                                    : "Import booking"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void skipBookingRow(selectedTableRow.rowIndex)}
+                                className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                              >
+                                Skip row
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTableRowId(null)}
+                                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
+                              >
+                                Review later
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       ) : null}
-                      {label === "Statement source" && preview.financialStatement ? (
-                        <p className="mt-2 text-xs leading-5 text-[var(--workspace-muted)]">
-                          {preview.financialStatement.period.label}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {!needsFocusedMapping && !preview.blocksImport && preview.financialStatement ? (
-                <div className="rounded-[24px] border border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.07)] p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-[var(--workspace-text)]">
-                        Financial statement ready
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-[var(--workspace-muted)]">
-                        Hostlyx can save this statement now and use it for payout reconciliation.
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={handleImport}
-                        disabled={actionableRows <= 0 || phase === "importing" || phase === "previewing"}
-                        className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[240px]"
-                      >
-                        {phase === "importing" ? (
-                          <>
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                            Save financial statement
-                          </>
-                        ) : (
-                          "Save financial statement"
-                        )}
-                      </button>
                     </div>
                   </div>
-                </div>
-              ) : null}
 
-              {!needsFocusedMapping && !preview.blocksImport && preview.errorRows > 0 ? (
-                <div className="rounded-[24px] border border-rose-400/18 bg-rose-300/[0.07] p-4 sm:p-5">
-                  <div className="flex flex-col gap-3">
-                    <p className="text-sm font-medium text-rose-50/95">
-                      {actionableRows} row{actionableRows === 1 ? "" : "s"} are ready. {preview.errorRows} row{preview.errorRows === 1 ? "" : "s"} still need changes in the source file.
-                    </p>
-                    <p className="text-sm leading-6 text-rose-50/75">
-                      You can continue now and Hostlyx will import the clean rows only, or fix those specific rows in the spreadsheet and upload again.
-                    </p>
-                    <div className="flex flex-col gap-3 pt-1 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={handleImport}
-                        disabled={actionableRows <= 0 || phase === "importing" || phase === "previewing"}
-                        className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[220px]"
-                      >
-                        {phase === "importing" ? (
-                          <>
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                            {importButtonLabel}
-                          </>
-                        ) : (
-                          importButtonLabel
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const reviewElement = reviewRef.current;
-                          if (!reviewElement) {
-                            return;
-                          }
-                          reviewElement.open = true;
-                          reviewElement.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                          });
-                        }}
-                        className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition sm:min-w-[180px]"
-                      >
-                        Review the {preview.errorRows} issue{preview.errorRows === 1 ? "" : "s"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {!needsFocusedMapping && !preview.blocksImport && preview.duplicateRows > 0 ? (
-                <div className="rounded-[24px] border border-amber-400/20 bg-amber-300/[0.08] p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-amber-100">Duplicate review</p>
-                      <p className="mt-1 text-xs leading-6 text-amber-50/80">
-                        Hostlyx found {preview.duplicateRows} booking
-                        {preview.duplicateRows === 1 ? "" : "s"} that look already imported or repeated in this
-                        file.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="flex items-center gap-3 text-sm text-amber-50/85">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDuplicateStrategy((current) => (current === "skip" ? "import" : "skip"))
-                          }
-                          className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
-                            duplicateStrategy === "skip"
-                              ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
-                              : "border-white/10 bg-white/10"
-                          }`}
-                          aria-pressed={duplicateStrategy === "skip"}
-                        >
-                          <span
-                            className={`h-5 w-5 rounded-full bg-white transition ${
-                              duplicateStrategy === "skip" ? "translate-x-6" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                        Skip duplicates automatically
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {!needsFocusedMapping && !preview.blocksImport ? (
-                <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
                   <div
                     ref={readyToContinueRef}
                     className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5"
                   >
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                      Preview
-                    </p>
-                    <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                      {preview.financialStatement ? "Statement summary" : "First normalized rows"}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                      {preview.financialStatement
-                        ? "A quick read of the payout totals Hostlyx will use for reconciliation."
-                        : "A quick look at the first rows Hostlyx is ready to save."}
-                    </p>
-                  </div>
-
-                  {preview.financialStatement ? (
-                    <div className="mt-5 grid gap-4 md:grid-cols-2">
-                      <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Period
-                        </p>
-                        <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                          {preview.financialStatement.period.label}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                          Imported as a financial statement instead of individual bookings.
-                        </p>
-                      </div>
-                      <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Reconcile preview
-                        </p>
-                        <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                          Expected payout vs actual payout
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                          Hostlyx will compare booking payout against this statement after import.
-                        </p>
-                      </div>
-                    </div>
-                  ) : preview.previewRows.length > 0 ? (
-                    <div className="mt-5 overflow-x-auto">
-                      <table className="min-w-full text-left text-sm">
-                        <thead className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                          <tr>
-                            <th className="pb-3 pr-4 font-medium">Guest</th>
-                            <th className="pb-3 pr-4 font-medium">Channel</th>
-                            <th className="pb-3 pr-4 font-medium">Status</th>
-                            <th className="pb-3 pr-4 font-medium">Check-in</th>
-                            <th className="pb-3 pr-4 font-medium">Check-out</th>
-                            <th className="pb-3 pr-4 font-medium">Gross Revenue</th>
-                            <th className="pb-3 font-medium">Payout</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--workspace-border)]/70 text-[var(--workspace-text)]">
-                          {preview.previewRows.map((row, index) => (
-                            <tr key={`${row.guestName}-${row.checkIn}-${index}`}>
-                              <td className="py-3 pr-4">{row.guestName || "Guest"}</td>
-                              <td className="py-3 pr-4">{row.channel}</td>
-                              <td className="py-3 pr-4">
-                                <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
-                                  {getPreviewStatusLabel(row.status)}
-                                </span>
-                              </td>
-                              <td className="py-3 pr-4">{row.checkIn || "—"}</td>
-                              <td className="py-3 pr-4">{row.checkOut || "—"}</td>
-                              <td className="py-3 pr-4">{formatCurrency(row.grossRevenue)}</td>
-                              <td className="py-3">{formatCurrency(row.payout)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="mt-5 rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4 text-sm text-[var(--workspace-muted)]">
-                      No normalized booking rows are ready yet.
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <details
-                    ref={reviewRef}
-                    open={
-                      !preview.financialStatement &&
-                      preview.warningRows + preview.duplicateRows + preview.conflictRows + preview.errorRows > 0
-                    }
-                    className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5"
-                  >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Review
-                        </p>
-                        <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                          {preview.financialStatement ? "What will happen next" : "Review potential issues"}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                          {preview.financialStatement
-                            ? "This import will stay separate from bookings and feed the reconciliation card in your dashboard."
-                            : "Errors need a quick fix in the source file. Valid rows can still be imported right away."}
-                        </p>
-                      </div>
-                      <ChevronDown className="h-5 w-5 text-[var(--workspace-muted)]" />
-                    </summary>
-
-                    <div className="mt-5 space-y-3">
-                      {preview.financialStatement ? (
-                        <div className="rounded-[18px] border border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.08)] px-4 py-4 text-sm text-[var(--workspace-text)]">
-                          Hostlyx will save this as a financial statement and use it to compare booking payout against what Airbnb actually paid out.
-                        </div>
-                      ) : reviewItems.length > 0 ? (
-                        reviewItems.map((row) => (
-                          <div
-                            key={row.id}
-                            className={`rounded-[18px] border px-4 py-4 text-sm ${
-                              row.section === "errors"
-                                ? "border-rose-400/18 bg-rose-300/[0.07] text-rose-50/90"
-                                : row.section === "conflicts"
-                                  ? "border-rose-400/18 bg-rose-300/[0.07] text-rose-50/90"
-                                : row.section === "duplicates"
-                                  ? "border-amber-400/18 bg-amber-300/[0.07] text-amber-50/90"
-                                  : "border-[var(--workspace-border)] bg-white/[0.03] text-[var(--workspace-text)]"
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center">
+                        <label className="flex items-center gap-3 text-sm text-[var(--workspace-text)]">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDuplicateStrategy((current) => (current === "skip" ? "import" : "skip"))
+                            }
+                            className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
+                              duplicateStrategy === "skip"
+                                ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
+                                : "border-white/10 bg-white/10"
                             }`}
+                            aria-pressed={duplicateStrategy === "skip"}
                           >
-                            <p className="font-medium">{row.title}</p>
-                            <p className="mt-1 text-xs uppercase tracking-[0.14em] opacity-70">
-                              Row {row.rowIndex} • {row.subtitle}
-                            </p>
-                            <p className="mt-2 text-sm opacity-85">{row.reasons[0]}</p>
-                            {row.section === "errors" || row.section === "conflicts" ? (
-                              <p className="mt-2 text-xs uppercase tracking-[0.12em] opacity-65">
-                                Review this row before import. If it is not valid, fix it or skip it.
-                              </p>
-                            ) : null}
-                            {row.rowType === "booking" && row.canResolve && row.booking ? (
-                              <div className="mt-4 flex flex-wrap gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => openBookingFix(row)}
-                                  className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
-                                >
-                                  <PencilLine className="h-4 w-4" />
-                                  Fix in Hostlyx
-                                </button>
-                                {row.section === "errors" || row.section === "conflicts" ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => void skipBookingRow(row.rowIndex)}
-                                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
-                                  >
-                                    Skip this row
-                                  </button>
-                                ) : null}
-                              </div>
-                            ) : null}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="rounded-[18px] border border-emerald-400/18 bg-emerald-400/[0.08] px-4 py-4 text-sm text-emerald-50/90">
-                          Your preview looks clean. No issues need attention before import.
-                        </div>
-                      )}
-                    </div>
-                  </details>
+                            <span
+                              className={`h-5 w-5 rounded-full bg-white transition ${
+                                duplicateStrategy === "skip" ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                          Skip duplicates automatically
+                        </label>
 
-                  <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Ready to continue
-                        </p>
-                        <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                          {preview.financialStatement
-                            ? "1 financial statement ready to import"
-                            : `${actionableRows} clean row${actionableRows === 1 ? "" : "s"} ready to import`}
-                        </p>
+                        <label className="flex items-center gap-3 text-sm text-[var(--workspace-text)]/75">
+                          <button
+                            type="button"
+                            disabled
+                            className="relative inline-flex h-7 w-12 items-center rounded-full border border-rose-400/20 bg-rose-400/10 opacity-80"
+                            aria-pressed={flagConflictsForReview}
+                          >
+                            <span className="h-5 w-5 translate-x-6 rounded-full bg-white" />
+                          </button>
+                          Flag conflicts for review
+                        </label>
                       </div>
-                      <p className="text-sm text-[var(--workspace-muted)]">
-                        {preview.financialStatement
-                          ? "Nothing will be saved until you confirm this financial statement import."
-                          : preview.errorRows > 0
-                          ? `${preview.errorRows} error row${preview.errorRows === 1 ? "" : "s"} will be skipped automatically.`
-                          : preview.skippedRows > 0
-                            ? `${preview.skippedRows} row${preview.skippedRows === 1 ? "" : "s"} will be skipped.`
-                            : "Nothing will be saved until you confirm."}
-                      </p>
-                    </div>
 
-                    <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                      <button
-                        ref={importButtonRef}
-                        type="button"
-                        onClick={handleImport}
-                        disabled={actionableRows <= 0 || phase === "importing" || phase === "previewing"}
-                        className="workspace-button-primary inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {phase === "importing" ? (
-                          <>
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                            {importButtonLabel}
-                          </>
-                        ) : actionableRows > 0 || preview.financialStatement ? (
-                          importButtonLabel
-                        ) : (
-                          shouldShowManualMapping ? "Map columns manually" : "Nothing ready to import"
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
-                      >
-                        Cancel
-                      </button>
+                      <p className="text-sm text-[var(--workspace-muted)]">
+                        {actionableRows} rows ready to import
+                      </p>
+
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <button
+                          ref={importButtonRef}
+                          type="button"
+                          onClick={handleImport}
+                          disabled={actionableRows <= 0 || phase === "importing" || phase === "previewing"}
+                          className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[220px]"
+                        >
+                          {phase === "importing" ? (
+                            <>
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                              Import approved rows
+                            </>
+                          ) : (
+                            "Import approved rows"
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancel}
+                          className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
                 </div>
               ) : null}
             </div>

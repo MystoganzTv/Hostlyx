@@ -26,6 +26,7 @@ import {
   type ImportManualMapping,
   type ImportManualMappingField,
   type ImportPreview,
+  type ImportPreviewTableRow,
   type ImportRowResolution,
   type ImportReviewRow,
   type ImportReviewSection,
@@ -93,6 +94,49 @@ function describeExpenseCandidate(
     subtitle: `${row.expense.date || "—"} • ${row.expense.description || row.expense.note || "Expense"}`,
     reasons: row.warnings.map((warning) => warning.message),
   };
+}
+
+function getTableRowStatus(candidate: ImportBookingCandidate): ImportPreviewTableRow["status"] {
+  if (hasBlockingIssues(candidate.warnings)) {
+    return "warning";
+  }
+
+  if (candidate.calendarMatch?.isConflict) {
+    return "conflict";
+  }
+
+  if (candidate.duplicate) {
+    return "duplicate";
+  }
+
+  if (candidate.rowStatus === "matched") {
+    return "matched";
+  }
+
+  if (candidate.warnings.length > 0) {
+    return "warning";
+  }
+
+  return "new";
+}
+
+function getMatchLabel(candidate: ImportBookingCandidate) {
+  if (!candidate.calendarMatch || candidate.calendarMatch.matchType === "none") {
+    return "No match";
+  }
+
+  if (candidate.calendarMatch.isConflict) {
+    return "Conflict";
+  }
+
+  const typeLabel =
+    candidate.calendarMatch.matchType === "exact"
+      ? "Exact match"
+      : candidate.calendarMatch.matchType === "probable"
+        ? "Probable match"
+        : "Weak match";
+
+  return `${typeLabel} · ${candidate.calendarMatch.score}`;
 }
 
 function categorizeBookingCandidate(candidate: ImportBookingCandidate): ImportReviewSection {
@@ -501,6 +545,7 @@ export function buildImportPreview(
       ],
       duplicates: [],
       calendarMatches: [],
+      tableRows: [],
       canImport: Boolean(statement),
     };
   }
@@ -548,6 +593,7 @@ export function buildImportPreview(
       ],
       duplicates: [],
       calendarMatches: [],
+      tableRows: [],
       canImport: false,
     };
   }
@@ -686,6 +732,42 @@ export function buildImportPreview(
   const importableRows = validRows + warningRows + duplicateRows;
   const matchedRows = bookingRows.filter((row) => row.rowStatus === "matched").length;
   const newRows = bookingRows.filter((row) => row.rowStatus === "new").length;
+  const tableRows: ImportPreviewTableRow[] = bookingRows.map((row) => ({
+    id: `booking-${row.rowIndex}`,
+    rowIndex: row.rowIndex,
+    guestName: row.booking.guestName || "Guest",
+    propertyName: row.booking.propertyName || "Not set",
+    checkIn: row.booking.checkIn,
+    checkOut: row.booking.checkOut,
+    channel: row.booking.channel,
+    grossRevenue: row.booking.grossRevenue,
+    payout: row.booking.payout,
+    status: getTableRowStatus(row),
+    matchLabel: getMatchLabel(row),
+    matchScore: row.calendarMatch?.score ?? null,
+    matchType: row.calendarMatch?.matchType ?? null,
+    reasons:
+      row.calendarMatch?.reasons?.length
+        ? row.calendarMatch.reasons
+        : row.warnings.map((warning) => warning.message),
+    booking: {
+      propertyName: row.booking.propertyName,
+      bookingReference: row.booking.bookingReference,
+      guestName: row.booking.guestName,
+      channel: row.booking.channel,
+      checkIn: row.booking.checkIn,
+      checkOut: row.booking.checkOut,
+      guests: row.booking.guests,
+      grossRevenue: row.booking.grossRevenue,
+      platformFee: row.booking.platformFee,
+      cleaningFee: row.booking.cleaningFee,
+      taxAmount: row.booking.taxAmount,
+      payout: row.booking.payout,
+      status: row.booking.status,
+    },
+    calendarMatch: row.calendarMatch ?? null,
+    canResolve: !row.duplicate || hasBlockingIssues(row.warnings) || Boolean(row.calendarMatch?.isConflict),
+  }));
 
   return {
     source,
@@ -719,8 +801,9 @@ export function buildImportPreview(
         checkOut: row.booking.checkOut,
         grossRevenue: row.booking.grossRevenue,
         payout: row.booking.payout,
-        status: row.rowStatus ?? "new",
+        status: getTableRowStatus(row),
       })),
+    tableRows,
     reviewRows,
     warnings: [
       ...bookingRows.flatMap((row) => row.warnings),

@@ -101,6 +101,7 @@ export async function POST(request: Request) {
           importableRows: preview.importableRows,
           financialStatement: preview.financialStatement,
           previewRows: preview.previewRows,
+          tableRows: preview.tableRows,
           reviewRows: preview.reviewRows,
           warnings: preview.warnings,
           duplicates: preview.duplicates,

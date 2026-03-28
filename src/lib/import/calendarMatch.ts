@@ -132,6 +132,69 @@ function getGuestSimilarity(guestName: string, summary: string) {
   return (2 * overlapCount) / (leftBigrams.size + rightBigrams.size);
 }
 
+function collectMatchReasons(
+  booking: ImportBookingCandidate["booking"],
+  calendarEvent: CalendarEventRecord,
+  isConflict: boolean,
+) {
+  const reasons: string[] = [];
+
+  if (isConflict) {
+    reasons.push("Overlaps blocked dates");
+    return reasons;
+  }
+
+  if (getReferenceScore(booking.bookingReference, calendarEvent) === 100) {
+    reasons.push("Booking reference matches");
+    return reasons;
+  }
+
+  const checkInDiff = getDayDistance(booking.checkIn, calendarEvent.startDate);
+  if (checkInDiff === 0) {
+    reasons.push("Same check-in date");
+  } else if (checkInDiff <= 2) {
+    reasons.push(`Check-in is within ${checkInDiff} day${checkInDiff === 1 ? "" : "s"}`);
+  }
+
+  const checkOutDiff = getDayDistance(booking.checkOut, calendarEvent.endDate);
+  if (checkOutDiff === 0) {
+    reasons.push("Same check-out date");
+  } else if (checkOutDiff <= 2) {
+    reasons.push(`Check-out is within ${checkOutDiff} day${checkOutDiff === 1 ? "" : "s"}`);
+  }
+
+  const propertyRelationship = getPropertyRelationship(booking, calendarEvent);
+  if (propertyRelationship === "same") {
+    reasons.push("Same property");
+  } else if (propertyRelationship === "unknown") {
+    reasons.push("Property was not available on one side");
+  }
+
+  const bookingChannel = normalizeChannel(booking.channel);
+  const eventChannel = getEventChannel(calendarEvent);
+  if (bookingChannel && eventChannel && bookingChannel === eventChannel) {
+    reasons.push("Same channel");
+  } else if (!bookingChannel || !eventChannel) {
+    reasons.push("Channel is unknown on one side");
+  }
+
+  const eventNights = getEventNights(calendarEvent);
+  if (booking.nights === eventNights) {
+    reasons.push("Same stay length");
+  } else if (Math.abs(booking.nights - eventNights) === 1) {
+    reasons.push("Similar stay length");
+  }
+
+  const guestSimilarity = getGuestSimilarity(booking.guestName, calendarEvent.summary);
+  if (guestSimilarity > 0.8) {
+    reasons.push("Guest name is highly similar");
+  } else if (guestSimilarity > 0.5) {
+    reasons.push("Guest name is somewhat similar");
+  }
+
+  return reasons;
+}
+
 function getReferenceScore(
   bookingReference: string,
   event: CalendarEventRecord,
@@ -277,9 +340,13 @@ function buildMatch(
       score: scoreResult.score,
       isConflict: true,
       calendarEventId: Number(event.id ?? 0),
+      source: event.source,
       summary: event.summary,
+      startDate: event.startDate,
+      endDate: event.endDate,
       eventType: event.eventType,
       message: "This booking overlaps a blocked calendar event.",
+      reasons: collectMatchReasons(row.booking, event, true),
     };
   }
 
@@ -289,7 +356,10 @@ function buildMatch(
     score: scoreResult.score,
     isConflict: false,
     calendarEventId: Number(event.id ?? 0),
+    source: event.source,
     summary: event.summary,
+    startDate: event.startDate,
+    endDate: event.endDate,
     eventType: event.eventType,
     message:
       scoreResult.matchType === "exact"
@@ -297,6 +367,7 @@ function buildMatch(
         : scoreResult.matchType === "probable"
           ? `This booking likely matches a calendar event with a score of ${scoreResult.score}.`
           : `This booking may match a calendar event with a score of ${scoreResult.score}.`,
+    reasons: collectMatchReasons(row.booking, event, false),
   };
 }
 

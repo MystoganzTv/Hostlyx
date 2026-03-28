@@ -36,9 +36,13 @@ export type ImportCalendarMatch = {
   score: number;
   isConflict: boolean;
   calendarEventId: number;
+  source: "airbnb" | "booking" | "vrbo" | "other";
   summary: string;
+  startDate: string;
+  endDate: string;
   eventType: "booking" | "blocked" | "unknown";
   message: string;
+  reasons: string[];
 };
 
 export type ImportBookingRowStatus = "new" | "matched" | "duplicate" | "conflict";
@@ -94,7 +98,27 @@ export type ImportPreviewRow = Pick<
   NormalizedImportBooking,
   "guestName" | "channel" | "checkIn" | "checkOut" | "grossRevenue" | "payout"
 > & {
-  status: ImportBookingRowStatus;
+  status: ImportBookingRowStatus | "warning";
+};
+
+export type ImportPreviewTableRow = {
+  id: string;
+  rowIndex: number;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  channel: string;
+  grossRevenue: number;
+  payout: number;
+  status: ImportBookingRowStatus | "warning";
+  matchLabel: string;
+  matchScore: number | null;
+  matchType: ImportCalendarMatch["matchType"] | null;
+  reasons: string[];
+  booking: ImportEditableBooking;
+  calendarMatch: ImportCalendarMatch | null;
+  canResolve: boolean;
 };
 
 export type ImportEditableBooking = Pick<
@@ -216,6 +240,7 @@ export type ImportPreview = {
     rawData: string;
   };
   previewRows: ImportPreviewRow[];
+  tableRows: ImportPreviewTableRow[];
   reviewRows: Record<ImportReviewSection, ImportReviewRow[]>;
   warnings: ImportValidationWarning[];
   duplicates: ImportDuplicateFlag[];
