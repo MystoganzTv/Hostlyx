@@ -13,7 +13,25 @@ function normalizeAmount(value: number) {
   return Number.isFinite(value) ? value.toFixed(2) : "0.00";
 }
 
-function mapStoredSource(source: BookingRecord["importedSource"]): ImportDetectedSource {
+function inferProviderKeyFromChannel(channel: string | undefined) {
+  const normalized = normalizeText(channel ?? "");
+
+  if (normalized.includes("airbnb")) {
+    return "airbnb";
+  }
+
+  if (normalized.includes("booking")) {
+    return "booking";
+  }
+
+  if (!normalized) {
+    return "unknown";
+  }
+
+  return "other";
+}
+
+function mapStoredSource(source: BookingRecord["importedSource"]): ImportDetectedSource | "other" {
   switch (source) {
     case "airbnb":
       return "airbnb";
@@ -27,27 +45,49 @@ function mapStoredSource(source: BookingRecord["importedSource"]): ImportDetecte
   }
 }
 
-function buildPreferredKey(source: ImportDetectedSource, bookingReference: string, checkIn: string) {
-  if (!source || !bookingReference || !checkIn) {
+function getStoredProviderKey(booking: BookingRecord) {
+  const channelProvider = inferProviderKeyFromChannel(booking.channel);
+  if (channelProvider !== "unknown") {
+    return channelProvider;
+  }
+
+  return mapStoredSource(booking.importedSource);
+}
+
+function getImportedProviderKey(row: ImportBookingCandidate) {
+  const channelProvider = inferProviderKeyFromChannel(row.booking.channel);
+  if (channelProvider !== "unknown") {
+    return channelProvider;
+  }
+
+  return row.booking.source;
+}
+
+function buildPreferredKey(
+  provider: ImportDetectedSource | "other",
+  bookingReference: string,
+  checkIn: string,
+) {
+  if (!provider || !bookingReference || !checkIn) {
     return "";
   }
 
-  return `${source}|${normalizeText(bookingReference)}|${checkIn}`;
+  return `${provider}|${normalizeText(bookingReference)}|${checkIn}`;
 }
 
 function buildFallbackKey(
-  source: ImportDetectedSource,
+  provider: ImportDetectedSource | "other",
   guestName: string,
   checkIn: string,
   checkOut: string,
   payout: number,
 ) {
-  if (!source || !guestName || !checkIn || !checkOut || !Number.isFinite(payout)) {
+  if (!provider || !guestName || !checkIn || !checkOut || !Number.isFinite(payout)) {
     return "";
   }
 
   return [
-    source,
+    provider,
     normalizeText(guestName),
     checkIn,
     checkOut,
@@ -66,10 +106,14 @@ export function detectDuplicateBookings(
   const existingFallback = new Set<string>();
 
   for (const existingBooking of existingBookings) {
-    const source = mapStoredSource(existingBooking.importedSource);
-    const preferredKey = buildPreferredKey(source, existingBooking.bookingNumber, existingBooking.checkIn);
+    const provider = getStoredProviderKey(existingBooking);
+    const preferredKey = buildPreferredKey(
+      provider,
+      existingBooking.bookingNumber,
+      existingBooking.checkIn,
+    );
     const fallbackKey = buildFallbackKey(
-      source,
+      provider,
       existingBooking.guestName,
       existingBooking.checkIn,
       existingBooking.checkout,
@@ -86,13 +130,14 @@ export function detectDuplicateBookings(
   }
 
   for (const row of rows) {
+    const provider = getImportedProviderKey(row);
     const preferredKey = buildPreferredKey(
-      row.booking.source,
+      provider,
       row.booking.bookingReference,
       row.booking.checkIn,
     );
     const fallbackKey = buildFallbackKey(
-      row.booking.source,
+      provider,
       row.booking.guestName,
       row.booking.checkIn,
       row.booking.checkOut,
