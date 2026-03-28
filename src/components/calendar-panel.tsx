@@ -219,7 +219,7 @@ function MonthCalendar({
                             ? "border-amber-300/14 bg-[linear-gradient(180deg,rgba(244,198,105,0.08)_0%,rgba(15,24,38,0.92)_100%)]"
                             : isCurrentMonth
                               ? "workspace-soft-card"
-                              : "border-slate-300/[0.06] bg-[linear-gradient(180deg,rgba(28,37,51,0.72)_0%,rgba(18,25,36,0.88)_100%)]"
+                              : "border-slate-300/[0.1] bg-[linear-gradient(180deg,rgba(46,57,74,0.82)_0%,rgba(26,34,46,0.94)_100%)]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
