@@ -396,7 +396,7 @@ export function OnboardingFlow({
               </p>
             </div>
             <div className="workspace-soft-card rounded-[26px] p-5">
-              <p className="text-sm font-semibold text-[var(--workspace-text)]">2. Upload your workbook</p>
+              <p className="text-sm font-semibold text-[var(--workspace-text)]">2. Upload your data</p>
               <p className="mt-2 text-sm leading-7 text-[var(--workspace-muted)]">
                 Import `Bookings` and `Expenses` from Excel so the dashboard has real numbers immediately.
               </p>
@@ -577,15 +577,15 @@ export function OnboardingFlow({
               Import bookings and expenses.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-              Upload your workbook and we will move the data into Hostlyx. As soon as the import lands,
+              Upload your CSV or Excel export and we will move the data into Hostlyx. As soon as the import lands,
               you can finish the tax estimate and head straight to the dashboard.
             </p>
           </div>
 
           <UploadPanel
             properties={properties}
-            title="Upload Excel file"
-            subtitle="Bring in your `Bookings` and `Expenses` workbook so the dashboard opens with real financial data."
+            title="Upload Airbnb, Booking.com, or Excel"
+            subtitle="Bring in your bookings, payouts, and expenses so the dashboard opens with real financial data."
             refreshOnSuccess={false}
             onImportComplete={({ propertyName }) => {
               setUploadedPropertyName(propertyName);

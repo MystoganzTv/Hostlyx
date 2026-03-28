@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import type { ImportSummary } from "@/lib/types";
 import { formatDateLabel, formatNumber } from "@/lib/format";
+import { getImportedSourceLabel } from "@/lib/workbook";
 
 export function ImportsManager({
   importSummaries,
@@ -87,7 +88,7 @@ export function ImportsManager({
                     <div className="min-w-0">
                       <p className="truncate font-medium">{entry.fileName}</p>
                       <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                        {entry.source}
+                        {getImportedSourceLabel(entry.importedSource)}
                       </p>
                     </div>
                   </div>

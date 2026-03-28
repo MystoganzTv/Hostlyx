@@ -39,9 +39,36 @@ type UploadToast = {
   message: string;
 };
 
+type ImportWarning = {
+  code: string;
+  message: string;
+};
+
+type ImportedFileResult = {
+  fileName: string;
+  source: string;
+  sourceLabel: string;
+  rowsImported: number;
+  bookingsImported: number;
+  payoutsDetected: number;
+  feesDetected: number;
+  skippedRows: number;
+  warnings: ImportWarning[];
+};
+
+type ImportedBatchSummary = {
+  rowsImported: number;
+  bookingsImported: number;
+  payoutsDetected: number;
+  feesDetected: number;
+  skippedRows: number;
+};
+
 type ImportResponsePayload = {
   error?: string;
   message?: string;
+  imports?: ImportedFileResult[];
+  summary?: ImportedBatchSummary;
 };
 
 function formatFileSize(size: number) {
@@ -116,8 +143,8 @@ async function parseImportResponse(response: Response) {
 
 export function UploadPanel({
   properties,
-  title = "Spreadsheet Intake",
-  subtitle = "Use Excel only to bring legacy `Bookings` and `Expenses` into Hostlyx. Once imported, the records live in the app as normal data and the workbook stays in Import History as backup traceability. Exact duplicates are skipped automatically.",
+  title = "Import Center",
+  subtitle = "Drop Airbnb, Booking.com, or generic CSV/XLSX exports into Hostlyx. The system will normalize bookings, payouts, and fees into your live financial workspace, while exact duplicates are skipped automatically.",
   refreshOnSuccess = true,
   onImportComplete,
 }: {
@@ -134,6 +161,12 @@ export function UploadPanel({
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [selectedFileMeta, setSelectedFileMeta] = useState<Record<string, SelectedFileMeta>>({});
   const [toast, setToast] = useState<UploadToast | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastImportedBatch, setLastImportedBatch] = useState<{
+    propertyName: string;
+    imports: ImportedFileResult[];
+    summary: ImportedBatchSummary;
+  } | null>(null);
 
   useEffect(() => {
     if (!toast) {
@@ -311,7 +344,7 @@ export function UploadPanel({
       setUploadState("error");
       setToast({
         tone: "error",
-        message: "Choose at least one .xlsx workbook before importing.",
+        message: "Choose at least one CSV or Excel file before importing.",
       });
       return;
     }
@@ -330,7 +363,7 @@ export function UploadPanel({
       setToast({
         tone: "error",
         message:
-          "Every selected workbook is already imported or duplicated in this selection. Remove the repeated files or choose different workbooks.",
+          "Every selected file is already imported or duplicated in this selection. Remove the repeated files or choose different exports.",
       });
       return;
     }
@@ -339,7 +372,7 @@ export function UploadPanel({
       setUploadState("error");
       setToast({
         tone: "error",
-        message: "Choose the property that this workbook belongs to.",
+        message: "Choose the property that this import belongs to.",
       });
       return;
     }
@@ -350,6 +383,15 @@ export function UploadPanel({
     try {
       const succeededFiles: File[] = [];
       const failedResults: Array<{ file: File; message: string }> = [];
+      const importedResults: ImportedFileResult[] = [];
+      const importedSummary: ImportedBatchSummary = {
+        rowsImported: 0,
+        bookingsImported: 0,
+        payoutsDetected: 0,
+        feesDetected: 0,
+        skippedRows: 0,
+      };
+      let successMessage = "";
 
       for (const file of importableFiles) {
         const upload = new FormData();
@@ -375,6 +417,19 @@ export function UploadPanel({
         }
 
         succeededFiles.push(file);
+        if (payload.message) {
+          successMessage = payload.message;
+        }
+        if (payload.imports?.length) {
+          importedResults.push(...payload.imports);
+        }
+        if (payload.summary) {
+          importedSummary.rowsImported += payload.summary.rowsImported;
+          importedSummary.bookingsImported += payload.summary.bookingsImported;
+          importedSummary.payoutsDetected += payload.summary.payoutsDetected;
+          importedSummary.feesDetected += payload.summary.feesDetected;
+          importedSummary.skippedRows += payload.summary.skippedRows;
+        }
       }
 
       const failedKeys = new Set(failedResults.map((result) => getFileKey(result.file)));
@@ -396,12 +451,18 @@ export function UploadPanel({
 
       if (failedResults.length === 0) {
         setUploadState("success");
+        setLastImportedBatch({
+          propertyName: selectedPropertyName,
+          imports: importedResults,
+          summary: importedSummary,
+        });
         setToast({
           tone: "success",
           message:
-            succeededFiles.length === 1
+            successMessage ||
+            (succeededFiles.length === 1
               ? `${succeededFiles[0].name} imported successfully.`
-              : `${succeededFiles.length} workbooks imported successfully into ${selectedPropertyName}.`,
+              : `${succeededFiles.length} files imported successfully into ${selectedPropertyName}.`),
         });
         if (refreshOnSuccess) {
           router.refresh();
@@ -414,6 +475,13 @@ export function UploadPanel({
       }
 
       setUploadState("error");
+      if (succeededFiles.length > 0) {
+        setLastImportedBatch({
+          propertyName: selectedPropertyName,
+          imports: importedResults,
+          summary: importedSummary,
+        });
+      }
       const failurePreview = failedResults
         .slice(0, 2)
         .map((result) => `${result.file.name}: ${result.message}`)
@@ -446,18 +514,10 @@ export function UploadPanel({
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const incomingFiles = Array.from(event.target.files ?? []);
-    const nextFiles = mergeFiles(selectedFiles, incomingFiles);
-    setSelectedFiles(nextFiles);
+    handleIncomingFiles(incomingFiles);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-
-    if (nextFiles.length === 0) {
-      setUploadState("idle");
-      return;
-    }
-
-    setUploadState("idle");
   }
 
   function removeSelectedFile(fileToRemove: File) {
@@ -476,13 +536,30 @@ export function UploadPanel({
       delete nextMeta[getFileKey(fileToRemove)];
       return nextMeta;
     });
+    setLastImportedBatch(null);
     setUploadState("idle");
   }
 
   function clearSelectedFiles() {
     setSelectedFiles([]);
     setSelectedFileMeta({});
+    setLastImportedBatch(null);
     setUploadState("idle");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }
+
+  function handleIncomingFiles(incomingFiles: File[]) {
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    const nextFiles = mergeFiles(selectedFiles, incomingFiles);
+    setSelectedFiles(nextFiles);
+    setLastImportedBatch(null);
+    setUploadState("idle");
+
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -552,13 +629,38 @@ export function UploadPanel({
           ref={inputRef}
           type="file"
           name="files"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           multiple
           className="sr-only"
           onChange={handleFileChange}
         />
 
-        <div className="workspace-soft-card rounded-[22px] border border-dashed p-4">
+        <div
+          className={`workspace-soft-card rounded-[22px] border border-dashed p-4 transition ${
+            isDragging
+              ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.08)]"
+              : "border-[var(--workspace-border)]"
+          }`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            if (event.currentTarget === event.target) {
+              setIsDragging(false);
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+            handleIncomingFiles(Array.from(event.dataTransfer.files ?? []));
+          }}
+        >
           <div className="mb-4 space-y-2">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
               Target property
@@ -583,14 +685,14 @@ export function UploadPanel({
               </div>
             )}
             <p className="text-xs text-[var(--workspace-muted)]">
-              Imported bookings and expenses will be assigned to this property, then managed inside Hostlyx like any other saved record.
+              Imported bookings, payouts, and expenses will be assigned to this property, then managed inside Hostlyx like any other saved record.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <span className="block text-sm font-medium text-[var(--workspace-text)]">
-                Excel workbooks
+                Import files
               </span>
               <p className="mt-1 text-sm text-[var(--workspace-muted)]">
                 {selectedFiles.length > 0
@@ -601,7 +703,7 @@ export function UploadPanel({
                         ? "1 file ready to import without duplicate verification."
                         : "1 new file ready to import."
                       : `${selectionSummary.readyCount + selectionSummary.unverifiableCount} files ready to import.`
-                  : "Choose one or more .xlsx workbooks to migrate legacy data in."}
+                  : "Drop Airbnb, Booking.com, or generic CSV/XLSX exports here."}
               </p>
             </div>
 
@@ -693,7 +795,7 @@ export function UploadPanel({
                             ) : null}
                             {meta?.status === "duplicate-selection" ? (
                               <p className="mt-2 text-xs text-amber-100/85">
-                                This workbook has the same content as another file in the current selection.
+                                This file has the same content as another file in the current selection.
                               </p>
                             ) : null}
                             {meta?.status === "error" ? (
@@ -721,7 +823,7 @@ export function UploadPanel({
                       No file selected yet
                     </p>
                     <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                      Only .xlsx workbooks are supported.
+                      CSV and Excel files are supported. Hostlyx will detect Airbnb, Booking.com, or Generic Excel when possible.
                     </p>
                   </>
                 )}
@@ -729,6 +831,93 @@ export function UploadPanel({
             </div>
           </div>
         </div>
+
+        {lastImportedBatch ? (
+          <div className="workspace-soft-card rounded-[24px] p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                  Import summary
+                </p>
+                <p className="mt-2 text-base font-medium text-[var(--workspace-text)]">
+                  Data landed in {lastImportedBatch.propertyName}.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(
+                  new Set(lastImportedBatch.imports.map((entry) => entry.sourceLabel)),
+                ).map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full border border-[var(--workspace-border)] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--workspace-text)]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                ["Rows imported", lastImportedBatch.summary.rowsImported],
+                ["Bookings imported", lastImportedBatch.summary.bookingsImported],
+                ["Payouts detected", lastImportedBatch.summary.payoutsDetected],
+                ["Fees detected", lastImportedBatch.summary.feesDetected],
+                ["Skipped rows", lastImportedBatch.summary.skippedRows],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] px-4 py-4"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                    {label}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {lastImportedBatch.imports.map((entry) => (
+                <div
+                  key={`${entry.fileName}-${entry.source}`}
+                  className="rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--workspace-text)]">
+                        {entry.fileName}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--workspace-muted)]">
+                        Detected as {entry.sourceLabel}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-[var(--workspace-muted)]">
+                      <span>{entry.bookingsImported} bookings</span>
+                      <span>{entry.payoutsDetected} payouts</span>
+                      <span>{entry.feesDetected} fee rows</span>
+                    </div>
+                  </div>
+
+                  {entry.warnings.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {entry.warnings.map((warning) => (
+                        <div
+                          key={`${entry.fileName}-${warning.code}`}
+                          className="rounded-[16px] border border-amber-400/18 bg-amber-300/[0.06] px-3 py-3 text-sm text-amber-50/90"
+                        >
+                          {warning.message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <button
           type="submit"

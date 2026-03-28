@@ -8,6 +8,7 @@ import type {
   CalendarClosureRecord,
   CountryCode,
   ExpenseRecord,
+  ImportedFileSource,
   ImportSource,
   ImportSummary,
   PropertyDefinition,
@@ -213,6 +214,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       workbook_hash TEXT NOT NULL DEFAULT '',
       property_name TEXT NOT NULL DEFAULT 'Default Property',
       source TEXT NOT NULL,
+      imported_source TEXT NOT NULL DEFAULT 'generic_excel',
       imported_at TEXT NOT NULL,
       bookings_count INTEGER NOT NULL,
       expenses_count INTEGER NOT NULL
@@ -223,6 +225,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       owner_email TEXT NOT NULL DEFAULT 'legacy',
       import_id INTEGER NOT NULL,
       source TEXT NOT NULL DEFAULT 'upload',
+      imported_source TEXT NOT NULL DEFAULT 'generic_excel',
       property_name TEXT NOT NULL DEFAULT 'Default Property',
       unit_name TEXT NOT NULL DEFAULT '',
       check_in TEXT NOT NULL,
@@ -396,6 +399,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
     db.exec("ALTER TABLE bookings ADD COLUMN source TEXT NOT NULL DEFAULT 'upload';");
   }
 
+  if (!hasColumn(db, "bookings", "imported_source")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN imported_source TEXT NOT NULL DEFAULT 'generic_excel';");
+  }
+
   if (!hasColumn(db, "bookings", "property_name")) {
     db.exec("ALTER TABLE bookings ADD COLUMN property_name TEXT NOT NULL DEFAULT 'Default Property';");
   }
@@ -410,6 +417,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "bookings", "overbooking_status")) {
     db.exec("ALTER TABLE bookings ADD COLUMN overbooking_status TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "imports", "imported_source")) {
+    db.exec("ALTER TABLE imports ADD COLUMN imported_source TEXT NOT NULL DEFAULT 'generic_excel';");
   }
 
   if (!hasColumn(db, "expenses", "owner_email")) {
@@ -515,6 +526,7 @@ async function initializePostgresSchema() {
           workbook_hash TEXT NOT NULL DEFAULT '',
           property_name TEXT NOT NULL DEFAULT 'Default Property',
           source TEXT NOT NULL,
+          imported_source TEXT NOT NULL DEFAULT 'generic_excel',
           imported_at TIMESTAMPTZ NOT NULL,
           bookings_count INTEGER NOT NULL,
           expenses_count INTEGER NOT NULL
@@ -525,6 +537,7 @@ async function initializePostgresSchema() {
           owner_email TEXT NOT NULL,
           import_id BIGINT NOT NULL DEFAULT 0,
           source TEXT NOT NULL DEFAULT 'upload',
+          imported_source TEXT NOT NULL DEFAULT 'generic_excel',
           property_name TEXT NOT NULL DEFAULT 'Default Property',
           unit_name TEXT NOT NULL DEFAULT '',
           check_in TEXT NOT NULL,
@@ -702,8 +715,16 @@ async function initializePostgresSchema() {
         ADD COLUMN IF NOT EXISTS property_name TEXT NOT NULL DEFAULT 'Default Property'
       `);
       await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS imported_source TEXT NOT NULL DEFAULT 'generic_excel'
+      `);
+      await pool.query(`
         ALTER TABLE imports
         ADD COLUMN IF NOT EXISTS workbook_hash TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE imports
+        ADD COLUMN IF NOT EXISTS imported_source TEXT NOT NULL DEFAULT 'generic_excel'
       `);
       await pool.query(`
         ALTER TABLE bookings
@@ -775,6 +796,9 @@ function mapImportSummary(row: Record<string, unknown>): ImportSummary {
     propertyName:
       String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
     source: String(getRowValue(row, "source")) as ImportSource,
+    importedSource: String(
+      getRowValue(row, "importedSource", "importedsource") ?? "generic_excel",
+    ) as ImportedFileSource,
     importedAt: normalizeTimestampValue(importedAt, importedAtFallback),
     bookingsCount: Number(getRowValue(row, "bookingsCount", "bookingscount")),
     expensesCount: Number(getRowValue(row, "expensesCount", "expensescount")),
@@ -786,6 +810,9 @@ function mapBookingRecord(row: Record<string, unknown>): BookingRecord {
     id: Number(getRowValue(row, "id")),
     importId: Number(getRowValue(row, "importId", "importid")),
     source: String(getRowValue(row, "source")) as ImportSource,
+    importedSource: String(
+      getRowValue(row, "importedSource", "importedsource") ?? "generic_excel",
+    ) as ImportedFileSource,
     propertyName: String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
     unitName: String(getRowValue(row, "unitName", "unitname")),
     checkIn: String(getRowValue(row, "checkIn", "checkin")),
@@ -877,6 +904,7 @@ function cloneImportSummary(importSummary: StoredImport): ImportSummary {
     fileName: importSummary.fileName,
     propertyName: importSummary.propertyName,
     source: importSummary.source,
+    importedSource: importSummary.importedSource,
     importedAt: importSummary.importedAt,
     bookingsCount: importSummary.bookingsCount,
     expensesCount: importSummary.expensesCount,
@@ -888,6 +916,7 @@ function cloneBookingRecord(booking: StoredBooking): BookingRecord {
     id: booking.id,
     importId: booking.importId,
     source: booking.source,
+    importedSource: booking.importedSource,
     propertyName: booking.propertyName,
     unitName: booking.unitName,
     checkIn: booking.checkIn,
@@ -1340,6 +1369,7 @@ export async function appendImportData({
   workbookHash,
   propertyName,
   source,
+  importedSource,
   bookings,
   expenses,
   closures,
@@ -1349,6 +1379,7 @@ export async function appendImportData({
   workbookHash: string;
   propertyName: string;
   source: ImportSource;
+  importedSource: ImportedFileSource;
   bookings: BookingRecord[];
   expenses: ExpenseRecord[];
   closures: CalendarClosureRecord[];
@@ -1370,6 +1401,7 @@ export async function appendImportData({
             unit_name AS unitName,
             check_in AS checkIn,
             checkout,
+            imported_source AS importedSource,
             guest_name AS guestName,
             guest_count AS guestCount,
             channel,
@@ -1464,8 +1496,8 @@ export async function appendImportData({
 
       const importResult = await client.query(
         `
-          INSERT INTO imports (owner_email, file_name, workbook_hash, property_name, source, imported_at, bookings_count, expenses_count)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          INSERT INTO imports (owner_email, file_name, workbook_hash, property_name, source, imported_source, imported_at, bookings_count, expenses_count)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING id
         `,
         [
@@ -1474,6 +1506,7 @@ export async function appendImportData({
           workbookHash,
           propertyName,
           source,
+          importedSource,
           importedAt,
           freshBookings.length,
           freshExpenses.length,
@@ -1487,10 +1520,10 @@ export async function appendImportData({
           `
             INSERT INTO bookings (
               owner_email, import_id, source, property_name, unit_name, check_in, checkout, guest_name, guest_count,
-              channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
+              imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
               cleaning_fee, total_revenue, host_fee, payout, nights, booking_number, overbooking_status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
           `,
           [
             normalizedEmail,
@@ -1502,6 +1535,7 @@ export async function appendImportData({
             booking.checkout,
             booking.guestName,
             booking.guestCount,
+            booking.importedSource ?? importedSource,
             booking.channel,
             booking.rentalPeriod,
             booking.pricePerNight,
@@ -1642,6 +1676,7 @@ export async function appendImportData({
       workbookHash,
       propertyName,
       source,
+      importedSource,
       importedAt,
       bookingsCount: freshBookings.length,
       expensesCount: freshExpenses.length,
@@ -1654,6 +1689,7 @@ export async function appendImportData({
         importId,
         ownerEmail: normalizedEmail,
         source,
+        importedSource: booking.importedSource ?? importedSource,
       });
     }
 
@@ -1699,6 +1735,7 @@ export async function appendImportData({
             unit_name AS unitName,
             check_in AS checkIn,
             checkout,
+            imported_source AS importedSource,
             guest_name AS guestName,
             guest_count AS guestCount,
             channel,
@@ -1791,8 +1828,8 @@ export async function appendImportData({
     const result = db
       .prepare(
         `
-          INSERT INTO imports (owner_email, file_name, workbook_hash, property_name, source, imported_at, bookings_count, expenses_count)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO imports (owner_email, file_name, workbook_hash, property_name, source, imported_source, imported_at, bookings_count, expenses_count)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
       )
       .run(
@@ -1801,6 +1838,7 @@ export async function appendImportData({
         workbookHash,
         propertyName,
         source,
+        importedSource,
         importedAt,
         freshBookings.length,
         freshExpenses.length,
@@ -1811,10 +1849,10 @@ export async function appendImportData({
     const insertBooking = db.prepare(`
       INSERT INTO bookings (
         owner_email, import_id, source, property_name, unit_name, check_in, checkout, guest_name, guest_count,
-        channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
+        imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
         cleaning_fee, total_revenue, host_fee, payout, nights, booking_number, overbooking_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertExpense = db.prepare(`
@@ -1841,6 +1879,7 @@ export async function appendImportData({
         booking.checkout,
         booking.guestName,
         booking.guestCount,
+        booking.importedSource ?? importedSource,
         booking.channel,
         booking.rentalPeriod,
         booking.pricePerNight,
@@ -1916,6 +1955,7 @@ export async function getLatestImport(ownerEmail: string): Promise<ImportSummary
           file_name AS fileName,
           property_name AS propertyName,
           source,
+          imported_source AS importedSource,
           imported_at AS importedAt,
           bookings_count AS bookingsCount,
           expenses_count AS expensesCount
@@ -1948,6 +1988,7 @@ export async function getLatestImport(ownerEmail: string): Promise<ImportSummary
           file_name AS fileName,
           property_name AS propertyName,
           source,
+          imported_source AS importedSource,
           imported_at AS importedAt,
           bookings_count AS bookingsCount,
           expenses_count AS expensesCount
@@ -1975,6 +2016,7 @@ export async function getImportSummaries(ownerEmail: string): Promise<ImportSumm
           file_name AS fileName,
           property_name AS propertyName,
           source,
+          imported_source AS importedSource,
           imported_at AS importedAt,
           bookings_count AS bookingsCount,
           expenses_count AS expensesCount
@@ -2005,6 +2047,7 @@ export async function getImportSummaries(ownerEmail: string): Promise<ImportSumm
           file_name AS fileName,
           property_name AS propertyName,
           source,
+          imported_source AS importedSource,
           imported_at AS importedAt,
           bookings_count AS bookingsCount,
           expenses_count AS expensesCount
@@ -3229,6 +3272,7 @@ export async function insertManualBooking({
       importId: 0,
       ownerEmail: normalizedEmail,
       source: "manual",
+      importedSource: booking.importedSource ?? "generic_excel",
     });
 
     return id;

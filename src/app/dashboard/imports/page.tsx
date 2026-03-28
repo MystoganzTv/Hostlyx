@@ -47,7 +47,7 @@ export default async function ImportsPage() {
     <WorkspaceShell
       activePage="imports"
       pageTitle="Import History"
-      pageSubtitle="Excel files are treated as one-time intake. After import, your source of truth lives inside Hostlyx."
+      pageSubtitle="CSV and Excel files are treated as one-time intake. After import, your source of truth lives inside Hostlyx."
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -98,7 +98,7 @@ export default async function ImportsPage() {
         <SectionCard title="How to think about it">
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Use this page as audit trail and backup history. Once a workbook is imported, you should think of the records as app data, not as something still owned by the spreadsheet.
+              Use this page as audit trail and backup history. Once a file is imported, you should think of the records as app data, not as something still owned by the spreadsheet.
             </p>
             <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
               Import is a secondary workflow in Hostlyx. Day to day, your source of truth should be the bookings, expenses, properties, and edits that live inside the app.

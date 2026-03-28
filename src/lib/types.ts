@@ -1,4 +1,9 @@
 export type ImportSource = "demo" | "upload" | "manual";
+export type ImportedFileSource =
+  | "airbnb"
+  | "booking_com"
+  | "generic_excel"
+  | "hostlyx_excel";
 export type CurrencyCode = "USD" | "EUR" | "GBP";
 export type CountryCode = "US" | "ES" | "GB";
 export type SubscriptionPlan = "trial" | "starter" | "pro" | "portfolio";
@@ -20,6 +25,7 @@ export type BookingRecord = {
   id?: number;
   importId?: number;
   source?: ImportSource;
+  importedSource?: ImportedFileSource;
   propertyName: string;
   unitName: string;
   checkIn: string;
@@ -73,9 +79,26 @@ export type ImportSummary = {
   fileName: string;
   propertyName: string;
   source: ImportSource;
+  importedSource: ImportedFileSource;
   importedAt: string;
   bookingsCount: number;
   expensesCount: number;
+};
+
+export type ImportValidationWarning = {
+  code: string;
+  message: string;
+};
+
+export type ParsedImportSummary = {
+  source: ImportedFileSource;
+  sourceLabel: string;
+  rowsImported: number;
+  bookingsImported: number;
+  payoutsDetected: number;
+  feesDetected: number;
+  skippedRows: number;
+  warnings: ImportValidationWarning[];
 };
 
 export type UserSettings = {

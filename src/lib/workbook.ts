@@ -1,4 +1,5 @@
 import {
+  addDays,
   addMonths,
   differenceInCalendarDays,
   formatISO,
@@ -6,15 +7,50 @@ import {
   parse,
 } from "date-fns";
 import * as XLSX from "xlsx";
+import { normalizeExpenseFields } from "./expense-normalization";
 import type {
   BookingRecord,
   CalendarClosureRecord,
   ExpenseRecord,
+  ImportedFileSource,
+  ParsedImportSummary,
 } from "./types";
-import { normalizeExpenseFields } from "./expense-normalization";
 
 type CellValue = string | number | boolean | Date | null | undefined;
 type SheetRow = CellValue[];
+type OptionalIndexMap<T extends string> = Partial<Record<T, number>>;
+type ProviderColumnKey =
+  | "propertyName"
+  | "guestName"
+  | "guestCount"
+  | "channel"
+  | "checkIn"
+  | "checkOut"
+  | "nights"
+  | "grossRevenue"
+  | "payout"
+  | "platformFee"
+  | "taxes"
+  | "cleaningFee"
+  | "extraFee"
+  | "bookingReference";
+
+type ParsedImportFile = {
+  importedSource: ImportedFileSource;
+  sourceLabel: string;
+  bookings: BookingRecord[];
+  expenses: ExpenseRecord[];
+  closures: CalendarClosureRecord[];
+  summary: ParsedImportSummary;
+};
+
+type SheetDetectionCandidate = {
+  source: Exclude<ImportedFileSource, "hostlyx_excel">;
+  sheetName: string;
+  headerRowIndex: number;
+  indexes: OptionalIndexMap<ProviderColumnKey>;
+  score: number;
+};
 
 const bookingColumnMap = {
   checkIn: ["checkin"],
@@ -43,11 +79,195 @@ const expenseColumnMap = {
   note: ["note"],
 } as const;
 
+const sharedProviderColumns: Record<ProviderColumnKey, readonly string[]> = {
+  propertyName: [
+    "listing",
+    "listingname",
+    "property",
+    "propertyname",
+    "accommodation",
+    "accommodationname",
+    "unit",
+    "unitname",
+    "room",
+    "roomname",
+    "apartment",
+    "listingtitle",
+  ],
+  guestName: [
+    "guest",
+    "guestname",
+    "leadguest",
+    "booker",
+    "bookername",
+    "primaryguest",
+    "name",
+    "guestfullname",
+  ],
+  guestCount: [
+    "guests",
+    "guestcount",
+    "numberofguests",
+    "pax",
+    "party",
+    "partysize",
+    "adultschildren",
+  ],
+  channel: ["channel", "source", "platform", "ota"],
+  checkIn: [
+    "checkin",
+    "arrival",
+    "arrivaldate",
+    "startdate",
+    "reservationstart",
+    "datefrom",
+  ],
+  checkOut: [
+    "checkout",
+    "departure",
+    "departuredate",
+    "enddate",
+    "reservationend",
+    "dateto",
+  ],
+  nights: ["nights", "nightcount", "lengthofstay", "staynights", "numberofnights"],
+  grossRevenue: [
+    "grossrevenue",
+    "grossbookingvalue",
+    "bookingvalue",
+    "bookingamount",
+    "totalbookingvalue",
+    "totalprice",
+    "reservationvalue",
+    "totalearnings",
+    "subtotal",
+    "amount",
+    "earnings",
+    "paidbyguest",
+    "guestpaid",
+  ],
+  payout: [
+    "payout",
+    "netpayout",
+    "expectedpayout",
+    "cashreceived",
+    "actualpayout",
+    "earningsafterfees",
+    "hostpayout",
+    "paidout",
+    "yourearnings",
+  ],
+  platformFee: [
+    "hostfee",
+    "platformfee",
+    "servicefee",
+    "hostservicefee",
+    "airbnbservicefee",
+    "commission",
+    "commissionamount",
+    "otafee",
+    "channelfee",
+  ],
+  taxes: [
+    "tax",
+    "taxes",
+    "touristtax",
+    "occupancytax",
+    "vat",
+    "citytax",
+    "lodgingtax",
+    "withheldtax",
+  ],
+  cleaningFee: ["cleaningfee", "cleaning"],
+  extraFee: ["extrafee", "fees", "otherfee", "otherfees", "extras"],
+  bookingReference: [
+    "bookingreference",
+    "bookingnumber",
+    "bookingid",
+    "reservationnumber",
+    "reservationid",
+    "reservationcode",
+    "confirmationcode",
+    "confirmationnumber",
+    "confirmation",
+    "reference",
+  ],
+};
+
+const providerDetectionProfiles: Record<
+  Exclude<ImportedFileSource, "hostlyx_excel">,
+  {
+    label: string;
+    filenameHints: string[];
+    distinctiveHeaders: string[];
+    columns: Record<ProviderColumnKey, readonly string[]>;
+  }
+> = {
+  airbnb: {
+    label: "Airbnb",
+    filenameHints: ["airbnb", "air-bnb"],
+    distinctiveHeaders: [
+      "confirmationcode",
+      "listing",
+      "hostservicefee",
+      "airbnbservicefee",
+      "yourearnings",
+    ],
+    columns: {
+      ...sharedProviderColumns,
+      guestName: [...sharedProviderColumns.guestName, "guest"],
+      bookingReference: [...sharedProviderColumns.bookingReference, "confirmationcode"],
+      payout: [...sharedProviderColumns.payout, "yourearnings", "expectedpayout"],
+      platformFee: [...sharedProviderColumns.platformFee, "hostservicefee", "airbnbservicefee"],
+    },
+  },
+  booking_com: {
+    label: "Booking.com",
+    filenameHints: ["booking", "bookingcom"],
+    distinctiveHeaders: [
+      "reservationnumber",
+      "commissionamount",
+      "accommodationname",
+      "arrivaldate",
+      "departuredate",
+    ],
+    columns: {
+      ...sharedProviderColumns,
+      propertyName: [...sharedProviderColumns.propertyName, "accommodationname"],
+      guestName: [...sharedProviderColumns.guestName, "guestname"],
+      bookingReference: [...sharedProviderColumns.bookingReference, "reservationnumber"],
+      grossRevenue: [...sharedProviderColumns.grossRevenue, "totalprice"],
+      platformFee: [...sharedProviderColumns.platformFee, "commissionamount", "commission"],
+      checkIn: [...sharedProviderColumns.checkIn, "arrivaldate"],
+      checkOut: [...sharedProviderColumns.checkOut, "departuredate"],
+    },
+  },
+  generic_excel: {
+    label: "Generic Excel",
+    filenameHints: ["export", "report", "reservation", "booking"],
+    distinctiveHeaders: [],
+    columns: sharedProviderColumns,
+  },
+};
+
 function normalizeHeader(value: CellValue) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
+}
+
+function getImportedSourceLabel(source: ImportedFileSource) {
+  switch (source) {
+    case "airbnb":
+      return "Airbnb";
+    case "booking_com":
+      return "Booking.com";
+    case "hostlyx_excel":
+      return "Generic Excel";
+    default:
+      return "Generic Excel";
+  }
 }
 
 function parseCurrency(value: CellValue) {
@@ -85,6 +305,10 @@ function parseCurrency(value: CellValue) {
   return negative ? -amount : amount;
 }
 
+function parsePositiveCurrency(value: CellValue) {
+  return Math.abs(parseCurrency(value));
+}
+
 function parseCount(value: CellValue) {
   if (typeof value === "number") {
     return Math.max(0, Math.trunc(value));
@@ -118,7 +342,18 @@ function parseExcelDate(value: CellValue) {
     return "";
   }
 
-  const patterns = ["M/d/yyyy", "MM/dd/yyyy", "M/d/yy", "yyyy-MM-dd", "MMM d, yyyy"];
+  const patterns = [
+    "M/d/yyyy",
+    "MM/dd/yyyy",
+    "d/M/yyyy",
+    "dd/MM/yyyy",
+    "M/d/yy",
+    "d/M/yy",
+    "yyyy-MM-dd",
+    "dd-MM-yyyy",
+    "MMM d, yyyy",
+    "d MMM yyyy",
+  ];
 
   for (const pattern of patterns) {
     const parsed = parse(raw, pattern, new Date());
@@ -175,14 +410,14 @@ function getOptionalWorksheet(workbook: XLSX.WorkBook, name: string) {
   return match ? workbook.Sheets[match] : null;
 }
 
-function mapHeaderIndexes(
+function mapHeaderIndexes<T extends string>(
   headers: SheetRow,
-  columns: Record<string, readonly string[]>,
+  columns: Record<T, readonly string[]>,
 ) {
   const normalizedHeaders = headers.map((header) => normalizeHeader(header));
 
   return Object.fromEntries(
-    Object.entries(columns).map(([key, aliases]) => {
+    (Object.entries(columns) as Array<[T, readonly string[]]>).map(([key, aliases]) => {
       const index = normalizedHeaders.findIndex((header) => aliases.includes(header));
 
       if (index === -1) {
@@ -191,12 +426,29 @@ function mapHeaderIndexes(
 
       return [key, index];
     }),
-  ) as Record<keyof typeof columns, number>;
+  ) as Record<T, number>;
 }
 
-function findHeaderRowIndex(
+function mapOptionalHeaderIndexes<T extends string>(
+  headers: SheetRow,
+  columns: Record<T, readonly string[]>,
+) {
+  const normalizedHeaders = headers.map((header) => normalizeHeader(header));
+  const indexes: OptionalIndexMap<T> = {};
+
+  for (const [key, aliases] of Object.entries(columns) as Array<[T, readonly string[]]>) {
+    const index = normalizedHeaders.findIndex((header) => aliases.includes(header));
+    if (index >= 0) {
+      indexes[key] = index;
+    }
+  }
+
+  return indexes;
+}
+
+function findHeaderRowIndex<T extends string>(
   rows: SheetRow[],
-  columns: Record<string, readonly string[]>,
+  columns: Record<T, readonly string[]>,
 ) {
   for (let index = 0; index < Math.min(rows.length, 12); index += 1) {
     try {
@@ -331,7 +583,11 @@ function parseCalendarClosures(rows: SheetRow[]) {
 
       let dateRowIndex = -1;
 
-      for (let searchIndex = rowIndex - 1; searchIndex >= Math.max(0, rowIndex - 6); searchIndex -= 1) {
+      for (
+        let searchIndex = rowIndex - 1;
+        searchIndex >= Math.max(0, rowIndex - 6);
+        searchIndex -= 1
+      ) {
         if (extractDayNumber(rows[searchIndex]?.[columnIndex]) !== null) {
           dateRowIndex = searchIndex;
           break;
@@ -354,7 +610,11 @@ function parseCalendarClosures(rows: SheetRow[]) {
       }
 
       const noteLines = new Set<string>();
-      for (let detailIndex = dateRowIndex + 1; detailIndex <= Math.min(rows.length - 1, rowIndex + 1); detailIndex += 1) {
+      for (
+        let detailIndex = dateRowIndex + 1;
+        detailIndex <= Math.min(rows.length - 1, rowIndex + 1);
+        detailIndex += 1
+      ) {
         const detailValue = String(rows[detailIndex]?.[columnIndex] ?? "").trim();
         if (detailValue) {
           noteLines.add(detailValue);
@@ -422,12 +682,7 @@ function parseCalendarClosures(rows: SheetRow[]) {
   return Array.from(closuresByDate.values());
 }
 
-export function parseWorkbook(buffer: ArrayBuffer) {
-  const workbook = XLSX.read(buffer, {
-    type: "array",
-    cellDates: true,
-  });
-
+function parseHostlyxWorkbook(workbook: XLSX.WorkBook) {
   const bookingsSheet = getWorksheet(workbook, "Bookings");
   const expensesSheet = getWorksheet(workbook, "Expenses");
   const calendarSheet = getOptionalWorksheet(workbook, "Calendar");
@@ -464,6 +719,7 @@ export function parseWorkbook(buffer: ArrayBuffer) {
       return {
         propertyName: "Default Property",
         unitName: "",
+        importedSource: "hostlyx_excel" as ImportedFileSource,
         checkIn,
         checkout,
         guestName: String(row[bookingIndexes.guestName] ?? "").trim() || "Guest",
@@ -520,3 +776,297 @@ export function parseWorkbook(buffer: ArrayBuffer) {
     closures,
   };
 }
+
+function countMatchedColumns<T extends string>(indexes: OptionalIndexMap<T>) {
+  return Object.values(indexes).filter((value) => typeof value === "number").length;
+}
+
+function getFilenameHintScore(fileName: string, hints: string[]) {
+  const normalizedName = normalizeHeader(fileName);
+  return hints.some((hint) => normalizedName.includes(normalizeHeader(hint))) ? 3 : 0;
+}
+
+function detectProviderSheet(
+  workbook: XLSX.WorkBook,
+  fileName: string,
+): SheetDetectionCandidate | null {
+  const candidates: SheetDetectionCandidate[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const rows = getSheetRows(workbook.Sheets[sheetName]);
+    if (!rows.length) {
+      continue;
+    }
+
+    for (let rowIndex = 0; rowIndex < Math.min(rows.length, 12); rowIndex += 1) {
+      const row = rows[rowIndex];
+      if (rowIsEmpty(row)) {
+        continue;
+      }
+
+      for (const [source, profile] of Object.entries(providerDetectionProfiles) as Array<
+        [Exclude<ImportedFileSource, "hostlyx_excel">, (typeof providerDetectionProfiles)[Exclude<ImportedFileSource, "hostlyx_excel">]]
+      >) {
+        const indexes = mapOptionalHeaderIndexes(row, profile.columns);
+        const matchedColumns = countMatchedColumns(indexes);
+
+        if (
+          typeof indexes.checkIn !== "number" ||
+          (typeof indexes.checkOut !== "number" && typeof indexes.nights !== "number")
+        ) {
+          continue;
+        }
+
+        if (matchedColumns < 4) {
+          continue;
+        }
+
+        const normalizedHeaders = row.map((cell) => normalizeHeader(cell));
+        const distinctiveHits = normalizedHeaders.filter((header) =>
+          profile.distinctiveHeaders.some((token) => header.includes(token)),
+        ).length;
+
+        candidates.push({
+          source,
+          sheetName,
+          headerRowIndex: rowIndex,
+          indexes,
+          score:
+            matchedColumns * 4 +
+            distinctiveHits * 3 +
+            getFilenameHintScore(fileName, profile.filenameHints),
+        });
+      }
+    }
+  }
+
+  return candidates.sort((left, right) => right.score - left.score)[0] ?? null;
+}
+
+function getCell(row: SheetRow, index: number | undefined) {
+  return typeof index === "number" ? row[index] : "";
+}
+
+function deriveProviderDates({
+  checkInRaw,
+  checkOutRaw,
+  nights,
+}: {
+  checkInRaw: CellValue;
+  checkOutRaw: CellValue;
+  nights: number;
+}) {
+  let checkIn = parseExcelDate(checkInRaw);
+  let checkOut = parseExcelDate(checkOutRaw);
+
+  if (checkIn && !checkOut && nights > 0) {
+    checkOut = formatISO(addDays(new Date(checkIn), nights), { representation: "date" });
+  }
+
+  if (!checkIn && checkOut && nights > 0) {
+    checkIn = formatISO(addDays(new Date(checkOut), -nights), { representation: "date" });
+  }
+
+  return { checkIn, checkOut };
+}
+
+function parseProviderWorkbook(
+  workbook: XLSX.WorkBook,
+  fileName: string,
+): ParsedImportFile {
+  const detected = detectProviderSheet(workbook, fileName);
+
+  if (!detected) {
+    throw new Error(
+      "Hostlyx could not detect the booking columns in this file. Export a reservations or payouts report from Airbnb or Booking.com, or use the Hostlyx workbook template.",
+    );
+  }
+
+  const profile = providerDetectionProfiles[detected.source];
+  const rows = getSheetRows(workbook.Sheets[detected.sheetName]);
+  const warnings: ParsedImportSummary["warnings"] = [];
+  const bookings: BookingRecord[] = [];
+  let skippedRows = 0;
+  let payoutsDetected = 0;
+  let feesDetected = 0;
+
+  if (!detected.indexes.payout) {
+    warnings.push({
+      code: "missing_payout_column",
+      message:
+        "No payout column was found. Hostlyx will derive payout from gross revenue minus fees when possible.",
+    });
+  }
+
+  if (!detected.indexes.platformFee && !detected.indexes.taxes) {
+    warnings.push({
+      code: "missing_fee_columns",
+      message:
+        "No fee or tax columns were found. Platform fees will stay at 0 unless Hostlyx can infer them from gross revenue and payout.",
+    });
+  }
+
+  if (detected.source === "generic_excel") {
+    warnings.push({
+      code: "generic_detection",
+      message:
+        "Hostlyx could not confidently identify the source, so this file was imported as Generic Excel.",
+    });
+  }
+
+  for (const row of rows.slice(detected.headerRowIndex + 1)) {
+    if (rowIsEmpty(row)) {
+      continue;
+    }
+
+    const explicitNights = parseCount(getCell(row, detected.indexes.nights));
+    const { checkIn, checkOut } = deriveProviderDates({
+      checkInRaw: getCell(row, detected.indexes.checkIn),
+      checkOutRaw: getCell(row, detected.indexes.checkOut),
+      nights: explicitNights,
+    });
+
+    if (!checkIn || !checkOut) {
+      skippedRows += 1;
+      continue;
+    }
+
+    const dateDifference = differenceInCalendarDays(new Date(checkOut), new Date(checkIn));
+    const nights = Math.max(1, explicitNights || dateDifference || 1);
+    const guestName = String(getCell(row, detected.indexes.guestName) ?? "").trim() || "Guest";
+    const guestCount = parseCount(getCell(row, detected.indexes.guestCount));
+    const bookingReference = String(getCell(row, detected.indexes.bookingReference) ?? "").trim();
+    const unitName = String(getCell(row, detected.indexes.propertyName) ?? "").trim();
+    const cleaningFee = parsePositiveCurrency(getCell(row, detected.indexes.cleaningFee));
+    const extraFee = parsePositiveCurrency(getCell(row, detected.indexes.extraFee));
+    const taxAmount = parsePositiveCurrency(getCell(row, detected.indexes.taxes));
+    let hostFee = parsePositiveCurrency(getCell(row, detected.indexes.platformFee));
+    let totalRevenue = parsePositiveCurrency(getCell(row, detected.indexes.grossRevenue));
+    let payout = parsePositiveCurrency(getCell(row, detected.indexes.payout));
+
+    if (totalRevenue === 0 && payout > 0) {
+      totalRevenue = payout + hostFee + taxAmount;
+    }
+
+    if (payout === 0 && totalRevenue > 0) {
+      payout = Math.max(0, totalRevenue - hostFee - taxAmount);
+    }
+
+    if (hostFee === 0 && totalRevenue > 0 && payout > 0 && totalRevenue >= payout) {
+      hostFee = Math.max(0, totalRevenue - payout);
+    }
+
+    if (totalRevenue <= 0 && payout <= 0 && !bookingReference && !guestName) {
+      skippedRows += 1;
+      continue;
+    }
+
+    if (payout > 0) {
+      payoutsDetected += 1;
+    }
+
+    if (hostFee > 0 || taxAmount > 0) {
+      feesDetected += 1;
+    }
+
+    bookings.push({
+      propertyName: "Default Property",
+      unitName,
+      importedSource: detected.source,
+      checkIn,
+      checkout: checkOut,
+      guestName,
+      guestCount,
+      channel:
+        String(getCell(row, detected.indexes.channel) ?? "").trim() ||
+        getImportedSourceLabel(detected.source),
+      rentalPeriod: `${nights} nights`,
+      pricePerNight: nights > 0 ? totalRevenue / nights : totalRevenue,
+      extraFee,
+      discount: 0,
+      rentalRevenue: totalRevenue,
+      cleaningFee,
+      totalRevenue,
+      hostFee,
+      payout,
+      nights,
+      bookingNumber: bookingReference,
+      overbookingStatus: "",
+    });
+  }
+
+  if (!bookings.length) {
+    throw new Error(
+      "Hostlyx found the file structure, but no usable booking rows were detected after validation.",
+    );
+  }
+
+  if (skippedRows > 0) {
+    warnings.push({
+      code: "skipped_rows",
+      message: `Hostlyx skipped ${skippedRows} row${skippedRows === 1 ? "" : "s"} because the dates were missing or incomplete.`,
+    });
+  }
+
+  return {
+    importedSource: detected.source,
+    sourceLabel: profile.label,
+    bookings,
+    expenses: [],
+    closures: [],
+    summary: {
+      source: detected.source,
+      sourceLabel: profile.label,
+      rowsImported: bookings.length,
+      bookingsImported: bookings.length,
+      payoutsDetected,
+      feesDetected,
+      skippedRows,
+      warnings,
+    },
+  };
+}
+
+export function parseWorkbook(buffer: ArrayBuffer) {
+  const workbook = XLSX.read(buffer, {
+    type: "array",
+    cellDates: true,
+  });
+
+  return parseHostlyxWorkbook(workbook);
+}
+
+export function parseImportFile(buffer: ArrayBuffer, fileName: string): ParsedImportFile {
+  const workbook = XLSX.read(buffer, {
+    type: "array",
+    cellDates: true,
+  });
+
+  const hasBookingsSheet = Boolean(getOptionalWorksheet(workbook, "Bookings"));
+  const hasExpensesSheet = Boolean(getOptionalWorksheet(workbook, "Expenses"));
+
+  if (hasBookingsSheet && hasExpensesSheet) {
+    const { bookings, expenses, closures } = parseHostlyxWorkbook(workbook);
+    return {
+      importedSource: "hostlyx_excel",
+      sourceLabel: "Generic Excel",
+      bookings,
+      expenses,
+      closures,
+      summary: {
+        source: "hostlyx_excel",
+        sourceLabel: "Generic Excel",
+        rowsImported: bookings.length + expenses.length + closures.length,
+        bookingsImported: bookings.length,
+        payoutsDetected: bookings.filter((booking) => booking.payout > 0).length,
+        feesDetected: bookings.filter((booking) => booking.hostFee > 0).length,
+        skippedRows: 0,
+        warnings: [],
+      },
+    };
+  }
+
+  return parseProviderWorkbook(workbook, fileName);
+}
+
+export { getImportedSourceLabel };
