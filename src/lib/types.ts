@@ -225,7 +225,7 @@ export type DashboardView = {
     guests: number;
     nights: number;
   }>;
-  realityCheck: null | {
+  reconcile: null | {
     source: FinancialDocumentSource;
     periodLabel: string;
     statementCount: number;

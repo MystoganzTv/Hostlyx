@@ -205,7 +205,7 @@ function formatWholePercent(value: number) {
   return `${Math.round(Math.abs(value) * 100)}%`;
 }
 
-function buildRealityCheckInsights({
+function buildReconcileInsights({
   expectedPayout,
   totalFees,
   totalTaxes,
@@ -273,7 +273,7 @@ function buildRealityCheckInsights({
   return insights.slice(0, 4);
 }
 
-function buildRealityCheckMessage({
+function buildReconcileMessage({
   difference,
   mismatchRatio,
 }: {
@@ -665,7 +665,7 @@ export function buildDashboardView({
   );
   const latestStatement = overlappingFinancialDocuments[0] ?? null;
   const statementCount = overlappingFinancialDocuments.length;
-  const realityCheck =
+  const reconcile =
     latestStatement && actualStatementPayout > 0
       ? (() => {
           const difference = actualStatementPayout - totals.totalPayout;
@@ -699,12 +699,12 @@ export function buildDashboardView({
             totalTaxes: actualStatementTaxes,
             currency: latestStatement.currency || displayCurrencyCode,
             trustLabel,
-            message: buildRealityCheckMessage({ difference, mismatchRatio }),
+            message: buildReconcileMessage({ difference, mismatchRatio }),
             alertMessage:
               mismatchRatio !== null && Math.abs(mismatchRatio) > 0.08
                 ? "Your payouts differ significantly from your expected revenue."
                 : null,
-            insights: buildRealityCheckInsights({
+            insights: buildReconcileInsights({
               expectedPayout: totals.totalPayout,
               totalFees: actualStatementFees,
               totalTaxes: actualStatementTaxes,
@@ -724,7 +724,7 @@ export function buildDashboardView({
     displayCurrencyCode,
     mixedCurrencyMode: filters.countryCode === "all" && availableCountries.length > 1,
     marketBreakdown,
-    realityCheck,
+    reconcile,
     metrics: {
       totalRevenue: totals.totalRevenue,
       totalPayout: totals.totalPayout,

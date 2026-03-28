@@ -5,7 +5,7 @@ import { Scale, TriangleAlert } from "lucide-react";
 import type { CurrencyCode, DashboardView } from "@/lib/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
 
-type RealityCheckData = NonNullable<DashboardView["realityCheck"]>;
+type ReconcileData = NonNullable<DashboardView["reconcile"]>;
 
 function formatSignedCurrency(value: number, currencyCode: CurrencyCode) {
   const absolute = formatCurrency(Math.abs(value), false, currencyCode);
@@ -49,11 +49,11 @@ function getRealityDifferenceTone(value: number) {
   return "text-[var(--workspace-text)]";
 }
 
-export function RealityCheckSummaryCard({
-  realityCheck,
+export function ReconcileSummaryCard({
+  reconcile,
   currencyCode,
 }: {
-  realityCheck: RealityCheckData;
+  reconcile: ReconcileData;
   currencyCode: CurrencyCode;
 }) {
   return (
@@ -67,7 +67,7 @@ export function RealityCheckSummaryCard({
             Expected vs actual payout
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
-            {realityCheck.message}
+            {reconcile.message}
           </p>
         </div>
         <div className="workspace-icon-chip rounded-[18px] p-3">
@@ -81,7 +81,7 @@ export function RealityCheckSummaryCard({
             Expected payout
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-            {formatCurrency(realityCheck.expectedPayout, false, currencyCode)}
+            {formatCurrency(reconcile.expectedPayout, false, currencyCode)}
           </p>
         </div>
         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
@@ -89,26 +89,26 @@ export function RealityCheckSummaryCard({
             Actual payout
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-            {formatCurrency(realityCheck.actualPayout, false, currencyCode)}
+            {formatCurrency(reconcile.actualPayout, false, currencyCode)}
           </p>
         </div>
         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
             Difference
           </p>
-          <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(realityCheck.difference)}`}>
-            {formatSignedCurrency(realityCheck.difference, currencyCode)}
+          <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+            {formatSignedCurrency(reconcile.difference, currencyCode)}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-            {formatSignedPercent(realityCheck.mismatchRatio)}
+            {formatSignedPercent(reconcile.mismatchRatio)}
           </p>
         </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm leading-6 text-[var(--workspace-muted)]">{realityCheck.trustLabel}</p>
+        <p className="text-sm leading-6 text-[var(--workspace-muted)]">{reconcile.trustLabel}</p>
         <Link
-          href="/dashboard/reality-check"
+          href="/dashboard/reconcile"
           className="workspace-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
         >
           View details
@@ -118,19 +118,19 @@ export function RealityCheckSummaryCard({
   );
 }
 
-export function RealityCheckPanel({
-  realityCheck,
+export function ReconcilePanel({
+  reconcile,
   currencyCode,
 }: {
-  realityCheck: RealityCheckData;
+  reconcile: ReconcileData;
   currencyCode: CurrencyCode;
 }) {
   const reconciliationMax = Math.max(
-    realityCheck.grossRevenue,
-    realityCheck.totalFees,
-    realityCheck.totalTaxes,
-    Math.abs(realityCheck.adjustments),
-    realityCheck.actualPayout,
+    reconcile.grossRevenue,
+    reconcile.totalFees,
+    reconcile.totalTaxes,
+    Math.abs(reconcile.adjustments),
+    reconcile.actualPayout,
     1,
   );
 
@@ -143,17 +143,17 @@ export function RealityCheckPanel({
               Reconcile
             </p>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
-              {realityCheck.periodLabel}
+              {reconcile.periodLabel}
             </span>
           </div>
           <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)] sm:text-2xl">
             Reconcile booking expectations against statement reality.
           </p>
           <p className="max-w-3xl text-sm leading-7 text-slate-200/92">
-            {realityCheck.message}
+            {reconcile.message}
           </p>
           <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-            {realityCheck.trustLabel}
+            {reconcile.trustLabel}
           </p>
         </div>
         <div className="workspace-icon-chip rounded-[18px] p-3">
@@ -161,7 +161,7 @@ export function RealityCheckPanel({
         </div>
       </div>
 
-      {realityCheck.alertMessage ? (
+      {reconcile.alertMessage ? (
         <div className="mt-5 flex items-start gap-3 rounded-[22px] border border-amber-200/14 bg-[linear-gradient(135deg,rgba(245,158,11,0.12)_0%,rgba(31,41,55,0.1)_100%)] px-4 py-4">
           <div className="mt-0.5 rounded-full bg-amber-300/12 p-2 text-amber-100">
             <TriangleAlert className="h-4 w-4" />
@@ -169,7 +169,7 @@ export function RealityCheckPanel({
           <div>
             <p className="text-sm font-semibold text-amber-50">Attention needed</p>
             <p className="mt-1 text-sm leading-6 text-amber-100/88">
-              {realityCheck.alertMessage}
+              {reconcile.alertMessage}
             </p>
           </div>
         </div>
@@ -181,7 +181,7 @@ export function RealityCheckPanel({
             Actual payout
           </p>
           <p className="mt-4 text-center text-5xl font-semibold tracking-[-0.05em] text-[var(--workspace-text)] sm:text-6xl">
-            {formatCurrency(realityCheck.actualPayout, false, currencyCode)}
+            {formatCurrency(reconcile.actualPayout, false, currencyCode)}
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center">
@@ -189,23 +189,23 @@ export function RealityCheckPanel({
                 Expected payout
               </p>
               <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-                {formatCurrency(realityCheck.expectedPayout, false, currencyCode)}
+                {formatCurrency(reconcile.expectedPayout, false, currencyCode)}
               </p>
             </div>
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                 Difference
               </p>
-              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(realityCheck.difference)}`}>
-                {formatSignedCurrency(realityCheck.difference, currencyCode)}
+              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+                {formatSignedCurrency(reconcile.difference, currencyCode)}
               </p>
             </div>
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center sm:col-span-2 xl:col-span-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                 Mismatch
               </p>
-              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(realityCheck.difference)}`}>
-                {formatSignedPercent(realityCheck.mismatchRatio)}
+              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+                {formatSignedPercent(reconcile.mismatchRatio)}
               </p>
             </div>
           </div>
@@ -222,7 +222,7 @@ export function RealityCheckPanel({
               </p>
             </div>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
-              {realityCheck.source === "airbnb" ? "Airbnb" : "Booking.com"}
+              {reconcile.source === "airbnb" ? "Airbnb" : "Booking.com"}
             </span>
           </div>
 
@@ -230,34 +230,34 @@ export function RealityCheckPanel({
             {[
               {
                 label: "Bookings revenue",
-                value: realityCheck.grossRevenue,
+                value: reconcile.grossRevenue,
                 tone: "text-[var(--workspace-text)]",
                 fill: "bg-[linear-gradient(90deg,rgba(125,211,197,0.55)_0%,rgba(125,211,197,0.22)_100%)]",
               },
               {
                 label: "Platform fees",
-                value: realityCheck.totalFees,
+                value: reconcile.totalFees,
                 tone: "text-amber-100",
                 fill: "bg-[linear-gradient(90deg,rgba(251,191,36,0.42)_0%,rgba(251,191,36,0.12)_100%)]",
               },
               {
                 label: "Taxes",
-                value: realityCheck.totalTaxes,
+                value: reconcile.totalTaxes,
                 tone: "text-rose-100",
                 fill: "bg-[linear-gradient(90deg,rgba(251,113,133,0.36)_0%,rgba(251,113,133,0.1)_100%)]",
               },
               {
-                label: realityCheck.adjustments >= 0 ? "Adjustments" : "Credits",
-                value: Math.abs(realityCheck.adjustments),
-                tone: realityCheck.adjustments >= 0 ? "text-amber-100" : "text-emerald-100",
+                label: reconcile.adjustments >= 0 ? "Adjustments" : "Credits",
+                value: Math.abs(reconcile.adjustments),
+                tone: reconcile.adjustments >= 0 ? "text-amber-100" : "text-emerald-100",
                 fill:
-                  realityCheck.adjustments >= 0
+                  reconcile.adjustments >= 0
                     ? "bg-[linear-gradient(90deg,rgba(245,158,11,0.32)_0%,rgba(245,158,11,0.08)_100%)]"
                     : "bg-[linear-gradient(90deg,rgba(16,185,129,0.34)_0%,rgba(16,185,129,0.08)_100%)]",
               },
               {
                 label: "Actual payout",
-                value: realityCheck.actualPayout,
+                value: reconcile.actualPayout,
                 tone: "text-[var(--workspace-text)]",
                 fill: "bg-[linear-gradient(90deg,rgba(148,163,184,0.45)_0%,rgba(148,163,184,0.12)_100%)]",
               },
@@ -290,12 +290,12 @@ export function RealityCheckPanel({
           </p>
           <div className="mt-4 divide-y divide-white/6">
             {[
-              ["Gross revenue", realityCheck.grossRevenue],
-              ["Platform fees", realityCheck.totalFees],
-              ["Taxes", realityCheck.totalTaxes],
-              ["Adjustments", realityCheck.adjustments],
-              ["Expected payout", realityCheck.expectedPayout],
-              ["Actual payout", realityCheck.actualPayout],
+              ["Gross revenue", reconcile.grossRevenue],
+              ["Platform fees", reconcile.totalFees],
+              ["Taxes", reconcile.totalTaxes],
+              ["Adjustments", reconcile.adjustments],
+              ["Expected payout", reconcile.expectedPayout],
+              ["Actual payout", reconcile.actualPayout],
             ].map(([label, rawValue]) => {
               const value = Number(rawValue);
               const displayValue =
@@ -336,7 +336,7 @@ export function RealityCheckPanel({
               Gap analysis
             </p>
             <div className="mt-4 grid gap-3">
-              {realityCheck.insights.map((insight) => (
+              {reconcile.insights.map((insight) => (
                 <article
                   key={`${insight.title}-${insight.body}`}
                   className={`rounded-[22px] border px-4 py-4 ${
@@ -363,7 +363,7 @@ export function RealityCheckPanel({
               Trust block
             </p>
             <p className="mt-3 text-base font-semibold tracking-[-0.02em] text-[var(--workspace-text)]">
-              {realityCheck.trustLabel}
+              {reconcile.trustLabel}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
               Hostlyx keeps bookings and financial statements separate so the payout comparison stays grounded in imported source documents.

@@ -16,7 +16,7 @@ import { SectionCard } from "@/components/section-card";
 import { SubscriptionUpgradeCard } from "@/components/subscription-upgrade-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
-import { getRealityCheckSidebarBadge } from "@/lib/reality-check";
+import { getReconcileSidebarBadge } from "@/lib/reconcile";
 import { canAccessReports, getSubscriptionBadge } from "@/lib/subscription";
 
 export const runtime = "nodejs";
@@ -102,7 +102,7 @@ export default async function ReportsPage({
       userEmail={ownerEmail}
       currencyCode={view.displayCurrencyCode}
       latestImport={latestImport}
-      realityCheckBadge={getRealityCheckSidebarBadge(view.realityCheck, view.displayCurrencyCode)}
+      reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
       subscriptionBadge={subscriptionBadge}
       actions={
         <div className="flex flex-col gap-3 xl:items-end">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FilterBar } from "@/components/filter-bar";
-import { RealityCheckPanel } from "@/components/reality-check-panel";
+import { ReconcilePanel } from "@/components/reconcile-panel";
 import { SectionCard } from "@/components/section-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -14,13 +14,13 @@ import {
   getPropertyDefinitions,
   getUserSettings,
 } from "@/lib/db";
-import { getRealityCheckSidebarBadge } from "@/lib/reality-check";
+import { getReconcileSidebarBadge } from "@/lib/reconcile";
 
 export const runtime = "nodejs";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function RealityCheckPage({
+export default async function ReconcilePage({
   searchParams,
 }: {
   searchParams: SearchParams;
@@ -69,7 +69,7 @@ export default async function RealityCheckPage({
 
   return (
     <WorkspaceShell
-      activePage="realityCheck"
+      activePage="reconcile"
       pageTitle="Reconcile"
       pageSubtitle="Compare expected payout from bookings against what statements say actually landed."
       businessName={userSettings.businessName}
@@ -77,7 +77,7 @@ export default async function RealityCheckPage({
       userEmail={ownerEmail}
       currencyCode={view.displayCurrencyCode}
       latestImport={latestImport}
-      realityCheckBadge={getRealityCheckSidebarBadge(view.realityCheck, view.displayCurrencyCode)}
+      reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
       actions={
         <FilterBar
           channels={view.availableChannels}
@@ -92,9 +92,9 @@ export default async function RealityCheckPage({
       }
     >
       <div className="space-y-6">
-        {view.realityCheck ? (
-          <RealityCheckPanel
-            realityCheck={view.realityCheck}
+        {view.reconcile ? (
+          <ReconcilePanel
+            reconcile={view.reconcile}
             currencyCode={view.displayCurrencyCode}
           />
         ) : (

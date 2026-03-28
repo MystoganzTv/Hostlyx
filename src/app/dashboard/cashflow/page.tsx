@@ -12,7 +12,7 @@ import {
 import { CashflowPanel } from "@/components/cashflow-panel";
 import { FilterBar } from "@/components/filter-bar";
 import { WorkspaceShell } from "@/components/workspace-shell";
-import { getRealityCheckSidebarBadge } from "@/lib/reality-check";
+import { getReconcileSidebarBadge } from "@/lib/reconcile";
 
 export const runtime = "nodejs";
 
@@ -74,7 +74,7 @@ export default async function CashflowPage({
       userEmail={ownerEmail}
       currencyCode={view.displayCurrencyCode}
       latestImport={latestImport}
-      realityCheckBadge={getRealityCheckSidebarBadge(view.realityCheck, view.displayCurrencyCode)}
+      reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
       actions={
         <FilterBar
           channels={view.availableChannels}

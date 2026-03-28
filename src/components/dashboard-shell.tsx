@@ -28,8 +28,8 @@ import { ExportReportLink } from "@/components/export-report-link";
 import { FilterBar } from "@/components/filter-bar";
 import { ManualEntryPanel } from "@/components/manual-entry-panel";
 import { Modal } from "@/components/modal";
-import { RealityCheckSummaryCard } from "@/components/reality-check-panel";
-import { getRealityCheckSidebarBadge } from "@/lib/reality-check";
+import { ReconcileSummaryCard } from "@/components/reconcile-panel";
+import { getReconcileSidebarBadge } from "@/lib/reconcile";
 import { SectionCard } from "@/components/section-card";
 import { UploadPanel } from "@/components/upload-panel";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -346,7 +346,7 @@ export function DashboardShell({
         userEmail={userEmail}
         currencyCode={currencyCode}
         latestImport={latestImport}
-        realityCheckBadge={getRealityCheckSidebarBadge(view.realityCheck, currencyCode)}
+        reconcileBadge={getReconcileSidebarBadge(view.reconcile, currencyCode)}
         subscriptionBadge={subscriptionBadge}
         actions={
           <>
@@ -729,9 +729,9 @@ export function DashboardShell({
                     </article>
                   </div>
 
-                  {view.realityCheck ? (
-                    <RealityCheckSummaryCard
-                      realityCheck={view.realityCheck}
+                  {view.reconcile ? (
+                    <ReconcileSummaryCard
+                      reconcile={view.reconcile}
                       currencyCode={currencyCode}
                     />
                   ) : null}

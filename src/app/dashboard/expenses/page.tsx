@@ -19,7 +19,7 @@ import {
   getUserSettings,
 } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { getRealityCheckSidebarBadge } from "@/lib/reality-check";
+import { getReconcileSidebarBadge } from "@/lib/reconcile";
 
 export const runtime = "nodejs";
 
@@ -88,7 +88,7 @@ export default async function ExpensesPage({
       userEmail={ownerEmail}
       currencyCode={view.displayCurrencyCode}
       latestImport={latestImport}
-      realityCheckBadge={getRealityCheckSidebarBadge(view.realityCheck, view.displayCurrencyCode)}
+      reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
     >
       <div className="space-y-6">
         <div className="flex justify-end">
