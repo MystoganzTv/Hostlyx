@@ -210,6 +210,7 @@ export function UploadPanel({
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const mappingRef = useRef<HTMLDivElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPropertyName, setSelectedPropertyName] = useState(properties[0]?.name ?? "");
   const [phase, setPhase] = useState<UploadPhase>("idle");
@@ -242,6 +243,14 @@ export function UploadPanel({
       ...preview.reviewRows.duplicates,
       ...preview.reviewRows.warnings,
     ].slice(0, 8);
+  }, [preview]);
+
+  const needsFocusedMapping = useMemo(() => {
+    if (!preview?.manualMapping) {
+      return false;
+    }
+
+    return preview.importableRows === 0;
   }, [preview]);
 
   const currentManualMapping = useMemo(() => {
@@ -438,6 +447,13 @@ export function UploadPanel({
       propertyName: current?.propertyName ?? previewManualMapping.selected.propertyName,
       [field]: value === "" ? null : Number(value),
     }));
+  }
+
+  function scrollToMapping() {
+    mappingRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
   }
 
   if (committed) {
@@ -772,6 +788,20 @@ export function UploadPanel({
                           ? preview.manualMapping?.message
                           : getSourcePresentation(preview.source).description}
                       </p>
+                      {needsFocusedMapping ? (
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <span className="rounded-full border border-amber-400/20 bg-amber-300/[0.08] px-3 py-1.5 text-xs font-medium text-amber-100">
+                            We need a quick column check before preview can continue.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={scrollToMapping}
+                            className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
+                          >
+                            Map columns manually
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <span
@@ -791,13 +821,35 @@ export function UploadPanel({
               </div>
 
               {preview.manualMapping && currentManualMapping ? (
-                <div className="rounded-[28px] border border-[var(--workspace-accent)]/20 bg-[rgba(125,211,197,0.06)] p-5 sm:p-6">
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm font-medium text-[var(--workspace-text)]">Map your columns</p>
-                    <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+                <div
+                  ref={mappingRef}
+                  className={`rounded-[28px] border p-5 sm:p-6 ${
+                    needsFocusedMapping
+                      ? "border-amber-400/20 bg-amber-300/[0.08]"
+                      : "border-[var(--workspace-accent)]/20 bg-[rgba(125,211,197,0.06)]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-[var(--workspace-text)]">Map your columns</p>
+                      <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+                        {needsFocusedMapping
+                          ? "Hostlyx read the file, but key columns still need your review before we can show a clean preview."
+                          : preview.manualMapping?.message}
+                      </p>
+                    </div>
+                    {needsFocusedMapping ? (
+                      <span className="rounded-full border border-amber-400/20 bg-amber-300/[0.08] px-3 py-1.5 text-xs font-medium text-amber-100">
+                        Required now
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {!needsFocusedMapping ? (
+                    <p className="mt-4 text-sm leading-6 text-[var(--workspace-muted)]">
                       {preview.manualMapping?.message}
                     </p>
-                  </div>
+                  ) : null}
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {([
@@ -847,28 +899,37 @@ export function UploadPanel({
                 </div>
               ) : null}
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {[
-                  ["Bookings detected", preview.importableRows, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                  ["Expenses detected", preview.expensesDetected, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                  ["Warnings", preview.warningRows + preview.errorRows, "text-amber-100", "border-amber-400/20 bg-amber-300/[0.08]"],
-                  ["Duplicates", preview.duplicateRows, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
-                ].map(([label, value, tone, surface]) => (
-                  <div
-                    key={label}
-                    className={`rounded-[22px] border px-4 py-5 ${surface}`}
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                      {label}
-                    </p>
-                    <p className={`mt-3 text-3xl font-semibold ${tone}`}>
-                      {value}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {!needsFocusedMapping ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    ["Bookings detected", preview.importableRows, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
+                    ["Expenses detected", preview.expensesDetected, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
+                    [
+                      preview.errorRows > 0 ? "Errors" : "Warnings",
+                      preview.errorRows > 0 ? preview.errorRows : preview.warningRows,
+                      preview.errorRows > 0 ? "text-rose-100" : "text-amber-100",
+                      preview.errorRows > 0
+                        ? "border-rose-400/20 bg-rose-300/[0.08]"
+                        : "border-amber-400/20 bg-amber-300/[0.08]",
+                    ],
+                    ["Duplicates", preview.duplicateRows, "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
+                  ].map(([label, value, tone, surface]) => (
+                    <div
+                      key={String(label)}
+                      className={`rounded-[22px] border px-4 py-5 ${surface}`}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {label}
+                      </p>
+                      <p className={`mt-3 text-3xl font-semibold ${tone}`}>
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
-              {preview.duplicateRows > 0 ? (
+              {!needsFocusedMapping && preview.duplicateRows > 0 ? (
                 <div className="rounded-[24px] border border-amber-400/20 bg-amber-300/[0.08] p-4 sm:p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
@@ -906,8 +967,9 @@ export function UploadPanel({
                 </div>
               ) : null}
 
-              <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-                <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
+              {!needsFocusedMapping ? (
+                <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                  <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
                       Preview
@@ -1041,7 +1103,8 @@ export function UploadPanel({
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="workspace-soft-card rounded-[28px] border border-[var(--workspace-border)] px-6 py-6 text-sm text-[var(--workspace-muted)]">
