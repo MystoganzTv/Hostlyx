@@ -88,6 +88,11 @@ export type ImportManualMappingOption = {
   label: string;
 };
 
+export type ImportManualMappingFieldIssue = {
+  severity: "warning" | "error";
+  message: string;
+};
+
 export type ImportManualMapping = {
   sheetName: string;
   headerRowIndex: number;
@@ -106,6 +111,7 @@ export type ImportManualMappingPreview = {
   columns: ImportManualMappingOption[];
   suggested: Record<ImportManualMappingField, number | null>;
   selected: Record<ImportManualMappingField, number | null>;
+  fieldIssues: Partial<Record<ImportManualMappingField, ImportManualMappingFieldIssue>>;
   requiredReady: boolean;
 };
 

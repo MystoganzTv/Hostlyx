@@ -6,11 +6,14 @@ import { normalizeBooking } from "./normalizeBooking";
 import { normalizeGeneric } from "./normalizeGeneric";
 import { normalizeManual } from "./normalizeManual";
 import { parseWorkbook } from "./parseWorkbook";
+import { inferDatePreferenceFromSheet, parseImportDateDetailed } from "./dates";
+import { parseMoney } from "./money";
 import {
   getDetectedSourceLabel,
   type ImportBookingCandidate,
   type ImportDetectedSource,
   type ImportExpenseCandidate,
+  type ImportManualMappingFieldIssue,
   type ImportManualMapping,
   type ImportManualMappingField,
   type ImportPreview,
@@ -122,7 +125,7 @@ function suggestMappedColumn(headers: string[], field: ImportManualMappingField)
   const aliases: Record<ImportManualMappingField, string[]> = {
     guestName: ["guest", "name", "booker", "customer", "huesped", "cliente"],
     checkIn: ["arrival", "checkin", "start", "from", "fecha", "inicio", "entrada"],
-    checkOut: ["departure", "checkout", "end", "to", "finalizacion", "salida"],
+    checkOut: ["departure", "checkout", "end", "finalizacion", "salida"],
     grossRevenue: ["revenue", "amount", "gross", "price", "total", "ganancias", "importe", "ingreso"],
     payout: ["payout", "net", "earnings", "received", "neto", "pago"],
     propertyName: ["property", "listing", "accommodation", "unit", "home", "propiedad", "anuncio", "alojamiento"],
@@ -143,7 +146,10 @@ function suggestMappedColumn(headers: string[], field: ImportManualMappingField)
 
       if (header === alias) {
         score = 4;
-      } else if (header.includes(alias) || alias.includes(header)) {
+      } else if (
+        alias.length >= 3 &&
+        (header.includes(alias) || (header.length >= 3 && alias.includes(header)))
+      ) {
         score = 3;
       } else {
         const tokens = alias.split(/[^a-z0-9]/).filter(Boolean);
@@ -160,6 +166,97 @@ function suggestMappedColumn(headers: string[], field: ImportManualMappingField)
   });
 
   return bestIndex;
+}
+
+function buildManualFieldIssue(
+  headers: string[],
+  rows: Array<Array<string | number | boolean | Date | null | undefined>>,
+  field: ImportManualMappingField,
+  selectedIndex: number | null,
+): ImportManualMappingFieldIssue | null {
+  if (selectedIndex == null) {
+    return null;
+  }
+
+  const header = headers[selectedIndex] ?? "";
+  const normalizedHeader = normalizeHeader(header);
+  const sampleValues = rows
+    .map((row) => row[selectedIndex])
+    .filter((value) => String(value ?? "").trim() !== "")
+    .slice(0, 12);
+
+  const headerGroups: Record<ImportManualMappingField, string[]> = {
+    guestName: ["guest", "name", "booker", "customer", "huesped", "cliente", "contact"],
+    checkIn: ["arrival", "checkin", "start", "fecha", "inicio", "entrada"],
+    checkOut: ["departure", "checkout", "end", "finalizacion", "salida"],
+    grossRevenue: ["revenue", "amount", "gross", "price", "total", "ganancias", "importe", "ingreso"],
+    payout: ["payout", "net", "earnings", "received", "neto", "pago", "ganancias"],
+    propertyName: ["property", "listing", "accommodation", "unit", "home", "propiedad", "anuncio", "alojamiento"],
+  };
+
+  const headerLooksRelevant = headerGroups[field].some((alias) => {
+    const normalizedAlias = normalizeHeader(alias);
+    return (
+      normalizedHeader === normalizedAlias ||
+      (normalizedAlias.length >= 3 &&
+        (normalizedHeader.includes(normalizedAlias) || normalizedAlias.includes(normalizedHeader)))
+    );
+  });
+
+  if (field === "checkIn" || field === "checkOut") {
+    const datePreference = inferDatePreferenceFromSheet(headers, rows, [selectedIndex]);
+    const validDateSamples = sampleValues.filter(
+      (value) => !!parseImportDateDetailed(value, { datePreference }).value,
+    ).length;
+
+    if (sampleValues.length > 0 && validDateSamples === 0) {
+      return {
+        severity: "error",
+        message: "This column does not look like a date column.",
+      };
+    }
+
+    if (!headerLooksRelevant && validDateSamples < Math.min(2, sampleValues.length)) {
+      return {
+        severity: "warning",
+        message: "This column may not be the right date field.",
+      };
+    }
+  }
+
+  if (field === "grossRevenue" || field === "payout") {
+    const validMoneySamples = sampleValues.filter((value) => !parseMoney(value).malformed).length;
+
+    if (sampleValues.length > 0 && validMoneySamples === 0) {
+      return {
+        severity: "error",
+        message: "This column does not look like a money amount.",
+      };
+    }
+
+    if (!headerLooksRelevant && validMoneySamples < Math.min(2, sampleValues.length)) {
+      return {
+        severity: "warning",
+        message: "This column may not be the right amount field.",
+      };
+    }
+  }
+
+  if (field === "guestName") {
+    const textSamples = sampleValues.filter((value) => {
+      const raw = String(value ?? "").trim();
+      return raw.length > 0 && !/^\d+(?:[.,]\d+)?$/.test(raw);
+    }).length;
+
+    if (sampleValues.length > 0 && textSamples === 0) {
+      return {
+        severity: "error",
+        message: "This column does not look like guest names.",
+      };
+    }
+  }
+
+  return null;
 }
 
 function buildManualMappingPreview(
@@ -213,6 +310,24 @@ function buildManualMappingPreview(
         : suggested.propertyName,
   };
 
+  const sheet = workbook.sheets.find((entry) => entry.name === headerRow.sheetName);
+  const dataRows = sheet ? sheet.rows.slice(headerRow.headerRowIndex + 1).filter((row) => !rowIsEmpty(row)) : [];
+  const fieldIssues: Partial<Record<ImportManualMappingField, ImportManualMappingFieldIssue>> = {};
+
+  (Object.keys(selected) as ImportManualMappingField[]).forEach((field) => {
+    const issue = buildManualFieldIssue(headerRow.headers, dataRows, field, selected[field]);
+    if (issue) {
+      fieldIssues[field] = issue;
+    }
+  });
+
+  const requiredFields: ImportManualMappingField[] = [
+    "guestName",
+    "checkIn",
+    "checkOut",
+    "grossRevenue",
+  ];
+
   return {
     message: "We couldn’t fully recognize your file. Map your columns in a few seconds to continue.",
     sheetName: headerRow.sheetName,
@@ -223,11 +338,10 @@ function buildManualMappingPreview(
     })),
     suggested,
     selected,
+    fieldIssues,
     requiredReady:
-      selected.guestName != null &&
-      selected.checkIn != null &&
-      selected.checkOut != null &&
-      selected.grossRevenue != null,
+      requiredFields.every((field) => selected[field] != null) &&
+      requiredFields.every((field) => fieldIssues[field]?.severity !== "error"),
   };
 }
 

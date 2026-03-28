@@ -75,6 +75,11 @@ type ManualMappingOption = {
   label: string;
 };
 
+type ManualMappingFieldIssue = {
+  severity: "warning" | "error";
+  message: string;
+};
+
 type ManualMappingPreview = {
   message: string;
   sheetName: string;
@@ -82,6 +87,7 @@ type ManualMappingPreview = {
   columns: ManualMappingOption[];
   suggested: Record<MappingField, number | null>;
   selected: Record<MappingField, number | null>;
+  fieldIssues: Partial<Record<MappingField, ManualMappingFieldIssue>>;
   requiredReady: boolean;
 };
 
@@ -301,9 +307,25 @@ export function UploadPanel({
       currentManualMapping.guestName != null &&
       currentManualMapping.checkIn != null &&
       currentManualMapping.checkOut != null &&
-      currentManualMapping.grossRevenue != null
+      currentManualMapping.grossRevenue != null &&
+      (!preview?.manualMapping?.fieldIssues.guestName ||
+        preview.manualMapping.fieldIssues.guestName.severity !== "error") &&
+      (!preview?.manualMapping?.fieldIssues.checkIn ||
+        preview.manualMapping.fieldIssues.checkIn.severity !== "error") &&
+      (!preview?.manualMapping?.fieldIssues.checkOut ||
+        preview.manualMapping.fieldIssues.checkOut.severity !== "error") &&
+      (!preview?.manualMapping?.fieldIssues.grossRevenue ||
+        preview.manualMapping.fieldIssues.grossRevenue.severity !== "error")
     );
-  }, [currentManualMapping]);
+  }, [currentManualMapping, preview]);
+
+  const currentManualIssues = useMemo(() => {
+    if (!preview?.manualMapping) {
+      return {};
+    }
+
+    return preview.manualMapping.fieldIssues;
+  }, [preview]);
 
   const shouldShowManualMapping = useMemo(() => {
     if (!preview?.manualMapping || !currentManualMapping) {
@@ -970,37 +992,60 @@ export function UploadPanel({
                       ["grossRevenue", "Revenue (gross)", true],
                       ["payout", "Payout", false],
                       ["propertyName", "Property", false],
-                    ] as Array<[MappingField, string, boolean]>).map(([field, label, required]) => (
-                      <label key={field} className="space-y-2">
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          {label}
-                          {required ? (
-                            <span className="ml-1 text-[var(--workspace-accent)]">*</span>
-                          ) : (
-                            <span className="ml-1 text-[10px] text-[var(--workspace-muted)]/80">(optional)</span>
-                          )}
-                        </span>
-                        <select
-                          value={currentManualMapping?.[field] ?? ""}
-                          onChange={(event) => updateManualField(field, event.target.value)}
-                          className="w-full rounded-[18px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] px-4 py-3 text-sm text-[var(--workspace-text)] outline-none transition focus:border-[var(--workspace-accent)]"
-                        >
-                          <option value="">Select a column</option>
-                          {(preview.manualMapping?.columns ?? []).map((column) => (
-                            <option key={`${field}-${column.index}`} value={column.index}>
-                              {column.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
+                    ] as Array<[MappingField, string, boolean]>).map(([field, label, required]) => {
+                      const issue = currentManualIssues[field];
+                      const hasError = issue?.severity === "error";
+                      const hasWarning = issue?.severity === "warning";
+
+                      return (
+                        <label key={field} className="space-y-2">
+                          <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                            {label}
+                            {required ? (
+                              <span className="ml-1 text-[var(--workspace-accent)]">*</span>
+                            ) : (
+                              <span className="ml-1 text-[10px] text-[var(--workspace-muted)]/80">(optional)</span>
+                            )}
+                          </span>
+                          <select
+                            value={currentManualMapping?.[field] ?? ""}
+                            onChange={(event) => updateManualField(field, event.target.value)}
+                            className={`w-full rounded-[18px] border bg-[var(--workspace-panel)] px-4 py-3 text-sm text-[var(--workspace-text)] outline-none transition focus:border-[var(--workspace-accent)] ${
+                              hasError
+                                ? "border-rose-400/30"
+                                : hasWarning
+                                  ? "border-amber-400/30"
+                                  : "border-[var(--workspace-border)]"
+                            }`}
+                          >
+                            <option value="">Select a column</option>
+                            {(preview.manualMapping?.columns ?? []).map((column) => (
+                              <option key={`${field}-${column.index}`} value={column.index}>
+                                {column.label}
+                              </option>
+                            ))}
+                          </select>
+                          {issue ? (
+                            <p
+                              className={`text-xs leading-5 ${
+                                issue.severity === "error"
+                                  ? "text-rose-100/90"
+                                  : "text-amber-100/85"
+                              }`}
+                            >
+                              {issue.message}
+                            </p>
+                          ) : null}
+                        </label>
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
                     <p className="text-sm text-[var(--workspace-muted)]">
                       {currentManualReady
                         ? "Required fields are mapped. Preview again to continue."
-                        : "Map Guest Name, Check-in, Check-out, and Revenue to continue."}
+                        : "Map Guest Name, Check-in, Check-out, and Revenue with valid columns to continue."}
                     </p>
                     <button
                       type="button"
