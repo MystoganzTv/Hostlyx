@@ -165,6 +165,34 @@ function formatWholePercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function getPrimaryHeroInsight(view: DashboardView) {
+  const { totalRevenue, totalExpenses, profitAfterTax, estimatedTaxes, netProfit } = view.metrics;
+
+  if (totalRevenue <= 0) {
+    return null;
+  }
+
+  const expenseRatio = totalExpenses / totalRevenue;
+
+  if (expenseRatio >= 0.5) {
+    return `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
+  }
+
+  if (netProfit > 0 && estimatedTaxes > 0) {
+    const taxImpact = estimatedTaxes / netProfit;
+
+    if (taxImpact >= 0.2) {
+      return `Taxes are reducing your take-home by ${formatWholePercent(taxImpact)} of net profit.`;
+    }
+  }
+
+  if (profitAfterTax >= 0) {
+    return `You are keeping ${formatWholePercent(profitAfterTax / totalRevenue)} of revenue after expenses and estimated taxes.`;
+  }
+
+  return `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
+}
+
 function getRelativeChange(current: number, previous: number) {
   if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) {
     return null;
@@ -337,6 +365,7 @@ export function DashboardShell({
   const timeContextHint = getTimeContextHint(view);
   const afterTaxPositive = view.metrics.profitAfterTax >= 0;
   const insights = view.mixedCurrencyMode ? [] : buildDashboardInsights(view);
+  const primaryHeroInsight = view.mixedCurrencyMode ? null : getPrimaryHeroInsight(view);
   const afterTaxChipLabel =
     view.metrics.profitAfterTax > 0
       ? "Profitable After Tax"
@@ -502,6 +531,11 @@ export function DashboardShell({
                           >
                             {formatCurrency(view.metrics.profitAfterTax, false, currencyCode)}
                           </p>
+                          {primaryHeroInsight ? (
+                            <p className="mt-4 max-w-2xl text-[15px] font-medium leading-7 text-slate-200">
+                              {primaryHeroInsight}
+                            </p>
+                          ) : null}
                           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
                             The clearest signal of what the business actually keeps after operating costs and estimated taxes.
                           </p>
