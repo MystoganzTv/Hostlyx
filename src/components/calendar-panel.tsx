@@ -201,7 +201,7 @@ function MonthCalendar({
                             ? "border-amber-300/14 bg-[linear-gradient(180deg,rgba(244,198,105,0.08)_0%,rgba(15,24,38,0.92)_100%)]"
                             : isCurrentMonth
                               ? "workspace-soft-card"
-                              : "border-[var(--workspace-border)] bg-[rgba(10,21,36,0.42)]"
+                              : "border-white/5 bg-[rgba(7,14,24,0.36)] opacity-55"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
