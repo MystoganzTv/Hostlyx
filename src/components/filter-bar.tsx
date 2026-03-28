@@ -170,6 +170,7 @@ export function FilterBar(props: FilterBarProps) {
   function replaceParams(params: URLSearchParams) {
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      router.refresh();
     });
   }
 
