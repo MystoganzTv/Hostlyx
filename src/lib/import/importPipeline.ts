@@ -87,7 +87,7 @@ export function buildImportPreview(
   existingBookings: BookingRecord[] = [],
 ): ImportPreview {
   const workbook = parseWorkbook(buffer, fileName);
-  const source = detectSource(workbook);
+  let source = detectSource(workbook);
 
   if (source === "unknown") {
     return {
@@ -109,19 +109,7 @@ export function buildImportPreview(
         valid: [],
         warnings: [],
         duplicates: [],
-        errors: [
-          {
-            id: "file-unknown",
-            rowType: "booking",
-            rowIndex: 0,
-            section: "errors",
-            title: "File not recognized",
-            subtitle: fileName,
-            reasons: [
-              "Hostlyx could not recognize this file yet. Use an Airbnb export, a Booking.com export, or the generic Hostlyx workbook with Bookings and Expenses sheets.",
-            ],
-          },
-        ],
+        errors: [],
       },
       warnings: [
         {
@@ -138,12 +126,42 @@ export function buildImportPreview(
     };
   }
 
-  const normalized =
-    source === "airbnb"
-      ? normalizeAirbnb(workbook)
-      : source === "booking"
-        ? normalizeBooking(workbook)
-        : normalizeGeneric(workbook);
+  let normalized;
+
+  try {
+    normalized =
+      source === "airbnb"
+        ? normalizeAirbnb(workbook)
+        : source === "booking"
+          ? normalizeBooking(workbook)
+          : normalizeGeneric(workbook);
+  } catch (error) {
+    const normalizationAttempts: Array<{
+      source: ImportDetectedSource;
+      run: () => ReturnType<typeof normalizeAirbnb>;
+    }> = [
+      { source: "airbnb", run: () => normalizeAirbnb(workbook) },
+      { source: "booking", run: () => normalizeBooking(workbook) },
+    ];
+
+    for (const attempt of normalizationAttempts) {
+      if (attempt.source === source) {
+        continue;
+      }
+
+      try {
+        normalized = attempt.run();
+        source = attempt.source;
+        break;
+      } catch {
+        continue;
+      }
+    }
+
+    if (!normalized) {
+      throw error;
+    }
+  }
 
   const duplicateFlags = detectDuplicateBookings(normalized.bookings, existingBookings);
   const duplicatesByRowIndex = new Map(duplicateFlags.map((duplicate) => [duplicate.rowIndex, duplicate]));
