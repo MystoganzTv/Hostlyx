@@ -1,10 +1,14 @@
 import {
+  addDays,
+  differenceInCalendarDays,
   eachDayOfInterval,
   endOfMonth,
   format,
   getDay,
   isSameMonth,
   isWithinInterval,
+  max,
+  min,
   parseISO,
   startOfMonth,
 } from "date-fns";
@@ -28,17 +32,120 @@ function buildCalendarDays(anchor: Date) {
   return eachDayOfInterval({ start: gridStart, end: gridEnd });
 }
 
+function chunkWeeks(days: Date[]) {
+  const weeks: Date[][] = [];
+
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push(days.slice(index, index + 7));
+  }
+
+  return weeks;
+}
+
+function getBookingTone(channel: string) {
+  const normalized = channel.trim().toLowerCase();
+
+  if (normalized.includes("airbnb")) {
+    return "border-emerald-300/18 bg-[linear-gradient(180deg,rgba(88,196,182,0.22)_0%,rgba(38,76,91,0.78)_100%)] text-white";
+  }
+
+  if (normalized.includes("booking")) {
+    return "border-sky-300/18 bg-[linear-gradient(180deg,rgba(92,153,255,0.22)_0%,rgba(28,45,82,0.82)_100%)] text-white";
+  }
+
+  if (normalized.includes("direct")) {
+    return "border-amber-200/16 bg-[linear-gradient(180deg,rgba(244,198,105,0.18)_0%,rgba(77,58,29,0.82)_100%)] text-white";
+  }
+
+  return "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(31,41,55,0.88)_100%)] text-white";
+}
+
+function getGuestLabel(booking: BookingRecord) {
+  const primary = booking.guestName.trim().split(/\s+/)[0] || "Guest";
+  const extraGuests = Math.max(0, booking.guestCount - 1);
+
+  return extraGuests > 0 ? `${primary} + ${extraGuests}` : primary;
+}
+
+function intersectsMonth(booking: BookingRecord, anchorDate: Date) {
+  const monthStart = startOfMonth(anchorDate);
+  const monthEnd = endOfMonth(anchorDate);
+  const stayStart = parseISO(booking.checkIn);
+  const stayEnd = parseISO(booking.checkout);
+
+  return stayStart <= monthEnd && stayEnd > monthStart;
+}
+
+function buildWeekBookingSegments(weekDays: Date[], bookings: BookingRecord[]) {
+  const weekStart = weekDays[0];
+  const weekEnd = weekDays[6];
+  const weekEndExclusive = addDays(weekEnd, 1);
+
+  const visibleBookings = bookings
+    .filter((booking) => {
+      const stayStart = parseISO(booking.checkIn);
+      const stayEnd = parseISO(booking.checkout);
+      return stayStart < weekEndExclusive && stayEnd > weekStart;
+    })
+    .sort((left, right) => {
+      if (left.checkIn !== right.checkIn) {
+        return left.checkIn.localeCompare(right.checkIn);
+      }
+
+      return left.checkout.localeCompare(right.checkout);
+    });
+
+  const trackEnds: number[] = [];
+
+  const segments = visibleBookings.map((booking) => {
+    const stayStart = parseISO(booking.checkIn);
+    const stayEnd = parseISO(booking.checkout);
+    const segmentStart = max([stayStart, weekStart]);
+    const segmentEnd = min([stayEnd, weekEndExclusive]);
+    const startIndex = differenceInCalendarDays(segmentStart, weekStart);
+    const span = Math.max(1, differenceInCalendarDays(segmentEnd, segmentStart));
+
+    let track = trackEnds.findIndex((trackEnd) => trackEnd <= startIndex);
+
+    if (track === -1) {
+      track = trackEnds.length;
+      trackEnds.push(0);
+    }
+
+    trackEnds[track] = startIndex + span;
+
+    return {
+      booking,
+      startIndex,
+      span,
+      track,
+      startsThisWeek: stayStart >= weekStart && stayStart < weekEndExclusive,
+      endsThisWeek: stayEnd > weekStart && stayEnd <= weekEndExclusive,
+    };
+  });
+
+  return {
+    segments,
+    maxTracks: Math.max(segments.reduce((highest, segment) => Math.max(highest, segment.track + 1), 0), 1),
+  };
+}
+
 function MonthCalendar({
   anchorDate,
   bookings,
   closures,
+  compact = false,
+  abbreviatedTitle = false,
 }: {
   anchorDate: Date;
   bookings: BookingRecord[];
   closures: CalendarClosureRecord[];
+  compact?: boolean;
+  abbreviatedTitle?: boolean;
 }) {
   const days = buildCalendarDays(anchorDate);
-  const monthLabel = format(anchorDate, "MMMM yyyy");
+  const weeks = chunkWeeks(days);
+  const monthLabel = format(anchorDate, abbreviatedTitle ? "MMMM" : "MMMM yyyy");
   const monthKey = format(anchorDate, "yyyy-MM");
   const checkIns = bookings.filter((booking) => booking.checkIn.startsWith(monthKey));
   const checkOuts = bookings.filter((booking) => booking.checkout.startsWith(monthKey));
@@ -49,117 +156,101 @@ function MonthCalendar({
       title={monthLabel}
       subtitle={`${formatNumber(checkIns.length)} check-ins, ${formatNumber(checkOuts.length)} check-outs, ${formatNumber(monthClosures.length)} closed days`}
     >
-      <div className="overflow-x-auto">
-        <div className="grid min-w-[860px] grid-cols-7 gap-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-7 gap-2">
           {weekdayLabels.map((label) => (
             <div
               key={`${monthKey}-${label}`}
-              className="px-2 pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]"
+              className={`px-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)] ${compact ? "pb-1" : "pb-2"}`}
             >
               {label}
             </div>
           ))}
+        </div>
 
-          {days.map((day) => {
-            const dayKey = format(day, "yyyy-MM-dd");
-            const dayBookings = bookings.filter(
-              (booking) => booking.checkIn <= dayKey && booking.checkout > dayKey,
-            );
-            const dayCheckIns = bookings.filter((booking) => booking.checkIn === dayKey);
-            const dayCheckOuts = bookings.filter((booking) => booking.checkout === dayKey);
-            const dayClosure = closures.find((closure) => closure.date === dayKey);
+        <div className="space-y-2.5">
+          {weeks.map((weekDays) => {
+            const { segments, maxTracks } = buildWeekBookingSegments(weekDays, bookings);
+            const rowHeight = compact ? Math.max(88, 38 + maxTracks * 26) : Math.max(124, 48 + maxTracks * 32);
+            const barHeight = compact ? 22 : 28;
+            const overlayTop = compact ? 34 : 40;
 
             return (
-              <article
-                key={dayKey}
-                className={`min-h-[160px] rounded-[22px] border p-3 ${
-                  isSameMonth(day, anchorDate)
-                    ? "workspace-soft-card"
-                    : "border-[var(--workspace-border)] bg-[rgba(10,21,36,0.46)]"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className={`text-sm font-semibold ${isSameMonth(day, anchorDate) ? "text-[var(--workspace-text)]" : "text-[var(--workspace-muted)]"}`}>
-                    {format(day, "d")}
-                  </p>
-                  {dayClosure ? (
-                    <span className="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-200">
-                      Closed
-                    </span>
-                  ) : null}
+              <div key={format(weekDays[0], "yyyy-MM-dd")} className="relative" style={{ height: rowHeight }}>
+                <div className="grid h-full grid-cols-7 gap-2">
+                  {weekDays.map((day) => {
+                    const dayKey = format(day, "yyyy-MM-dd");
+                    const dayClosure = closures.find((closure) => closure.date === dayKey);
+                    const isCurrentMonth = isSameMonth(day, anchorDate);
+
+                    return (
+                      <article
+                        key={dayKey}
+                        className={`rounded-[22px] border px-3 py-2.5 ${
+                          dayClosure && isCurrentMonth
+                            ? "border-amber-300/14 bg-[linear-gradient(180deg,rgba(244,198,105,0.08)_0%,rgba(15,24,38,0.92)_100%)]"
+                            : isCurrentMonth
+                              ? "workspace-soft-card"
+                              : "border-[var(--workspace-border)] bg-[rgba(10,21,36,0.42)]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p
+                            className={`font-semibold ${compact ? "text-xs" : "text-sm"} ${
+                              isCurrentMonth ? "text-[var(--workspace-text)]" : "text-[var(--workspace-muted)]"
+                            }`}
+                          >
+                            {format(day, "d")}
+                          </p>
+                          {dayClosure ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-200/80" />
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
 
-                <div className="mt-3 space-y-2">
-                  {dayCheckIns.map((booking) => (
-                    <div key={`in-${booking.id ?? booking.guestName}-${dayKey}`} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-200">Check-in</p>
-                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{booking.guestName}</p>
-                    </div>
-                  ))}
-
-                  {dayBookings
-                    .filter((booking) => booking.checkIn !== dayKey)
-                    .slice(0, 2)
-                    .map((booking) => (
-                      <div key={`stay-${booking.id ?? booking.guestName}-${dayKey}`} className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--workspace-muted)]">Booked</p>
-                        <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{booking.guestName}</p>
-                        <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                          {booking.channel} • {formatNumber(booking.nights)} nights
-                        </p>
+                <div className="pointer-events-none absolute inset-x-0" style={{ top: overlayTop }}>
+                  <div
+                    className="grid grid-cols-7 gap-2"
+                    style={{ gridAutoRows: `${barHeight}px` }}
+                  >
+                    {segments.map((segment) => (
+                      <div
+                        key={`${segment.booking.id ?? segment.booking.bookingNumber}-${segment.startIndex}-${segment.track}`}
+                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 shadow-[0_10px_24px_rgba(2,6,23,0.22)] ${getBookingTone(segment.booking.channel)}`}
+                        style={{
+                          gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
+                          gridRow: segment.track + 1,
+                          height: `${barHeight}px`,
+                        }}
+                      >
+                        {segment.startsThisWeek ? (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white/85" />
+                        ) : null}
+                        <span className={`truncate font-medium ${compact ? "text-[11px]" : "text-xs"}`}>
+                          {getGuestLabel(segment.booking)}
+                        </span>
+                        {!compact && segment.span > 2 ? (
+                          <span className="ml-auto shrink-0 text-[11px] text-white/70">
+                            {segment.booking.channel}
+                          </span>
+                        ) : null}
+                        {segment.endsThisWeek ? (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/60" />
+                        ) : null}
                       </div>
                     ))}
-
-                  {dayBookings.length > 2 ? (
-                    <p className="text-xs text-[var(--workspace-muted)]">
-                      +{dayBookings.length - 2} more stays
-                    </p>
-                  ) : null}
-
-                  {dayCheckOuts.map((booking) => (
-                    <div key={`out-${booking.id ?? booking.guestName}-${dayKey}`} className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-200">Check-out</p>
-                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{booking.guestName}</p>
-                    </div>
-                  ))}
-
-                  {dayClosure ? (
-                    <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-200">
-                        {dayClosure.statusLabel}
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                        {dayClosure.reason}
-                      </p>
-                      {dayClosure.guestCount > 0 || dayClosure.nights > 0 ? (
-                        <p className="mt-1 text-xs text-rose-100/90">
-                          {dayClosure.guestCount > 0 ? `${formatNumber(dayClosure.guestCount)} guests` : null}
-                          {dayClosure.guestCount > 0 && dayClosure.nights > 0 ? " • " : null}
-                          {dayClosure.nights > 0 ? `${formatNumber(dayClosure.nights)} nights` : null}
-                        </p>
-                      ) : null}
-                      {dayClosure.note ? (
-                        <p className="mt-1 whitespace-pre-line text-xs text-rose-100/90">{dayClosure.note}</p>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  </div>
                 </div>
-              </article>
+              </div>
             );
           })}
         </div>
       </div>
     </SectionCard>
   );
-}
-
-function intersectsMonth(booking: BookingRecord, anchorDate: Date) {
-  const monthStart = startOfMonth(anchorDate);
-  const monthEnd = endOfMonth(anchorDate);
-  const stayStart = parseISO(booking.checkIn);
-  const stayEnd = parseISO(booking.checkout);
-
-  return stayStart <= monthEnd && stayEnd > monthStart;
 }
 
 export function CalendarPanel({
@@ -173,6 +264,9 @@ export function CalendarPanel({
   closures: CalendarClosureRecord[];
   monthAnchors: Date[];
 }) {
+  const showOverviewGrid = monthAnchors.length > 1;
+  const isYearGrid = monthAnchors.length === 12;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
@@ -194,7 +288,15 @@ export function CalendarPanel({
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <div
+        className={
+          isYearGrid
+            ? "grid gap-6 xl:grid-cols-2 2xl:grid-cols-3"
+            : showOverviewGrid
+              ? "grid gap-6 xl:grid-cols-2"
+              : "grid gap-6"
+        }
+      >
         {monthAnchors.map((anchorDate) => {
           const monthKey = format(anchorDate, "yyyy-MM");
           const monthBookings = bookings.filter((booking) => intersectsMonth(booking, anchorDate));
@@ -211,6 +313,8 @@ export function CalendarPanel({
               anchorDate={anchorDate}
               bookings={monthBookings}
               closures={monthClosures}
+              compact={showOverviewGrid}
+              abbreviatedTitle={isYearGrid}
             />
           );
         })}
