@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Percent,
   ReceiptText,
+  TriangleAlert,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -296,6 +297,9 @@ export function DashboardShell({
   const afterTaxPositive = view.metrics.profitAfterTax >= 0;
   const insights = view.mixedCurrencyMode ? [] : buildDashboardInsights(view);
   const primaryHeroInsight = view.mixedCurrencyMode ? null : getPrimaryHeroInsight(view);
+  const expenseRatio =
+    view.metrics.totalRevenue > 0 ? view.metrics.totalExpenses / view.metrics.totalRevenue : null;
+  const hasHighExpenseRatio = expenseRatio !== null && expenseRatio > 0.6;
   const afterTaxChipLabel =
     view.metrics.profitAfterTax > 0
       ? "Profitable After Tax"
@@ -589,18 +593,46 @@ export function DashboardShell({
                       </div>
                     </article>
 
-                    <article className="workspace-card rounded-[28px] p-6">
+                    <article
+                      className={`rounded-[28px] p-6 transition ${
+                        hasHighExpenseRatio
+                          ? "workspace-card border-amber-200/16 bg-[linear-gradient(180deg,rgba(245,158,11,0.08)_0%,rgba(15,23,42,0.86)_100%)] shadow-[0_18px_36px_rgba(15,23,42,0.18),0_0_0_1px_rgba(245,158,11,0.04)]"
+                          : "workspace-card"
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-                            Total Expenses
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
+                              Total Expenses
+                            </p>
+                            {hasHighExpenseRatio ? (
+                              <span className="rounded-full border border-amber-200/14 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100/90">
+                                High cost ratio
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
                             {formatCurrency(view.metrics.totalExpenses, false, currencyCode)}
                           </p>
+                          {hasHighExpenseRatio && expenseRatio !== null ? (
+                            <p className="mt-3 text-sm font-medium leading-6 text-amber-100/88">
+                              Expenses are consuming {formatWholePercent(expenseRatio)} of revenue.
+                            </p>
+                          ) : null}
                         </div>
-                        <div className="rounded-[18px] border border-rose-300/10 bg-rose-400/10 p-3 text-rose-200">
-                          <ReceiptText className="h-5 w-5" />
+                        <div
+                          className={`rounded-[18px] p-3 ${
+                            hasHighExpenseRatio
+                              ? "border border-amber-200/14 bg-amber-300/10 text-amber-100"
+                              : "border border-rose-300/10 bg-rose-400/10 text-rose-200"
+                          }`}
+                        >
+                          {hasHighExpenseRatio ? (
+                            <TriangleAlert className="h-5 w-5" />
+                          ) : (
+                            <ReceiptText className="h-5 w-5" />
+                          )}
                         </div>
                       </div>
                     </article>
