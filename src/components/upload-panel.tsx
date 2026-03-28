@@ -45,6 +45,40 @@ type PreviewRow = {
 
 type ReviewSection = "valid" | "warnings" | "duplicates" | "errors";
 
+type MappingField =
+  | "guestName"
+  | "checkIn"
+  | "checkOut"
+  | "grossRevenue"
+  | "payout"
+  | "propertyName";
+
+type ManualMappingPayload = {
+  sheetName: string;
+  headerRowIndex: number;
+  guestName: number | null;
+  checkIn: number | null;
+  checkOut: number | null;
+  grossRevenue: number | null;
+  payout: number | null;
+  propertyName: number | null;
+};
+
+type ManualMappingOption = {
+  index: number;
+  label: string;
+};
+
+type ManualMappingPreview = {
+  message: string;
+  sheetName: string;
+  headerRowIndex: number;
+  columns: ManualMappingOption[];
+  suggested: Record<MappingField, number | null>;
+  selected: Record<MappingField, number | null>;
+  requiredReady: boolean;
+};
+
 type ReviewRow = {
   id: string;
   rowType: "booking" | "expense";
@@ -59,6 +93,8 @@ type ImportPreviewPayload = {
   source: "airbnb" | "booking" | "generic" | "unknown";
   sourceLabel: string;
   fileName: string;
+  requiresManualMapping: boolean;
+  manualMapping: ManualMappingPreview | null;
   totalRowsRead: number;
   validRows: number;
   warningRows: number;
@@ -139,6 +175,7 @@ export function UploadPanel({
   const [selectedPropertyName, setSelectedPropertyName] = useState(properties[0]?.name ?? "");
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [preview, setPreview] = useState<ImportPreviewPayload | null>(null);
+  const [manualMapping, setManualMapping] = useState<ManualMappingPayload | null>(null);
   const [reviewSection, setReviewSection] = useState<ReviewSection>("valid");
   const [duplicateStrategy, setDuplicateStrategy] = useState<"skip" | "import">("skip");
   const [toast, setToast] = useState<UploadToast | null>(null);
@@ -164,9 +201,40 @@ export function UploadPanel({
     );
   }, [duplicateStrategy, preview]);
 
+  const currentManualMapping = useMemo(() => {
+    if (!preview?.manualMapping) {
+      return null;
+    }
+
+    return manualMapping ?? {
+      sheetName: preview.manualMapping.sheetName,
+      headerRowIndex: preview.manualMapping.headerRowIndex,
+      guestName: preview.manualMapping.selected.guestName,
+      checkIn: preview.manualMapping.selected.checkIn,
+      checkOut: preview.manualMapping.selected.checkOut,
+      grossRevenue: preview.manualMapping.selected.grossRevenue,
+      payout: preview.manualMapping.selected.payout,
+      propertyName: preview.manualMapping.selected.propertyName,
+    };
+  }, [manualMapping, preview]);
+
+  const currentManualReady = useMemo(() => {
+    if (!currentManualMapping) {
+      return false;
+    }
+
+    return (
+      currentManualMapping.guestName != null &&
+      currentManualMapping.checkIn != null &&
+      currentManualMapping.checkOut != null &&
+      currentManualMapping.grossRevenue != null
+    );
+  }, [currentManualMapping]);
+
   function resetSelection(nextFile: File | null) {
     setSelectedFile(nextFile);
     setPreview(null);
+    setManualMapping(null);
     setReviewSection("valid");
     setDuplicateStrategy("skip");
     setToast(null);
@@ -191,6 +259,9 @@ export function UploadPanel({
     try {
       const formData = new FormData();
       formData.set("action", "preview");
+      if (manualMapping) {
+        formData.set("manualMapping", JSON.stringify(manualMapping));
+      }
       formData.append("file", selectedFile);
 
       const response = await fetch("/api/import", {
@@ -204,15 +275,31 @@ export function UploadPanel({
       }
 
       setPreview(payload.preview);
+      setManualMapping(
+        payload.preview.manualMapping
+          ? {
+              sheetName: payload.preview.manualMapping.sheetName,
+              headerRowIndex: payload.preview.manualMapping.headerRowIndex,
+              guestName: payload.preview.manualMapping.selected.guestName,
+              checkIn: payload.preview.manualMapping.selected.checkIn,
+              checkOut: payload.preview.manualMapping.selected.checkOut,
+              grossRevenue: payload.preview.manualMapping.selected.grossRevenue,
+              payout: payload.preview.manualMapping.selected.payout,
+              propertyName: payload.preview.manualMapping.selected.propertyName,
+            }
+          : null,
+      );
       setDuplicateStrategy("skip");
       setReviewSection(
-        payload.preview.errorRows > 0
-          ? "errors"
-          : payload.preview.duplicateRows > 0
-            ? "duplicates"
-            : payload.preview.warningRows > 0
-              ? "warnings"
-              : "valid",
+        payload.preview.requiresManualMapping
+          ? "warnings"
+          : payload.preview.errorRows > 0
+            ? "errors"
+            : payload.preview.duplicateRows > 0
+              ? "duplicates"
+              : payload.preview.warningRows > 0
+                ? "warnings"
+                : "valid",
       );
       setPhase("ready");
     } catch (error) {
@@ -237,6 +324,9 @@ export function UploadPanel({
       formData.set("action", "commit");
       formData.set("propertyName", selectedPropertyName);
       formData.set("duplicateStrategy", duplicateStrategy);
+      if (manualMapping) {
+        formData.set("manualMapping", JSON.stringify(manualMapping));
+      }
       formData.append("file", selectedFile);
 
       const response = await fetch("/api/import", {
@@ -285,6 +375,26 @@ export function UploadPanel({
 
   function openFilePicker() {
     inputRef.current?.click();
+  }
+
+  function updateManualField(field: MappingField, value: string) {
+    const previewManualMapping = preview?.manualMapping;
+
+    if (!previewManualMapping) {
+      return;
+    }
+
+    setManualMapping((current) => ({
+      sheetName: current?.sheetName ?? previewManualMapping.sheetName,
+      headerRowIndex: current?.headerRowIndex ?? previewManualMapping.headerRowIndex,
+      guestName: current?.guestName ?? previewManualMapping.selected.guestName,
+      checkIn: current?.checkIn ?? previewManualMapping.selected.checkIn,
+      checkOut: current?.checkOut ?? previewManualMapping.selected.checkOut,
+      grossRevenue: current?.grossRevenue ?? previewManualMapping.selected.grossRevenue,
+      payout: current?.payout ?? previewManualMapping.selected.payout,
+      propertyName: current?.propertyName ?? previewManualMapping.selected.propertyName,
+      [field]: value === "" ? null : Number(value),
+    }));
   }
 
   return (
@@ -462,7 +572,7 @@ export function UploadPanel({
                 ) : actionableRows > 0 ? (
                   "Confirm import"
                 ) : (
-                  "Fix file before importing"
+                  "Map columns manually"
                 )}
               </button>
             ) : null}
@@ -488,9 +598,70 @@ export function UploadPanel({
                 >
                   {preview.errorRows === 0 && preview.duplicateRows === 0 && preview.warningRows === 0
                     ? "Ready to import"
-                    : "Needs review"}
+                    : preview.requiresManualMapping
+                      ? "Manual mapping"
+                      : "Needs review"}
                 </span>
               </div>
+
+              {preview.manualMapping && currentManualMapping ? (
+                <div className="mt-5 rounded-[20px] border border-[var(--workspace-accent)]/20 bg-[rgba(125,211,197,0.06)] p-4 sm:p-5">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-[var(--workspace-text)]">
+                      Map your columns
+                    </p>
+                    <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+                      {preview.manualMapping?.message}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {([
+                      ["guestName", "Guest Name", true],
+                      ["checkIn", "Check-in", true],
+                      ["checkOut", "Check-out", true],
+                      ["grossRevenue", "Revenue (gross)", true],
+                      ["payout", "Payout", false],
+                      ["propertyName", "Property", false],
+                    ] as Array<[MappingField, string, boolean]>).map(([field, label, required]) => (
+                      <label key={field} className="space-y-2">
+                        <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                          {label}
+                          {required ? " *" : " (optional)"}
+                        </span>
+                        <select
+                          value={currentManualMapping[field] ?? ""}
+                          onChange={(event) => updateManualField(field, event.target.value)}
+                          className="w-full rounded-[18px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] px-4 py-3 text-sm text-[var(--workspace-text)] outline-none transition focus:border-[var(--workspace-accent)]"
+                        >
+                          <option value="">Select a column</option>
+                          {(preview.manualMapping?.columns ?? []).map((column) => (
+                            <option key={`${field}-${column.index}`} value={column.index}>
+                              {column.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-3">
+                    <p className="text-sm text-[var(--workspace-muted)]">
+                      {currentManualReady
+                        ? "Required fields are mapped. Preview again to continue."
+                        : "Map Guest Name, Check-in, Check-out, and Revenue to continue."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handlePreview}
+                      disabled={!currentManualReady || phase === "previewing"}
+                      className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {phase === "previewing" ? "Analyzing..." : "Preview with mapping"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {[

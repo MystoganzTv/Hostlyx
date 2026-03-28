@@ -75,6 +75,40 @@ export type ImportPreviewRow = Pick<
 
 export type ImportReviewSection = "valid" | "warnings" | "duplicates" | "errors";
 
+export type ImportManualMappingField =
+  | "guestName"
+  | "checkIn"
+  | "checkOut"
+  | "grossRevenue"
+  | "payout"
+  | "propertyName";
+
+export type ImportManualMappingOption = {
+  index: number;
+  label: string;
+};
+
+export type ImportManualMapping = {
+  sheetName: string;
+  headerRowIndex: number;
+  guestName: number | null;
+  checkIn: number | null;
+  checkOut: number | null;
+  grossRevenue: number | null;
+  payout: number | null;
+  propertyName: number | null;
+};
+
+export type ImportManualMappingPreview = {
+  message: string;
+  sheetName: string;
+  headerRowIndex: number;
+  columns: ImportManualMappingOption[];
+  suggested: Record<ImportManualMappingField, number | null>;
+  selected: Record<ImportManualMappingField, number | null>;
+  requiredReady: boolean;
+};
+
 export type ImportReviewRow = {
   id: string;
   rowType: "booking" | "expense";
@@ -89,6 +123,8 @@ export type ImportPreview = {
   source: ImportDetectedSource;
   sourceLabel: string;
   fileName: string;
+  requiresManualMapping: boolean;
+  manualMapping: ImportManualMappingPreview | null;
   totalRowsRead: number;
   validRows: number;
   warningRows: number;

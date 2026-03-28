@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUserEmail } from "@/lib/auth";
 import { appendImportData, getBookings, getPropertyDefinitions } from "@/lib/db";
 import { buildImportPreview, mapPreviewToHostlyxRecords } from "@/lib/import/importPipeline";
+import type { ImportManualMapping } from "@/lib/import/types";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const action = String(formData.get("action") ?? "preview").trim().toLowerCase();
     const fileValue = formData.get("file");
+    const manualMappingValue = formData.get("manualMapping");
 
     if (!(fileValue instanceof File) || fileValue.size <= 0) {
       return NextResponse.json(
@@ -34,7 +36,22 @@ export async function POST(request: Request) {
 
     const buffer = await fileValue.arrayBuffer();
     const existingBookings = await getBookings(ownerEmail);
-    const preview = buildImportPreview(buffer, fileValue.name, existingBookings);
+    let manualMapping: ImportManualMapping | null = null;
+
+    if (typeof manualMappingValue === "string" && manualMappingValue.trim()) {
+      try {
+        manualMapping = JSON.parse(manualMappingValue) as ImportManualMapping;
+      } catch {
+        return NextResponse.json(
+          { error: "Hostlyx could not read the manual column mapping." },
+          { status: 400 },
+        );
+      }
+    }
+
+    const preview = buildImportPreview(buffer, fileValue.name, existingBookings, {
+      manualMapping,
+    });
 
     if (action !== "commit") {
       return NextResponse.json({
@@ -42,6 +59,8 @@ export async function POST(request: Request) {
           source: preview.source,
           sourceLabel: preview.sourceLabel,
           fileName: preview.fileName,
+          requiresManualMapping: preview.requiresManualMapping,
+          manualMapping: preview.manualMapping,
           totalRowsRead: preview.totalRowsRead,
           validRows: preview.validRows,
           warningRows: preview.warningRows,
@@ -61,7 +80,11 @@ export async function POST(request: Request) {
 
     if (!preview.canImport) {
       return NextResponse.json(
-        { error: "This file needs attention before Hostlyx can import it." },
+        {
+          error: preview.requiresManualMapping
+            ? "We couldn’t fully recognize your file. Map your columns in a few seconds to continue."
+            : "This file needs attention before Hostlyx can import it.",
+        },
         { status: 400 },
       );
     }
