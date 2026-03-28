@@ -9,7 +9,6 @@ import {
   ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
-  LifeBuoy,
   LayoutDashboard,
   LogOut,
   ReceiptText,
@@ -258,13 +257,6 @@ export function WorkspaceShell({
                       <Settings2 className="h-3.5 w-3.5" />
                       Settings
                     </Link>
-                  <Link
-                    href="/contact"
-                    className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold transition"
-                  >
-                    <LifeBuoy className="h-3.5 w-3.5" />
-                    Contact support
-                  </Link>
                 </div>
 
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
@@ -281,31 +273,6 @@ export function WorkspaceShell({
                   </p>
                 </div>
 
-                <div className="rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(88,196,182,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="workspace-icon-chip rounded-[18px] p-3">
-                      <LifeBuoy className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
-                        Support
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-white">
-                        Need help with imports, billing, or reports?
-                      </p>
-                      <p className="mt-2 text-xs leading-6 text-[var(--workspace-sidebar-muted)]">
-                        Reach Hostlyx support and we will get back to you by email.
-                      </p>
-                      <Link
-                        href="/contact"
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.08]"
-                      >
-                        Contact support
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-sm font-medium text-white">{userName}</p>
                   <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
@@ -316,15 +283,7 @@ export function WorkspaceShell({
                 <SignOutButton className="flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]" />
               </>
             ) : (
-              <div className="flex flex-col items-center gap-3">
-                <Link
-                  href="/contact"
-                  aria-label="Contact support"
-                  title="Contact support"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white transition hover:bg-white/[0.08]"
-                >
-                  <LifeBuoy className="h-4 w-4" />
-                </Link>
+              <div className="flex justify-center">
                 <SignOutButton
                   label=""
                   ariaLabel="Sign out"
