@@ -112,6 +112,14 @@ function getTimeContext(view: DashboardView) {
     return String(new Date().getFullYear() - 1);
   }
 
+  if (
+    filters.rangePreset === "custom" ||
+    filters.rangePreset === "last-90-days" ||
+    filters.rangePreset === "all-time"
+  ) {
+    return rangeLabel;
+  }
+
   if (filters.year !== "all" && filters.month !== "all") {
     return formatter.format(new Date(filters.year, filters.month - 1, 1));
   }
