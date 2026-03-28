@@ -79,6 +79,23 @@ export type ImportPreviewRow = Pick<
   "guestName" | "channel" | "checkIn" | "checkOut" | "grossRevenue" | "payout"
 >;
 
+export type ImportEditableBooking = Pick<
+  NormalizedImportBooking,
+  | "propertyName"
+  | "bookingReference"
+  | "guestName"
+  | "channel"
+  | "checkIn"
+  | "checkOut"
+  | "guests"
+  | "grossRevenue"
+  | "platformFee"
+  | "cleaningFee"
+  | "taxAmount"
+  | "payout"
+  | "status"
+>;
+
 export type ImportReviewSection = "valid" | "warnings" | "duplicates" | "errors";
 
 export type ImportManualMappingField =
@@ -129,7 +146,22 @@ export type ImportReviewRow = {
   title: string;
   subtitle: string;
   reasons: string[];
+  canResolve?: boolean;
+  booking?: ImportEditableBooking;
 };
+
+export type ImportRowResolution =
+  | {
+      rowType: "booking";
+      rowIndex: number;
+      action: "override";
+      booking: Partial<ImportEditableBooking>;
+    }
+  | {
+      rowType: "booking";
+      rowIndex: number;
+      action: "skip";
+    };
 
 export type ImportPreview = {
   source: ImportDetectedSource;

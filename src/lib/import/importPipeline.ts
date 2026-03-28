@@ -7,9 +7,11 @@ import { normalizeBooking } from "./normalizeBooking";
 import { normalizeGeneric } from "./normalizeGeneric";
 import { normalizeManual } from "./normalizeManual";
 import { parseWorkbook } from "./parseWorkbook";
-import { inferDatePreferenceFromSheet, parseImportDateDetailed } from "./dates";
+import { calculateNights, inferDatePreferenceFromSheet, parseImportDateDetailed } from "./dates";
 import { parseMoney } from "./money";
+import { validateBookingRow } from "./validators";
 import {
+  type ImportEditableBooking,
   getDetectedSourceLabel,
   type ImportBookingCandidate,
   type ImportDetectedSource,
@@ -18,6 +20,7 @@ import {
   type ImportManualMapping,
   type ImportManualMappingField,
   type ImportPreview,
+  type ImportRowResolution,
   type ImportReviewRow,
   type ImportReviewSection,
   type ImportValidationWarning,
@@ -43,6 +46,25 @@ function describeBookingCandidate(
       section === "duplicates" && row.duplicate
         ? [row.duplicate.message, ...row.warnings.map((warning) => warning.message)]
         : row.warnings.map((warning) => warning.message),
+    canResolve: section !== "valid",
+    booking:
+      section === "valid"
+        ? undefined
+        : {
+            propertyName: row.booking.propertyName,
+            bookingReference: row.booking.bookingReference,
+            guestName: row.booking.guestName,
+            channel: row.booking.channel,
+            checkIn: row.booking.checkIn,
+            checkOut: row.booking.checkOut,
+            guests: row.booking.guests,
+            grossRevenue: row.booking.grossRevenue,
+            platformFee: row.booking.platformFee,
+            cleaningFee: row.booking.cleaningFee,
+            taxAmount: row.booking.taxAmount,
+            payout: row.booking.payout,
+            status: row.booking.status,
+          },
   };
 }
 
@@ -346,12 +368,66 @@ function buildManualMappingPreview(
   };
 }
 
+function applyBookingOverride(
+  candidate: ImportBookingCandidate,
+  override: Partial<ImportEditableBooking>,
+): ImportBookingCandidate {
+  const booking = {
+    ...candidate.booking,
+    propertyName: String(override.propertyName ?? candidate.booking.propertyName ?? "").trim(),
+    bookingReference: String(override.bookingReference ?? candidate.booking.bookingReference ?? "").trim(),
+    guestName: String(override.guestName ?? candidate.booking.guestName ?? "").trim(),
+    channel: String(override.channel ?? candidate.booking.channel ?? "").trim(),
+    checkIn: String(override.checkIn ?? candidate.booking.checkIn ?? "").trim(),
+    checkOut: String(override.checkOut ?? candidate.booking.checkOut ?? "").trim(),
+    guests:
+      typeof override.guests === "number" && Number.isFinite(override.guests)
+        ? Math.max(0, Math.trunc(override.guests))
+        : candidate.booking.guests,
+    grossRevenue:
+      typeof override.grossRevenue === "number" && Number.isFinite(override.grossRevenue)
+        ? override.grossRevenue
+        : candidate.booking.grossRevenue,
+    platformFee:
+      typeof override.platformFee === "number" && Number.isFinite(override.platformFee)
+        ? Math.max(0, override.platformFee)
+        : candidate.booking.platformFee,
+    cleaningFee:
+      typeof override.cleaningFee === "number" && Number.isFinite(override.cleaningFee)
+        ? Math.max(0, override.cleaningFee)
+        : candidate.booking.cleaningFee,
+    taxAmount:
+      typeof override.taxAmount === "number" && Number.isFinite(override.taxAmount)
+        ? Math.max(0, override.taxAmount)
+        : candidate.booking.taxAmount,
+    payout:
+      typeof override.payout === "number" && Number.isFinite(override.payout)
+        ? override.payout
+        : candidate.booking.payout,
+    status: String(override.status ?? candidate.booking.status ?? "").trim() || "Booked",
+  };
+
+  booking.nights = calculateNights(booking.checkIn, booking.checkOut);
+
+  const warnings = validateBookingRow({
+    booking,
+    rowIndex: candidate.rowIndex,
+  });
+
+  return {
+    ...candidate,
+    booking,
+    warnings,
+  };
+}
+
 export function buildImportPreview(
   buffer: ArrayBuffer,
   fileName: string,
   existingBookings: BookingRecord[] = [],
   options?: {
     manualMapping?: ImportManualMapping | null;
+    rowResolutions?: ImportRowResolution[];
   },
 ): ImportPreview {
   const workbook = parseWorkbook(buffer, fileName);
@@ -515,9 +591,26 @@ export function buildImportPreview(
     }
   }
 
-  const duplicateFlags = detectDuplicateBookings(normalized.bookings, existingBookings);
+  const bookingResolutionMap = new Map(
+    (options?.rowResolutions ?? [])
+      .filter((resolution): resolution is Extract<ImportRowResolution, { rowType: "booking" }> => resolution.rowType === "booking")
+      .map((resolution) => [resolution.rowIndex, resolution]),
+  );
+
+  const resolvedBookings = normalized.bookings
+    .filter((candidate) => bookingResolutionMap.get(candidate.rowIndex)?.action !== "skip")
+    .map((candidate) => {
+      const resolution = bookingResolutionMap.get(candidate.rowIndex);
+      if (resolution?.action === "override") {
+        return applyBookingOverride(candidate, resolution.booking);
+      }
+
+      return candidate;
+    });
+
+  const duplicateFlags = detectDuplicateBookings(resolvedBookings, existingBookings);
   const duplicatesByRowIndex = new Map(duplicateFlags.map((duplicate) => [duplicate.rowIndex, duplicate]));
-  const bookingRows = normalized.bookings.map((candidate) => ({
+  const bookingRows = resolvedBookings.map((candidate) => ({
     ...candidate,
     duplicate: duplicatesByRowIndex.get(candidate.rowIndex),
   }));
@@ -576,7 +669,10 @@ export function buildImportPreview(
         payout: row.booking.payout,
       })),
     reviewRows,
-    warnings: normalized.warnings,
+    warnings: [
+      ...bookingRows.flatMap((row) => row.warnings),
+      ...normalized.expenses.flatMap((row) => row.warnings),
+    ],
     duplicates: duplicateFlags,
     canImport: importableRows > 0,
   };

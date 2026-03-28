@@ -12,12 +12,15 @@ import {
   CircleDollarSign,
   FileSpreadsheet,
   LoaderCircle,
+  PencilLine,
   ShieldCheck,
   Sparkles,
   UploadCloud,
   X,
 } from "lucide-react";
 import type { PropertyDefinition } from "@/lib/types";
+import type { ImportEditableBooking, ImportRowResolution } from "@/lib/import/types";
+import { Modal } from "@/components/modal";
 import { WorkspaceSelect } from "@/components/workspace-select";
 
 type UploadPhase = "idle" | "previewing" | "ready" | "importing";
@@ -100,6 +103,8 @@ type ReviewRow = {
   title: string;
   subtitle: string;
   reasons: string[];
+  canResolve?: boolean;
+  booking?: ImportEditableBooking;
 };
 
 type ImportPreviewPayload = {
@@ -162,6 +167,13 @@ type ImportCompletePayload = {
   expensesImported: number;
   skippedRows: number;
   financialDocumentsImported: number;
+};
+
+type BookingFixDraft = {
+  rowIndex: number;
+  title: string;
+  reasons: string[];
+  booking: ImportEditableBooking;
 };
 
 type UploadToast = {
@@ -266,6 +278,8 @@ export function UploadPanel({
   const [isDragging, setIsDragging] = useState(false);
   const [committed, setCommitted] = useState<ImportCommittedPayload | null>(null);
   const [shouldFocusImportAction, setShouldFocusImportAction] = useState(false);
+  const [rowResolutions, setRowResolutions] = useState<ImportRowResolution[]>([]);
+  const [bookingFixDraft, setBookingFixDraft] = useState<BookingFixDraft | null>(null);
 
   const actionableRows = useMemo(() => {
     if (!preview) {
@@ -392,6 +406,7 @@ export function UploadPanel({
   async function requestPreview(options?: {
     preserveToast?: boolean;
     focusImportAction?: boolean;
+    rowResolutionsOverride?: ImportRowResolution[];
   }) {
     if (!selectedFile) {
       return null;
@@ -407,6 +422,10 @@ export function UploadPanel({
       formData.set("action", "preview");
       if (manualMapping) {
         formData.set("manualMapping", JSON.stringify(manualMapping));
+      }
+      const effectiveRowResolutions = options?.rowResolutionsOverride ?? rowResolutions;
+      if (effectiveRowResolutions.length > 0) {
+        formData.set("rowResolutions", JSON.stringify(effectiveRowResolutions));
       }
       formData.append("file", selectedFile);
 
@@ -453,6 +472,8 @@ export function UploadPanel({
     setSelectedFile(nextFile);
     setPreview(null);
     setManualMapping(null);
+    setRowResolutions([]);
+    setBookingFixDraft(null);
     setDuplicateStrategy("skip");
     setToast(null);
     setCommitted(null);
@@ -522,6 +543,9 @@ export function UploadPanel({
       if (manualMapping) {
         formData.set("manualMapping", JSON.stringify(manualMapping));
       }
+      if (rowResolutions.length > 0) {
+        formData.set("rowResolutions", JSON.stringify(rowResolutions));
+      }
       formData.append("file", selectedFile);
 
       const response = await fetch("/api/import", {
@@ -574,6 +598,8 @@ export function UploadPanel({
       setSelectedFile(null);
       setPreview(null);
       setManualMapping(null);
+      setRowResolutions([]);
+      setBookingFixDraft(null);
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -623,6 +649,93 @@ export function UploadPanel({
       propertyName: current?.propertyName ?? previewManualMapping.selected.propertyName,
       [field]: value === "" ? null : Number(value),
     }));
+  }
+
+  function openBookingFix(row: ReviewRow) {
+    if (!row.booking) {
+      return;
+    }
+
+    setBookingFixDraft({
+      rowIndex: row.rowIndex,
+      title: row.title,
+      reasons: row.reasons,
+      booking: { ...row.booking },
+    });
+  }
+
+  function updateBookingFixField(field: keyof ImportEditableBooking, value: string) {
+    setBookingFixDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const isNumericField =
+        field === "guests" ||
+        field === "grossRevenue" ||
+        field === "platformFee" ||
+        field === "cleaningFee" ||
+        field === "taxAmount" ||
+        field === "payout";
+
+      return {
+        ...current,
+        booking: {
+          ...current.booking,
+          [field]: isNumericField
+            ? value === ""
+              ? 0
+              : Number(value)
+            : value,
+        },
+      };
+    });
+  }
+
+  async function saveBookingFix() {
+    if (!bookingFixDraft) {
+      return;
+    }
+
+    const nextRowResolutions = rowResolutions.filter(
+      (resolution) =>
+        !(resolution.rowType === "booking" && resolution.rowIndex === bookingFixDraft.rowIndex),
+    );
+    nextRowResolutions.push({
+      rowType: "booking",
+      rowIndex: bookingFixDraft.rowIndex,
+      action: "override",
+      booking: bookingFixDraft.booking,
+    });
+
+    setRowResolutions(nextRowResolutions);
+
+    setBookingFixDraft(null);
+    await requestPreview({
+      preserveToast: true,
+      focusImportAction: false,
+      rowResolutionsOverride: nextRowResolutions,
+    });
+  }
+
+  async function skipBookingRow(rowIndex: number) {
+    const nextRowResolutions = rowResolutions.filter(
+      (resolution) => !(resolution.rowType === "booking" && resolution.rowIndex === rowIndex),
+    );
+    nextRowResolutions.push({
+      rowType: "booking",
+      rowIndex,
+      action: "skip",
+    });
+
+    setRowResolutions(nextRowResolutions);
+
+    setBookingFixDraft(null);
+    await requestPreview({
+      preserveToast: true,
+      focusImportAction: false,
+      rowResolutionsOverride: nextRowResolutions,
+    });
   }
 
   function scrollToMapping() {
@@ -1472,6 +1585,27 @@ export function UploadPanel({
                                 Fix this row in the source file and upload again if you want it included.
                               </p>
                             ) : null}
+                            {row.rowType === "booking" && row.canResolve && row.booking ? (
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => openBookingFix(row)}
+                                  className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
+                                >
+                                  <PencilLine className="h-4 w-4" />
+                                  Fix in Hostlyx
+                                </button>
+                                {row.section === "errors" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void skipBookingRow(row.rowIndex)}
+                                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
+                                  >
+                                    Skip this row
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </div>
                         ))
                       ) : (
@@ -1545,6 +1679,98 @@ export function UploadPanel({
         </div>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(bookingFixDraft)}
+        title={bookingFixDraft ? `Fix row ${bookingFixDraft.rowIndex}` : "Fix row"}
+        onClose={() => setBookingFixDraft(null)}
+      >
+        {bookingFixDraft ? (
+          <div className="space-y-5">
+            <div className="rounded-[22px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+              <p className="text-sm font-medium text-[var(--workspace-text)]">{bookingFixDraft.title}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                Edit the fields that look wrong, then re-check this row. If the row is not a real booking, skip it.
+              </p>
+              {bookingFixDraft.reasons.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {bookingFixDraft.reasons.map((reason) => (
+                    <span
+                      key={reason}
+                      className="rounded-full border border-amber-400/18 bg-amber-300/[0.08] px-3 py-1.5 text-xs text-amber-100"
+                    >
+                      {reason}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {([
+                ["guestName", "Guest name", "text"],
+                ["channel", "Channel", "text"],
+                ["checkIn", "Check-in", "date"],
+                ["checkOut", "Check-out", "date"],
+                ["bookingReference", "Booking reference", "text"],
+                ["propertyName", "Property", "text"],
+                ["guests", "Guests", "number"],
+                ["grossRevenue", "Gross revenue", "number"],
+                ["platformFee", "Platform fee", "number"],
+                ["taxAmount", "Taxes", "number"],
+                ["cleaningFee", "Cleaning fee", "number"],
+                ["payout", "Payout", "number"],
+              ] as Array<[keyof ImportEditableBooking, string, "text" | "date" | "number"]>).map(
+                ([field, label, type]) => (
+                  <label key={field} className="space-y-2">
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                      {label}
+                    </span>
+                    <input
+                      type={type}
+                      step={type === "number" ? "0.01" : undefined}
+                      min={field === "guests" ? "0" : undefined}
+                      value={
+                        type === "number"
+                          ? String(bookingFixDraft.booking[field] ?? 0)
+                          : String(bookingFixDraft.booking[field] ?? "")
+                      }
+                      onChange={(event) => updateBookingFixField(field, event.target.value)}
+                      className="w-full rounded-[18px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] px-4 py-3 text-sm text-[var(--workspace-text)] outline-none transition focus:border-[var(--workspace-accent)]"
+                    />
+                  </label>
+                ),
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <button
+                type="button"
+                onClick={() => void skipBookingRow(bookingFixDraft.rowIndex)}
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
+              >
+                Skip this row
+              </button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setBookingFixDraft(null)}
+                  className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveBookingFix()}
+                  className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
+                >
+                  Re-check this row
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   getPropertyDefinitions,
 } from "@/lib/db";
 import { buildImportPreview, mapPreviewToHostlyxRecords } from "@/lib/import/importPipeline";
-import type { ImportManualMapping } from "@/lib/import/types";
+import type { ImportManualMapping, ImportRowResolution } from "@/lib/import/types";
 
 export const runtime = "nodejs";
 
@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     const action = String(formData.get("action") ?? "preview").trim().toLowerCase();
     const fileValue = formData.get("file");
     const manualMappingValue = formData.get("manualMapping");
+    const rowResolutionsValue = formData.get("rowResolutions");
 
     if (!(fileValue instanceof File) || fileValue.size <= 0) {
       return NextResponse.json(
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     const buffer = await fileValue.arrayBuffer();
     const existingBookings = await getBookings(ownerEmail);
     let manualMapping: ImportManualMapping | null = null;
+    let rowResolutions: ImportRowResolution[] = [];
 
     if (typeof manualMappingValue === "string" && manualMappingValue.trim()) {
       try {
@@ -54,8 +56,20 @@ export async function POST(request: Request) {
       }
     }
 
+    if (typeof rowResolutionsValue === "string" && rowResolutionsValue.trim()) {
+      try {
+        rowResolutions = JSON.parse(rowResolutionsValue) as ImportRowResolution[];
+      } catch {
+        return NextResponse.json(
+          { error: "Hostlyx could not read the row fixes from this import review." },
+          { status: 400 },
+        );
+      }
+    }
+
     const preview = buildImportPreview(buffer, fileValue.name, existingBookings, {
       manualMapping,
+      rowResolutions,
     });
 
     if (action !== "commit") {
