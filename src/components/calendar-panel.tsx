@@ -229,7 +229,7 @@ function MonthCalendar({
                             {format(day, "d")}
                           </p>
                           {!isCurrentMonth ? (
-                            <span className="rounded-full border border-[var(--accent-soft-strong)]/45 bg-[var(--accent-soft)]/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--accent-text)]/80">
+                            <span className="rounded-full border border-[var(--accent-soft-strong)]/65 bg-[linear-gradient(180deg,rgba(88,196,182,0.14)_0%,rgba(18,38,48,0.78)_100%)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--accent-text)]/92 shadow-[0_8px_18px_rgba(88,196,182,0.08)]">
                               {monthChipLabel}
                             </span>
                           ) : dayClosure ? (
