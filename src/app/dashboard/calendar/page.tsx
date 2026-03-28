@@ -178,6 +178,7 @@ export default async function CalendarPage({
         bookings={countryAndChannelBookings}
         closures={countryClosures}
         monthAnchors={monthAnchors}
+        currencyCode={currencyCode}
       />
     </WorkspaceShell>
   );

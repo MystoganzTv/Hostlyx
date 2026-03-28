@@ -1,3 +1,5 @@
+"use client";
+
 import {
   addDays,
   differenceInCalendarDays,
@@ -12,11 +14,15 @@ import {
   parseISO,
   startOfMonth,
 } from "date-fns";
-import { formatNumber } from "@/lib/format";
+import Link from "next/link";
+import { useState } from "react";
+import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
+import { Modal } from "@/components/modal";
 import { SectionCard } from "@/components/section-card";
 import type {
   BookingRecord,
   CalendarClosureRecord,
+  CurrencyCode,
 } from "@/lib/types";
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -134,14 +140,18 @@ function MonthCalendar({
   anchorDate,
   bookings,
   closures,
+  currencyCode,
   compact = false,
   abbreviatedTitle = false,
+  onSelectBooking,
 }: {
   anchorDate: Date;
   bookings: BookingRecord[];
   closures: CalendarClosureRecord[];
+  currencyCode: CurrencyCode;
   compact?: boolean;
   abbreviatedTitle?: boolean;
+  onSelectBooking: (booking: BookingRecord) => void;
 }) {
   const days = buildCalendarDays(anchorDate);
   const weeks = chunkWeeks(days);
@@ -211,20 +221,23 @@ function MonthCalendar({
                   })}
                 </div>
 
-                <div className="pointer-events-none absolute inset-x-0" style={{ top: overlayTop }}>
+                <div className="absolute inset-x-0" style={{ top: overlayTop }}>
                   <div
                     className="grid grid-cols-7 gap-2"
                     style={{ gridAutoRows: `${barHeight}px` }}
                   >
                     {segments.map((segment) => (
-                      <div
+                      <button
+                        type="button"
                         key={`${segment.booking.id ?? segment.booking.bookingNumber}-${segment.startIndex}-${segment.track}`}
-                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 shadow-[0_10px_24px_rgba(2,6,23,0.22)] ${getBookingTone(segment.booking.channel)}`}
+                        onClick={() => onSelectBooking(segment.booking)}
+                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 text-left shadow-[0_10px_24px_rgba(2,6,23,0.22)] transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--workspace-accent)]/70 ${getBookingTone(segment.booking.channel)}`}
                         style={{
                           gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
                           gridRow: segment.track + 1,
                           height: `${barHeight}px`,
                         }}
+                        title={`${segment.booking.guestName} · ${formatDateLabel(segment.booking.checkIn)} to ${formatDateLabel(segment.booking.checkout)}`}
                       >
                         {segment.startsThisWeek ? (
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white/85" />
@@ -240,7 +253,7 @@ function MonthCalendar({
                         {segment.endsThisWeek ? (
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/60" />
                         ) : null}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -258,12 +271,15 @@ export function CalendarPanel({
   bookings,
   closures,
   monthAnchors,
+  currencyCode,
 }: {
   rangeLabel: string;
   bookings: BookingRecord[];
   closures: CalendarClosureRecord[];
   monthAnchors: Date[];
+  currencyCode: CurrencyCode;
 }) {
+  const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const showOverviewGrid = monthAnchors.length > 1;
   const isYearGrid = monthAnchors.length === 12;
 
@@ -311,12 +327,131 @@ export function CalendarPanel({
               anchorDate={anchorDate}
               bookings={monthBookings}
               closures={monthClosures}
+              currencyCode={currencyCode}
               compact={showOverviewGrid}
               abbreviatedTitle={isYearGrid}
+              onSelectBooking={setSelectedBooking}
             />
           );
         })}
       </div>
+
+      <Modal
+        open={Boolean(selectedBooking)}
+        title={selectedBooking ? selectedBooking.guestName : "Booking details"}
+        onClose={() => setSelectedBooking(null)}
+      >
+        {selectedBooking ? (
+          <div className="space-y-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Stay summary</p>
+                <h3 className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                  {selectedBooking.guestName}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                  {formatDateLabel(selectedBooking.checkIn)} to {formatDateLabel(selectedBooking.checkout)}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Property</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {selectedBooking.propertyName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Unit</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {selectedBooking.unitName || "No unit"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Guests</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {formatNumber(selectedBooking.guestCount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Nights</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {formatNumber(selectedBooking.nights)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Booking details</p>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Channel</span>
+                    <span className="font-medium text-[var(--workspace-text)]">{selectedBooking.channel}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Booking ref</span>
+                    <span className="font-medium text-[var(--workspace-text)]">
+                      {selectedBooking.bookingNumber || "Not set"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Status</span>
+                    <span className="font-medium text-[var(--workspace-text)]">
+                      {selectedBooking.overbookingStatus || "Confirmed"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Rental period</span>
+                    <span className="font-medium text-[var(--workspace-text)]">{selectedBooking.rentalPeriod}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="workspace-soft-card rounded-[22px] p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Gross revenue</p>
+                <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
+                  {formatCurrency(selectedBooking.totalRevenue, false, currencyCode)}
+                </p>
+              </div>
+              <div className="workspace-soft-card rounded-[22px] p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Net payout</p>
+                <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
+                  {formatCurrency(selectedBooking.payout, false, currencyCode)}
+                </p>
+              </div>
+              <div className="workspace-soft-card rounded-[22px] p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Host fee</p>
+                <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
+                  {formatCurrency(selectedBooking.hostFee, false, currencyCode)}
+                </p>
+              </div>
+              <div className="workspace-soft-card rounded-[22px] p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Cleaning fee</p>
+                <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
+                  {formatCurrency(selectedBooking.cleaningFee, false, currencyCode)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Link
+                href="/dashboard/bookings"
+                className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
+              >
+                Open bookings page
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedBooking(null)}
+                className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
+              >
+                Close details
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
