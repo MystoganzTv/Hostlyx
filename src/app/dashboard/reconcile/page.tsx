@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FilterBar } from "@/components/filter-bar";
 import { ReconcilePanel } from "@/components/reconcile-panel";
+import { ReconcileStatementLauncher } from "@/components/reconcile-statement-launcher";
 import { SectionCard } from "@/components/section-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -79,16 +80,19 @@ export default async function ReconcilePage({
       latestImport={latestImport}
       reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
       actions={
-        <FilterBar
-          channels={view.availableChannels}
-          countries={view.availableCountries}
-          rangeShortcutYears={view.availableYears}
-          selectedRangePreset={view.filters.rangePreset}
-          selectedStartDate={view.filters.startDate}
-          selectedEndDate={view.filters.endDate}
-          selectedChannel={view.filters.channel}
-          selectedCountryCode={view.filters.countryCode}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <FilterBar
+            channels={view.availableChannels}
+            countries={view.availableCountries}
+            rangeShortcutYears={view.availableYears}
+            selectedRangePreset={view.filters.rangePreset}
+            selectedStartDate={view.filters.startDate}
+            selectedEndDate={view.filters.endDate}
+            selectedChannel={view.filters.channel}
+            selectedCountryCode={view.filters.countryCode}
+          />
+          <ReconcileStatementLauncher properties={properties} />
+        </div>
       }
     >
       <div className="space-y-6">
@@ -107,12 +111,15 @@ export default async function ReconcilePage({
                 Reconcile becomes available once Hostlyx has at least one imported financial
                 statement that overlaps the selected reporting period.
               </p>
-              <Link
-                href="/dashboard/imports"
-                className="workspace-button-primary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
-              >
-                Go to Import Center
-              </Link>
+              <div className="flex flex-wrap items-center gap-3">
+                <ReconcileStatementLauncher properties={properties} />
+                <Link
+                  href="/dashboard/imports"
+                  className="workspace-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
+                >
+                  Go to Import Center
+                </Link>
+              </div>
             </div>
           </SectionCard>
         )}

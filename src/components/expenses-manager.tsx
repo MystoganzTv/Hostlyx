@@ -121,7 +121,7 @@ export function ExpensesManager({
                   <td className="py-4 pr-4">
                     <div>
                       <p className="font-medium text-[var(--workspace-text)]">{expense.propertyName}</p>
-                      <p className="mt-1 text-xs text-slate-400">{expense.unitName || "No unit"}</p>
+                      <p className="mt-1 text-xs text-slate-400">{expense.unitName || "Primary listing"}</p>
                     </div>
                   </td>
                   <td className="py-4 pr-4">{formatDateLabel(expense.date)}</td>

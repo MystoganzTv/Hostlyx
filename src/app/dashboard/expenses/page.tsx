@@ -82,7 +82,7 @@ export default async function ExpensesPage({
     <WorkspaceShell
       activePage="expenses"
       pageTitle="Expenses"
-      pageSubtitle="Track operating costs, categories, and property-level spend."
+      pageSubtitle="Track operating costs, categories, and spend by property or listing."
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}

@@ -213,7 +213,7 @@ export function BookingsManager({
                   <td className="py-4 pr-4">
                     <div>
                       <p className="font-medium text-[var(--workspace-text)]">{booking.propertyName}</p>
-                      <p className="mt-1 text-xs text-slate-400">{booking.unitName || "No unit"}</p>
+                      <p className="mt-1 text-xs text-slate-400">{booking.unitName || "Primary listing"}</p>
                     </div>
                   </td>
                   <td className="py-4 pr-4">

@@ -328,6 +328,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       import_id INTEGER NOT NULL DEFAULT 0,
       property_id INTEGER,
       property_name TEXT NOT NULL DEFAULT 'Default Property',
+      unit_name TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL DEFAULT 'other',
       external_event_id TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
@@ -614,6 +615,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
     db.exec("ALTER TABLE calendar_events ADD COLUMN property_name TEXT NOT NULL DEFAULT 'Default Property';");
   }
 
+  if (!hasColumn(db, "calendar_events", "unit_name")) {
+    db.exec("ALTER TABLE calendar_events ADD COLUMN unit_name TEXT NOT NULL DEFAULT '';");
+  }
+
   if (!hasColumn(db, "calendar_events", "source")) {
     db.exec("ALTER TABLE calendar_events ADD COLUMN source TEXT NOT NULL DEFAULT 'other';");
   }
@@ -828,6 +833,7 @@ async function initializePostgresSchema() {
           import_id BIGINT NOT NULL DEFAULT 0,
           property_id BIGINT,
           property_name TEXT NOT NULL DEFAULT 'Default Property',
+          unit_name TEXT NOT NULL DEFAULT '',
           source TEXT NOT NULL DEFAULT 'other',
           external_event_id TEXT NOT NULL DEFAULT '',
           summary TEXT NOT NULL DEFAULT '',
@@ -1082,6 +1088,10 @@ async function initializePostgresSchema() {
       await pool.query(`
         ALTER TABLE calendar_events
         ADD COLUMN IF NOT EXISTS property_name TEXT NOT NULL DEFAULT 'Default Property'
+      `);
+      await pool.query(`
+        ALTER TABLE calendar_events
+        ADD COLUMN IF NOT EXISTS unit_name TEXT NOT NULL DEFAULT ''
       `);
       await pool.query(`
         ALTER TABLE calendar_events
@@ -1384,6 +1394,7 @@ function mapCalendarEventRecord(row: Record<string, unknown>): CalendarEventReco
     importId: Number(getRowValue(row, "importId", "importid")),
     propertyId: Number(getRowValue(row, "propertyId", "propertyid")) || null,
     propertyName: String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
+    unitName: String(getRowValue(row, "unitName", "unitname") ?? ""),
     source: String(getRowValue(row, "source") ?? "other") as CalendarEventSource,
     externalEventId: String(getRowValue(row, "externalEventId", "externaleventid") ?? ""),
     summary: String(getRowValue(row, "summary") ?? ""),
@@ -1503,6 +1514,7 @@ function cloneCalendarEventRecord(event: StoredCalendarEvent): CalendarEventReco
     importId: event.importId,
     propertyId: event.propertyId,
     propertyName: event.propertyName,
+    unitName: event.unitName,
     source: event.source,
     externalEventId: event.externalEventId,
     summary: event.summary,
@@ -3441,6 +3453,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
           import_id AS importId,
           property_id AS propertyId,
           property_name AS propertyName,
+          unit_name AS unitName,
           source,
           external_event_id AS externalEventId,
           summary,
@@ -3477,6 +3490,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
           import_id AS importId,
           property_id AS propertyId,
           property_name AS propertyName,
+          unit_name AS unitName,
           source,
           external_event_id AS externalEventId,
           summary,

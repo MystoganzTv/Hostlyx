@@ -215,6 +215,12 @@ type ImportCompletePayload = {
   financialDocumentsImported: number;
 };
 
+type FinancialStatementRawPreview = {
+  sheetName?: string;
+  headers?: string[];
+  previewRows?: Array<Array<string | number | boolean | null>>;
+};
+
 type BookingFixDraft = {
   rowIndex: number;
   title: string;
@@ -417,6 +423,18 @@ export function UploadPanel({
       preview.financialStatement &&
       preview.canImport,
   );
+
+  const financialStatementPreviewData = useMemo<FinancialStatementRawPreview | null>(() => {
+    if (!preview?.financialStatement?.rawData) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(preview.financialStatement.rawData) as FinancialStatementRawPreview;
+    } catch {
+      return null;
+    }
+  }, [preview?.financialStatement?.rawData]);
 
   const importButtonLabel = useMemo(() => {
     if (phase === "importing") {
@@ -1213,7 +1231,7 @@ export function UploadPanel({
                   label: property.name,
                   description:
                     property.units.length > 0
-                      ? `${property.units.length} unit${property.units.length === 1 ? "" : "s"}`
+                      ? `${property.units.length} listing${property.units.length === 1 ? "" : "s"}`
                       : "Single-home property",
                 }))}
                 placeholder="Select a property"
@@ -1360,7 +1378,7 @@ export function UploadPanel({
                         {preview.blocksImport
                           ? preview.blockMessage
                           : preview.source === "financial_statement"
-                          ? "This looks like a financial statement, not individual bookings."
+                          ? "This file is a financial statement. Hostlyx will save payout totals for Reconcile, but it will not create booking rows from it."
                           : preview.requiresManualMapping
                           ? preview.manualMapping?.message
                           : getSourcePresentation(preview.source).description}
@@ -1601,13 +1619,61 @@ export function UploadPanel({
                         </div>
                         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            What will not happen
+                            Why bookings stay at 0
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--workspace-text)]">
                             Hostlyx will not create bookings from this file or mix it into operational calendar events.
                           </p>
                         </div>
                       </div>
+
+                      {financialStatementPreviewData?.previewRows?.length ? (
+                        <div className="mt-5 rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                                Statement rows sampled
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                                These are raw statement lines Hostlyx used to calculate payout, fees, and taxes.
+                              </p>
+                            </div>
+                            {financialStatementPreviewData.sheetName ? (
+                              <span className="rounded-full border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-1.5 text-xs font-medium text-[var(--workspace-muted)]">
+                                {financialStatementPreviewData.sheetName}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-4 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                              <thead className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                                <tr>
+                                  {(financialStatementPreviewData.headers ?? []).slice(0, 6).map((header, index) => (
+                                    <th key={`${header}-${index}`} className="pb-3 pr-4 font-medium">
+                                      {header || `Column ${index + 1}`}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[var(--workspace-border)]/60 text-[var(--workspace-text)]">
+                                {financialStatementPreviewData.previewRows.slice(0, 5).map((row, rowIndex) => (
+                                  <tr key={`statement-row-${rowIndex}`}>
+                                    {(row ?? []).slice(0, 6).map((cell, cellIndex) => (
+                                      <td
+                                        key={`statement-cell-${rowIndex}-${cellIndex}`}
+                                        className="py-3 pr-4 align-top text-sm leading-6 text-[var(--workspace-text)]"
+                                      >
+                                        {String(cell ?? "—")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div

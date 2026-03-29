@@ -21,7 +21,7 @@ export async function getOnboardingState(
     properties,
     hasProperties,
     hasData,
-    isComplete: hasProperties && hasData,
+    isComplete: hasProperties,
     defaultPropertyName: defaultOnboardingPropertyName,
   };
 }

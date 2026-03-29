@@ -514,9 +514,9 @@ export function CalendarPanel({
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Unit</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Listing</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {selectedBooking.unitName || "No unit"}
+                      {selectedBooking.unitName || "Primary listing"}
                     </p>
                   </div>
                   <div>

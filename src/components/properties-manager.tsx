@@ -75,7 +75,7 @@ export function PropertiesManager({
           }
 
           if (propertyMode === "multi" && normalizedUnitCount < 2) {
-            setError("Multi-unit properties need at least 2 units.");
+            setError("Multi-listing properties need at least 2 listings.");
             return;
           }
 
@@ -99,7 +99,7 @@ export function PropertiesManager({
           if (propertyMode === "multi" && Number.isFinite(propertyId) && propertyId > 0) {
             for (let index = 1; index <= normalizedUnitCount; index += 1) {
               const unitFormData = new FormData();
-              unitFormData.set("name", `Unit ${index}`);
+              unitFormData.set("name", `Listing ${index}`);
 
               const unitResponse = await fetch(`/api/properties/${propertyId}/units`, {
                 method: "POST",
@@ -108,7 +108,7 @@ export function PropertiesManager({
 
               if (!unitResponse.ok) {
                 const unitPayload = (await unitResponse.json()) as { error?: string };
-                setError(unitPayload.error ?? "The property was created, but some units could not be added.");
+                setError(unitPayload.error ?? "The property was created, but some listings could not be added.");
                 router.refresh();
                 return;
               }
@@ -119,7 +119,7 @@ export function PropertiesManager({
           setIsCreateOpen(false);
           setMessage(
             propertyMode === "multi"
-              ? `${normalizedName} created with ${normalizedUnitCount} units.`
+              ? `${normalizedName} created with ${normalizedUnitCount} listings.`
               : payload.message ?? "Property created.",
           );
           router.refresh();
@@ -153,7 +153,7 @@ export function PropertiesManager({
           }
 
           setUnitDrafts((current) => ({ ...current, [propertyId]: "" }));
-          setMessage(payload.message ?? "Unit created.");
+          setMessage(payload.message ?? "Listing created.");
           router.refresh();
         } catch {
           setError("The unit could not be created.");
@@ -257,14 +257,14 @@ export function PropertiesManager({
                 {properties.length === 0 ? "Create your first property" : "Add another property"}
               </p>
               <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                Keep the setup cleaner here, then choose region, property type, and units inside a focused modal.
+                Keep the setup cleaner here, then choose region, property type, and listings inside a focused modal.
               </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-3">
             <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              Create properties from a modal so region, rental structure, and units are handled in one compact flow instead of sitting permanently on the page.
+              Create properties from a modal so region, rental structure, and listings are handled in one compact flow instead of sitting permanently on the page.
             </div>
 
             <button
@@ -277,7 +277,7 @@ export function PropertiesManager({
               className="workspace-button-primary inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
-              {properties.length === 0 ? "Create first property" : "Open property modal"}
+              {properties.length === 0 ? "Create first property" : "Open listings setup"}
             </button>
           </div>
         </div>
@@ -291,7 +291,7 @@ export function PropertiesManager({
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Saved units</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Saved listings</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                 {formatNumber(properties.reduce((sum, property) => sum + property.units.length, 0))}
               </p>
@@ -299,7 +299,7 @@ export function PropertiesManager({
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Structure</p>
               <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                Single-home rentals can skip units. Multi-unit properties can auto-create unit slots during setup.
+                Single-home rentals can skip extra listings. Multi-listing properties can auto-create listing slots during setup.
               </p>
             </div>
           </div>
@@ -333,8 +333,8 @@ export function PropertiesManager({
                   <p className="mt-1 text-sm text-[var(--workspace-muted)]">
                     {market.countryName}
                     {summary.units.length > 0
-                      ? ` • ${formatNumber(summary.units.length)} saved units`
-                      : " • No units yet"}
+                      ? ` • ${formatNumber(summary.units.length)} saved listings`
+                      : " • No extra listings yet"}
                   </p>
                   {summary.lastImportFileName ? (
                     <p className="mt-1 text-xs text-[var(--workspace-muted)]">
@@ -414,7 +414,7 @@ export function PropertiesManager({
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-[var(--workspace-muted)]">
-                  This property works as a single unit for now. Add units only if you need them.
+                  This property works as a single listing for now. Add more listings only if you need them.
                 </p>
               )}
 
@@ -429,7 +429,7 @@ export function PropertiesManager({
                         [propertyId]: event.target.value,
                       }))
                     }
-                    placeholder="Add a unit: Apt 2B, Garden Suite..."
+                    placeholder="Add a listing: Apt 2B, Garden Suite..."
                   />
                   <button
                     type="button"
@@ -438,7 +438,7 @@ export function PropertiesManager({
                     className="workspace-button-secondary inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Plus className="h-4 w-4" />
-                    Add unit
+                    Add listing
                   </button>
                 </div>
               ) : null}
@@ -449,7 +449,7 @@ export function PropertiesManager({
 
       <Modal
         open={isCreateOpen}
-        title={properties.length === 0 ? "Create your first property" : "Add property"}
+        title={properties.length === 0 ? "Create your first property" : "Add property or listings"}
         dismissible={!forceCreateOnEmpty}
         onClose={() => {
           if (forceCreateOnEmpty) {
@@ -520,7 +520,7 @@ export function PropertiesManager({
                 <span className="text-sm font-semibold">Single house</span>
               </div>
               <p className="mt-2 text-xs leading-5">
-                Rent the entire home as one listing. No units are necessary.
+                Rent the entire home as one listing. No extra listings are necessary.
               </p>
             </button>
             <button
@@ -534,10 +534,10 @@ export function PropertiesManager({
             >
               <div className="flex items-center gap-3">
                 <Layers3 className="h-4 w-4" />
-                <span className="text-sm font-semibold">Multi-unit</span>
+                <span className="text-sm font-semibold">Multi-listing</span>
               </div>
               <p className="mt-2 text-xs leading-5">
-                Apartments, rooms, suites, or several rentable units inside one property.
+                Apartments, rooms, suites, or several rentable listings inside one property.
               </p>
             </button>
           </div>
@@ -545,7 +545,7 @@ export function PropertiesManager({
           {propertyMode === "multi" ? (
             <label className="space-y-2">
               <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                How many units does it have?
+                How many listings does it have?
               </span>
               <input
                 className={inputClassName()}
@@ -558,13 +558,13 @@ export function PropertiesManager({
             </label>
           ) : (
             <div className="workspace-soft-card rounded-[22px] px-4 py-3 text-sm text-[var(--workspace-muted)]">
-              This property will be treated as one full-home listing. You can still add units later if needed.
+              This property will be treated as one full-home listing. You can still add more listings later if needed.
             </div>
           )}
 
           {forceCreateOnEmpty ? (
             <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              Finish this first property setup to unlock imports, dashboard reporting, bookings, and expenses.
+              Finish this first property and listing setup to unlock imports, dashboard reporting, bookings, and expenses.
             </div>
           ) : null}
 
@@ -636,7 +636,7 @@ export function PropertiesManager({
             </div>
 
             <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              Renaming a property updates the property name across existing bookings and expenses in this workspace. Changing the market also moves all linked reporting for this property to the new country and currency.
+              Renaming a property updates the property name across existing bookings and expenses in this workspace. Changing the market also moves all linked reporting and listings for this property to the new country and currency.
             </div>
 
             <button
@@ -664,7 +664,7 @@ export function PropertiesManager({
                     propertyToDelete.expenses > 0 ||
                     propertyToDelete.importsCount > 0
                   ? "This property has linked workbook imports and accounting data. If you continue, Hostlyx will permanently delete everything tied to this property."
-                  : "This will delete the property and any saved units under it."}
+                  : "This will delete the property and any saved listings under it."}
             </div>
 
             {propertyToDelete.importsCount > 0 ? (
@@ -720,7 +720,7 @@ export function PropertiesManager({
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Units</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Listings</p>
                 <p className="mt-1 text-sm text-[var(--workspace-text)]">
                   {formatNumber(propertyToDelete.units.length)} saved
                 </p>

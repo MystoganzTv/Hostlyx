@@ -31,7 +31,7 @@ export async function POST(
 
     return NextResponse.json({
       unitId,
-      message: `Unit "${unitName}" created successfully.`,
+      message: `Listing "${unitName}" created successfully.`,
     });
   } catch (error) {
     return NextResponse.json(

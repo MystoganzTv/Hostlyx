@@ -33,6 +33,7 @@ export default async function OnboardingPage({
       userName={userName}
       initialSettings={onboardingState.userSettings}
       initialProperties={onboardingState.properties}
+      initialHasData={onboardingState.hasData}
       defaultPropertyName={onboardingState.defaultPropertyName}
     />
   );

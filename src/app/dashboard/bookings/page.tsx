@@ -84,7 +84,7 @@ export default async function BookingsPage({
     <WorkspaceShell
       activePage="bookings"
       pageTitle="Bookings"
-      pageSubtitle="Review guest stays, payouts, and property assignments."
+      pageSubtitle="Review guest stays, payouts, and property or listing assignments."
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}

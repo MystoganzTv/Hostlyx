@@ -143,11 +143,11 @@ export default async function PropertiesPage() {
   return (
     <WorkspaceShell
       activePage="properties"
-      pageTitle="Properties"
+      pageTitle="Listings"
       pageSubtitle={
         isSetupMode
-          ? "Complete your first property setup before anything else in Hostlyx."
-          : "Organize the portfolio into properties and optional units."
+          ? "Complete your first property and listing setup before anything else in Hostlyx."
+          : "Organize the portfolio into properties and the listings that belong to them."
       }
       businessName={userSettings.businessName}
       userName={userName}
@@ -158,20 +158,20 @@ export default async function PropertiesPage() {
       <div className="space-y-6">
         {isSetupMode ? (
           <SectionCard
-            title="Start With Your First Property"
-            subtitle="Hostlyx opens the setup modal automatically because every booking, expense, and import must belong to a real property first."
+            title="Start With Your First Listing Setup"
+            subtitle="Hostlyx opens the setup modal automatically because every booking, expense, calendar sync, and import must belong to a real property and listing structure first."
           >
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="workspace-soft-card rounded-[24px] p-4">
                 <p className="text-sm font-semibold text-[var(--workspace-text)]">Single house</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  Choose this when you rent the full home as one listing. No units are required.
+                  Choose this when you rent the full home as one listing. No extra listings are required.
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[24px] p-4">
-                <p className="text-sm font-semibold text-[var(--workspace-text)]">Multi-unit property</p>
+                <p className="text-sm font-semibold text-[var(--workspace-text)]">Multi-listing property</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  Tell Hostlyx how many units you have, and we will create them automatically for you.
+                  Tell Hostlyx how many listings you operate there, and we will create them automatically for you.
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[24px] p-4">
@@ -195,7 +195,7 @@ export default async function PropertiesPage() {
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Units">
+          <SectionCard title="Listings">
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
@@ -207,17 +207,17 @@ export default async function PropertiesPage() {
           </SectionCard>
           <SectionCard title="How to use it">
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Imports are assigned to the property you choose during upload. Each property also keeps its own market, so USA, Spain, and UK reporting can live in the same Hostlyx account.
+              Imports are assigned to the property you choose during upload. Listings live under that property, so calendar sync and operational tracking can stay listing-specific while reporting still rolls up cleanly.
             </p>
           </SectionCard>
         </div>
 
         <SectionCard
-          title={isSetupMode ? "Create Your First Property" : "Property Setup"}
+          title={isSetupMode ? "Create Your First Listing Structure" : "Listings Setup"}
           subtitle={
             isSetupMode
-              ? "Tell Hostlyx whether this is a single-home rental or a building with several units."
-              : "Create the portfolio structure first, then assign bookings and expenses to the right property and unit."
+              ? "Tell Hostlyx whether this is a single-home rental or a property with several listings."
+              : "Create the portfolio structure first, then assign bookings and expenses to the right property and listing."
           }
         >
           <PropertiesManager

@@ -270,7 +270,7 @@ export function WorkspaceShell({
                     }`}
                   >
                     <Building2 className="h-3.5 w-3.5" />
-                    Properties
+                    Listings
                   </Link>
                   <Link
                     href="/settings"

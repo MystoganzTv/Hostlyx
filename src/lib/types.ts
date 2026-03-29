@@ -90,6 +90,7 @@ export type CalendarEventRecord = {
   importId?: number;
   propertyId?: number | null;
   propertyName: string;
+  unitName: string;
   source: CalendarEventSource;
   externalEventId: string;
   summary: string;

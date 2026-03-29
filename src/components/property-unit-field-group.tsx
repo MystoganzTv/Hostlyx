@@ -39,10 +39,10 @@ export function PropertyUnitFieldGroup({
   const propertyOptions = properties.map((property) => ({
     value: property.name,
     label: property.name,
-    description: property.units.length > 0 ? `${property.units.length} saved units` : "Single-home property",
+    description: property.units.length > 0 ? `${property.units.length} saved listing${property.units.length === 1 ? "" : "s"}` : "Single-home property",
   }));
   const unitOptions = [
-    { value: "", label: "No unit", description: "Use this for a single-home property." },
+    { value: "", label: "Primary listing", description: "Use this when the whole property is just one listing." },
     ...units.map((unit) => ({
       value: unit.name,
       label: unit.name,
@@ -78,19 +78,19 @@ export function PropertyUnitFieldGroup({
 
       <WorkspaceSelect
         className="sm:col-span-2"
-        label="Unit"
+        label="Listing"
         name={unitInputName}
         value={unitName}
         onChange={setUnitName}
         options={unitOptions}
-        placeholder={units.length > 0 ? "Select a unit" : "No unit"}
+        placeholder={units.length > 0 ? "Select a listing" : "Primary listing"}
         helper={
           selectedProperty
             ? units.length > 0
-              ? "This property already has saved units you can reuse."
-              : "This property has no saved units yet. Keep `No unit` for the full-home flow."
+              ? "This property already has saved listings you can reuse."
+              : "This property has no extra listings yet. Keep `Primary listing` for the full-home flow."
             : properties.length > 0
-              ? "Units are optional. Keep `No unit` for single-home properties."
+              ? "Listings are optional. Keep `Primary listing` for single-home properties."
               : "Create your first property before adding bookings or expenses."
         }
       />
