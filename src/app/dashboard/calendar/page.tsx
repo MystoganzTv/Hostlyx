@@ -14,6 +14,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
 import { getDashboardFilters } from "@/lib/dashboard";
+import { formatNumber } from "@/lib/format";
 import {
   getBookings,
   getCalendarEvents,
@@ -33,6 +34,26 @@ const CALENDAR_STREAM_PAST_YEARS = 8;
 const CALENDAR_STREAM_FUTURE_YEARS = 8;
 const CALENDAR_TIMELINE_PAST_MONTHS = 12;
 const CALENDAR_TIMELINE_FUTURE_MONTHS = 18;
+
+function getCalendarReservationCount(
+  bookings: Awaited<ReturnType<typeof getBookings>>,
+  calendarEvents: Awaited<ReturnType<typeof getCalendarEvents>>,
+) {
+  const linkedCalendarEventIds = new Set(
+    bookings
+      .map((booking) => booking.matchedCalendarEventId)
+      .filter((value): value is number => typeof value === "number" && value > 0),
+  );
+
+  const syncedOnlyReservations = calendarEvents.filter(
+    (event) =>
+      event.eventType === "booking" &&
+      !event.linkedBookingId &&
+      !linkedCalendarEventIds.has(Number(event.id ?? 0)),
+  ).length;
+
+  return bookings.length + syncedOnlyReservations;
+}
 
 function getCalendarTimelineBounds(
   bookings: Awaited<ReturnType<typeof getBookings>>,
@@ -213,6 +234,7 @@ export default async function CalendarPage({
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
   const currencyCode = getCurrencyForCountry(displayCountryCode);
   const hasScopedFilters = filters.countryCode !== "all" || filters.channel !== "all";
+  const reservationCount = getCalendarReservationCount(countryAndChannelBookings, countryCalendarEvents);
   const rangeLabel =
     selectedCalendarYear === "all"
       ? selectedCalendarMonth === "all"
@@ -235,6 +257,29 @@ export default async function CalendarPage({
       currencyCode={currencyCode}
       latestImport={latestImport}
       stickyHeader
+      stickyContent={
+        <>
+          <CalendarFeedsPanel feeds={icalFeeds} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservations tracked</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(reservationCount)}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Check-ins</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryAndChannelBookings.length)}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Closed days</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryClosures.length)}</p>
+            </div>
+          </div>
+        </>
+      }
       actions={
         <div className="flex flex-wrap items-center justify-end gap-3">
           <FilterBar
@@ -258,10 +303,8 @@ export default async function CalendarPage({
           enabled={icalFeeds.some((feed) => feed.isActive)}
           force={hasLegacySyncedEventDetails}
         />
-        <CalendarFeedsPanel feeds={icalFeeds} />
         <CalendarPanel
           key={calendarViewKey}
-          rangeLabel={rangeLabel}
           bookings={countryAndChannelBookings}
           calendarEvents={countryCalendarEvents}
           closures={countryClosures}

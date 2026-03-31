@@ -539,14 +539,12 @@ function MonthCalendar({
 }
 
 export function CalendarPanel({
-  rangeLabel,
   bookings,
   calendarEvents,
   closures,
   monthAnchors,
   currencyCode,
 }: {
-  rangeLabel: string;
   bookings: BookingRecord[];
   calendarEvents: CalendarEventRecord[];
   closures: CalendarClosureRecord[];
@@ -557,10 +555,6 @@ export function CalendarPanel({
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const monthSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const reservationCount = useMemo(
-    () => buildTimelineItems(bookings, calendarEvents).length,
-    [bookings, calendarEvents],
-  );
   const monthAnchorKey = useMemo(
     () => monthAnchors.map((anchorDate) => format(anchorDate, "yyyy-MM")).join(","),
     [monthAnchors],
@@ -596,25 +590,6 @@ export function CalendarPanel({
 
   return (
     <div ref={panelRef} className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="workspace-card rounded-[24px] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
-        </div>
-        <div className="workspace-card rounded-[24px] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservations tracked</p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(reservationCount)}</p>
-        </div>
-        <div className="workspace-card rounded-[24px] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Check-ins</p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(bookings.length)}</p>
-        </div>
-        <div className="workspace-card rounded-[24px] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Closed days</p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(closures.length)}</p>
-        </div>
-      </div>
-
       <div className="workspace-card rounded-[30px] p-6 sm:p-7">
         {monthAnchors.map((anchorDate) => {
           const monthKey = format(anchorDate, "yyyy-MM");
@@ -634,6 +609,7 @@ export function CalendarPanel({
           return (
             <div
               key={monthKey}
+              className="scroll-mt-24 xl:scroll-mt-[34rem]"
               ref={(node) => {
                 monthSectionRefs.current[monthKey] = node;
               }}

@@ -87,6 +87,7 @@ export function WorkspaceShell({
   subscriptionBadge,
   reconcileBadge,
   stickyHeader = false,
+  stickyContent,
   actions,
   children,
 }: {
@@ -101,6 +102,7 @@ export function WorkspaceShell({
   subscriptionBadge?: SubscriptionBadge;
   reconcileBadge?: ReconcileBadge | null;
   stickyHeader?: boolean;
+  stickyContent?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -324,20 +326,28 @@ export function WorkspaceShell({
         <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)] xl:min-h-0 xl:overflow-hidden">
           <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:flex xl:h-full xl:flex-col xl:overflow-y-auto xl:overscroll-contain xl:p-9">
             <div
-              className={`mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between ${
+              className={
                 stickyHeader
-                  ? "xl:sticky xl:top-0 xl:z-20 xl:-mx-4 xl:px-4 xl:pb-6 xl:pt-1 xl:backdrop-blur-xl"
-                  : ""
-              }`}
+                  ? "mb-8 xl:sticky xl:top-0 xl:z-20 xl:-mx-9 xl:-mt-9 xl:bg-[linear-gradient(180deg,rgba(10,18,31,1)_0%,rgba(10,18,31,1)_82%,rgba(10,18,31,0.98)_100%)] xl:px-9 xl:pt-9 xl:pb-6 xl:shadow-[0_18px_34px_rgba(2,6,23,0.28)]"
+                  : "mb-8"
+              }
             >
-              <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-4xl">
-                  {pageTitle}
-                </h1>
-                <p className="mt-3 max-w-2xl text-base leading-8 text-[var(--workspace-muted)]">{pageSubtitle}</p>
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-4xl">
+                    {pageTitle}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-base leading-8 text-[var(--workspace-muted)]">{pageSubtitle}</p>
+                </div>
+                {actions ? (
+                  <div className="flex flex-wrap items-center gap-3 xl:justify-end">{actions}</div>
+                ) : null}
               </div>
-              {actions ? (
-                <div className="flex flex-wrap items-center gap-3 xl:justify-end">{actions}</div>
+
+              {stickyContent ? (
+                <div className="mt-6 space-y-6">
+                  {stickyContent}
+                </div>
               ) : null}
             </div>
 
