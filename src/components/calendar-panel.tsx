@@ -15,7 +15,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-badges";
 import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
 import { getBookingStatusState } from "@/lib/booking-status";
@@ -191,7 +191,13 @@ function intersectsMonth(booking: BookingRecord, anchorDate: Date) {
   return stayStart <= monthEnd && stayEnd > monthStart;
 }
 
-function buildWeekBookingSegments(weekDays: Date[], items: CalendarTimelineItem[]) {
+function buildTrimmedWeekBookingSegments(
+  weekDays: Date[],
+  items: CalendarTimelineItem[],
+  anchorDate: Date,
+) {
+  const monthStart = startOfMonth(anchorDate);
+  const monthEndExclusive = addDays(endOfMonth(anchorDate), 1);
   const weekStart = weekDays[0];
   const weekEnd = weekDays[6];
   const weekEndExclusive = addDays(weekEnd, 1);
@@ -212,11 +218,16 @@ function buildWeekBookingSegments(weekDays: Date[], items: CalendarTimelineItem[
 
   const trackEnds: number[] = [];
 
-  const segments = visibleItems.map((item) => {
+  const segments = visibleItems.flatMap((item) => {
     const stayStart = parseISO(item.startDate);
     const stayEnd = parseISO(item.endDate);
-    const segmentStart = max([stayStart, weekStart]);
-    const segmentEnd = min([stayEnd, weekEndExclusive]);
+    const segmentStart = max([stayStart, weekStart, monthStart]);
+    const segmentEnd = min([stayEnd, weekEndExclusive, monthEndExclusive]);
+
+    if (segmentEnd <= segmentStart) {
+      return [];
+    }
+
     const startIndex = differenceInCalendarDays(segmentStart, weekStart);
     const span = Math.max(1, differenceInCalendarDays(segmentEnd, segmentStart));
 
@@ -229,14 +240,16 @@ function buildWeekBookingSegments(weekDays: Date[], items: CalendarTimelineItem[
 
     trackEnds[track] = startIndex + span;
 
-    return {
-      item,
-      startIndex,
-      span,
-      track,
-      startsThisWeek: stayStart >= weekStart && stayStart < weekEndExclusive,
-      endsThisWeek: stayEnd > weekStart && stayEnd <= weekEndExclusive,
-    };
+    return [
+      {
+        item,
+        startIndex,
+        span,
+        track,
+        startsThisWeek: stayStart >= weekStart && stayStart < weekEndExclusive,
+        endsThisWeek: stayEnd > weekStart && stayEnd <= weekEndExclusive,
+      },
+    ];
   });
 
   return {
@@ -250,7 +263,6 @@ function MonthCalendar({
   bookings,
   calendarEvents,
   closures,
-  currencyCode,
   compact = false,
   abbreviatedTitle = false,
   onSelectBooking,
@@ -259,7 +271,6 @@ function MonthCalendar({
   bookings: BookingRecord[];
   calendarEvents: CalendarEventRecord[];
   closures: CalendarClosureRecord[];
-  currencyCode: CurrencyCode;
   compact?: boolean;
   abbreviatedTitle?: boolean;
   onSelectBooking: (booking: BookingRecord) => void;
@@ -298,7 +309,7 @@ function MonthCalendar({
 
         <div className="space-y-2.5">
           {weeks.map((weekDays) => {
-            const { segments, maxTracks } = buildWeekBookingSegments(weekDays, timelineItems);
+            const { segments, maxTracks } = buildTrimmedWeekBookingSegments(weekDays, timelineItems, anchorDate);
             const rowHeight = compact ? Math.max(88, 38 + maxTracks * 26) : Math.max(124, 48 + maxTracks * 32);
             const barHeight = compact ? 22 : 28;
             const overlayTop = compact ? 34 : 40;
@@ -310,32 +321,27 @@ function MonthCalendar({
                     const dayKey = format(day, "yyyy-MM-dd");
                     const dayClosure = blockedDateSet.has(dayKey);
                     const isCurrentMonth = isSameMonth(day, anchorDate);
-                    const monthChipLabel = format(day, "MMM");
+
+                    if (!isCurrentMonth) {
+                      return <div key={dayKey} aria-hidden="true" className="h-full" />;
+                    }
 
                     return (
                       <article
                         key={dayKey}
-                        className={`rounded-[22px] border px-3 py-2.5 ${
-                          dayClosure && isCurrentMonth
+                        className={`rounded-[22px] px-3 py-2.5 ${
+                          dayClosure
                             ? "border-amber-300/14 bg-[linear-gradient(180deg,rgba(244,198,105,0.08)_0%,rgba(15,24,38,0.92)_100%)]"
-                            : isCurrentMonth
-                              ? "workspace-soft-card"
-                              : "border-slate-300/[0.1] bg-[linear-gradient(180deg,rgba(46,57,74,0.82)_0%,rgba(26,34,46,0.94)_100%)]"
+                            : "workspace-soft-card"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p
-                            className={`font-semibold ${compact ? "text-xs" : "text-sm"} ${
-                              isCurrentMonth ? "text-[var(--workspace-text)]" : "text-slate-500"
-                            }`}
+                            className={`font-semibold ${compact ? "text-xs" : "text-sm"} text-[var(--workspace-text)]`}
                           >
                             {format(day, "d")}
                           </p>
-                          {!isCurrentMonth ? (
-                            <span className="rounded-full border border-slate-400/20 bg-[linear-gradient(180deg,rgba(148,163,184,0.18)_0%,rgba(30,41,59,0.36)_100%)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 shadow-[0_10px_22px_rgba(2,6,23,0.22)]">
-                              {monthChipLabel}
-                            </span>
-                          ) : dayClosure ? (
+                          {dayClosure ? (
                             <span className="h-2.5 w-2.5 rounded-full bg-amber-200/80" />
                           ) : null}
                         </div>
@@ -411,11 +417,23 @@ export function CalendarPanel({
   currencyCode: CurrencyCode;
 }) {
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const showOverviewGrid = monthAnchors.length > 1;
   const isYearGrid = monthAnchors.length === 12;
+  const monthAnchorKey = useMemo(
+    () => monthAnchors.map((anchorDate) => format(anchorDate, "yyyy-MM")).join(","),
+    [monthAnchors],
+  );
+
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [monthAnchorKey]);
 
   return (
-    <div className="space-y-6">
+    <div ref={panelRef} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
         <div className="workspace-card rounded-[24px] p-5">
           <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
@@ -472,7 +490,6 @@ export function CalendarPanel({
                 bookings={monthBookings}
                 calendarEvents={monthCalendarEvents}
                 closures={monthClosures}
-                currencyCode={currencyCode}
                 compact={showOverviewGrid}
                 abbreviatedTitle={isYearGrid}
                 onSelectBooking={setSelectedBooking}

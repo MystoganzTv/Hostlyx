@@ -1048,7 +1048,7 @@ export function mapPreviewToHostlyxRecords(
       .map((row) => ({
         propertyId: row.booking.propertyId ?? null,
         propertyName,
-        unitName: row.booking.propertyName,
+        unitName: row.booking.unitName ?? "",
         importedSource: mapDetectedSourceToStoredSource(preview.source),
         checkIn: row.booking.checkIn,
         checkout: row.booking.checkOut,

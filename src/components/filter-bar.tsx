@@ -80,14 +80,20 @@ export function FilterBar(props: FilterBarProps) {
   const [draftEndDate, setDraftEndDate] = useState(rangeProps?.selectedEndDate ?? "");
 
   useEffect(() => {
-    if (!rangeProps || rangeProps.selectedRangePreset !== "custom") {
-      setDraftStartDate("");
-      setDraftEndDate("");
-      return;
-    }
+    const timeoutId = window.setTimeout(() => {
+      if (!rangeProps || rangeProps.selectedRangePreset !== "custom") {
+        setDraftStartDate("");
+        setDraftEndDate("");
+        return;
+      }
 
-    setDraftStartDate(rangeProps.selectedStartDate);
-    setDraftEndDate(rangeProps.selectedEndDate);
+      setDraftStartDate(rangeProps.selectedStartDate);
+      setDraftEndDate(rangeProps.selectedEndDate);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [rangeProps]);
 
   useEffect(() => {
@@ -183,7 +189,7 @@ export function FilterBar(props: FilterBarProps) {
 
   function replaceParams(params: URLSearchParams) {
     startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${params.toString()}`, { scroll: mode === "calendar" });
       router.refresh();
     });
   }
@@ -265,7 +271,7 @@ export function FilterBar(props: FilterBarProps) {
     params.delete("end");
     params.set(key, value);
 
-    if (key === "year" && value === "all") {
+    if (key === "year") {
       params.set("month", "all");
     }
 

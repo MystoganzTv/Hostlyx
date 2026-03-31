@@ -66,7 +66,11 @@ export function BookingsManager({
       return;
     }
 
-    setActiveHighlightedBookingKey(highlightedBookingKey);
+    const timeoutId = window.setTimeout(() => {
+      setActiveHighlightedBookingKey(highlightedBookingKey);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [highlightedBookingKey]);
 
   useEffect(() => {

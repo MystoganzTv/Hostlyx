@@ -166,9 +166,9 @@ export function WorkspaceShell({
             </div>
             {!isCollapsed ? (
               <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-white">{businessName}</p>
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{businessName}</p>
                     <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
                       {currencyCode} workspace
                     </p>
@@ -177,7 +177,7 @@ export function WorkspaceShell({
                   subscriptionBadge.tone !== "trial" &&
                   subscriptionBadge.tone !== "expired" ? (
                     <span
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${subscriptionBadgeClassName(subscriptionBadge.tone)}`}
+                      className={`max-w-full shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${subscriptionBadgeClassName(subscriptionBadge.tone)}`}
                     >
                       {subscriptionBadge.label}
                     </span>
@@ -211,7 +211,7 @@ export function WorkspaceShell({
             ) : null}
           </div>
 
-          <nav className={`mt-6 grid gap-2 ${isCollapsed ? "xl:grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1"}`}>
+          <nav className="mt-6 grid grid-cols-1 gap-2">
             {mainNavItems.map((item) => {
               const Icon = item.icon;
 

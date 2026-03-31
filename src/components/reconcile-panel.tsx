@@ -37,7 +37,7 @@ function formatSignedPercent(value: number | null) {
   return absolute;
 }
 
-function getRealityDifferenceTone(value: number) {
+function getDifferenceTone(value: number) {
   if (value < 0) {
     return "text-amber-100";
   }
@@ -96,7 +96,7 @@ export function ReconcileSummaryCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
             Difference
           </p>
-          <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+          <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
             {formatSignedCurrency(reconcile.difference, currencyCode)}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
@@ -147,7 +147,7 @@ export function ReconcilePanel({
             </span>
           </div>
           <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)] sm:text-2xl">
-            Reconcile booking expectations against statement reality.
+            Reconcile booking expectations against actual statement payout.
           </p>
           <p className="max-w-3xl text-sm leading-7 text-slate-200/92">
             {reconcile.message}
@@ -196,7 +196,7 @@ export function ReconcilePanel({
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                 Difference
               </p>
-              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
                 {formatSignedCurrency(reconcile.difference, currencyCode)}
               </p>
             </div>
@@ -204,7 +204,7 @@ export function ReconcilePanel({
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                 Mismatch
               </p>
-              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getRealityDifferenceTone(reconcile.difference)}`}>
+              <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
                 {formatSignedPercent(reconcile.mismatchRatio)}
               </p>
             </div>
@@ -321,7 +321,7 @@ export function ReconcilePanel({
                                 : "What the statement confirms actually landed."}
                     </p>
                   </div>
-                  <p className={`text-sm font-semibold ${label === "Adjustments" ? getRealityDifferenceTone(-value) : "text-[var(--workspace-text)]"}`}>
+                  <p className={`text-sm font-semibold ${label === "Adjustments" ? getDifferenceTone(-value) : "text-[var(--workspace-text)]"}`}>
                     {displayValue}
                   </p>
                 </div>

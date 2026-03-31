@@ -61,6 +61,7 @@ export type NormalizedImportBooking = {
   source: ImportDetectedSource;
   propertyId?: number | null;
   propertyName: string;
+  unitName?: string;
   bookingReference: string;
   guestName: string;
   channel: string;
@@ -146,6 +147,7 @@ export type ImportPreviewTableRow = {
 export type ImportEditableBooking = Pick<
   NormalizedImportBooking,
   | "propertyName"
+  | "unitName"
   | "bookingReference"
   | "guestName"
   | "channel"

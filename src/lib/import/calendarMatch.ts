@@ -70,11 +70,29 @@ function getPropertyRelationship(
   return bookingProperty === eventProperty ? "same" : "different";
 }
 
+function getListingRelationship(
+  booking: ImportBookingCandidate["booking"],
+  event: CalendarEventRecord,
+) {
+  const bookingListing = normalizeText(booking.unitName ?? "");
+  const eventListing = normalizeText(event.unitName ?? "");
+
+  if (!bookingListing || !eventListing) {
+    return "unknown";
+  }
+
+  return bookingListing === eventListing ? "same" : "different";
+}
+
 function isPropertyCompatible(
   booking: ImportBookingCandidate["booking"],
   event: CalendarEventRecord,
 ) {
-  return getPropertyRelationship(booking, event) !== "different";
+  if (getPropertyRelationship(booking, event) === "different") {
+    return false;
+  }
+
+  return getListingRelationship(booking, event) !== "different";
 }
 
 function getEventChannel(event: CalendarEventRecord) {
@@ -168,6 +186,13 @@ function collectMatchReasons(
     reasons.push("Same property");
   } else if (propertyRelationship === "unknown") {
     reasons.push("Property was not available on one side");
+  }
+
+  const listingRelationship = getListingRelationship(booking, calendarEvent);
+  if (listingRelationship === "same") {
+    reasons.push("Same listing");
+  } else if (listingRelationship === "unknown" && (booking.unitName || calendarEvent.unitName)) {
+    reasons.push("Listing was not available on one side");
   }
 
   const bookingChannel = normalizeChannel(booking.channel);
@@ -273,6 +298,13 @@ export function calculateMatchScore(
     score += 20;
   } else if (propertyRelationship === "unknown") {
     score += 5;
+  }
+
+  const listingRelationship = getListingRelationship(booking, calendarEvent);
+  if (listingRelationship === "same") {
+    score += 15;
+  } else if (listingRelationship === "unknown" && (booking.unitName || calendarEvent.unitName)) {
+    score += 3;
   }
 
   const bookingChannel = normalizeChannel(booking.channel);

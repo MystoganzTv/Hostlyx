@@ -14,6 +14,8 @@ import type {
   CountryCode,
   ExpenseRecord,
   FinancialDocumentRecord,
+  IcalFeedRecord,
+  IcalFeedSyncStatus,
   ImportedFileSource,
   ImportSource,
   ImportSummary,
@@ -53,6 +55,12 @@ type StoredBooking = Required<BookingRecord> & {
 
 type StoredCalendarEvent = Required<CalendarEventRecord> & {
   ownerEmail: string;
+};
+
+type StoredIcalFeed = Required<Omit<IcalFeedRecord, "lastSyncedAt" | "lastError">> & {
+  ownerEmail: string;
+  lastSyncedAt: string | null;
+  lastError: string | null;
 };
 
 type StoredExpense = Required<ExpenseRecord> & {
@@ -115,6 +123,7 @@ type MemoryStore = {
   nextExpenseId: number;
   nextClosureId: number;
   nextCalendarEventId: number;
+  nextIcalFeedId: number;
   nextFinancialDocumentId: number;
   nextPropertyId: number;
   nextPropertyUnitId: number;
@@ -123,6 +132,7 @@ type MemoryStore = {
   expenses: StoredExpense[];
   closures: StoredCalendarClosure[];
   calendarEvents: StoredCalendarEvent[];
+  icalFeeds: StoredIcalFeed[];
   financialDocuments: StoredFinancialDocument[];
   settings: StoredUserSettings[];
   authUsers: StoredAuthUser[];
@@ -189,6 +199,7 @@ function getMemoryStore() {
       nextExpenseId: 1,
       nextClosureId: 1,
       nextCalendarEventId: 1,
+      nextIcalFeedId: 1,
       nextFinancialDocumentId: 1,
       nextPropertyId: 1,
       nextPropertyUnitId: 1,
@@ -197,6 +208,7 @@ function getMemoryStore() {
       expenses: [],
       closures: [],
       calendarEvents: [],
+      icalFeeds: [],
       financialDocuments: [],
       settings: [],
       authUsers: [],
@@ -222,8 +234,16 @@ function getMemoryStore() {
     globalThis.__hostlyxMemoryStore.calendarEvents = [];
   }
 
+  if (!globalThis.__hostlyxMemoryStore.icalFeeds) {
+    globalThis.__hostlyxMemoryStore.icalFeeds = [];
+  }
+
   if (!globalThis.__hostlyxMemoryStore.nextCalendarEventId) {
     globalThis.__hostlyxMemoryStore.nextCalendarEventId = 1;
+  }
+
+  if (!globalThis.__hostlyxMemoryStore.nextIcalFeedId) {
+    globalThis.__hostlyxMemoryStore.nextIcalFeedId = 1;
   }
 
   if (!globalThis.__hostlyxMemoryStore.nextFinancialDocumentId) {
@@ -326,6 +346,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       owner_email TEXT NOT NULL DEFAULT 'legacy',
       import_id INTEGER NOT NULL DEFAULT 0,
+      ical_feed_id INTEGER,
       property_id INTEGER,
       property_name TEXT NOT NULL DEFAULT 'Default Property',
       unit_name TEXT NOT NULL DEFAULT '',
@@ -337,6 +358,22 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       event_type TEXT NOT NULL DEFAULT 'unknown',
       linked_booking_id INTEGER,
       last_synced_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ical_feeds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_email TEXT NOT NULL DEFAULT 'legacy',
+      workspace_id TEXT NOT NULL DEFAULT 'legacy',
+      property_id INTEGER NOT NULL,
+      property_name TEXT NOT NULL DEFAULT 'Default Property',
+      listing_id INTEGER,
+      listing_name TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'other',
+      feed_url TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_synced_at TEXT,
+      last_sync_status TEXT NOT NULL DEFAULT 'never',
+      last_error TEXT
     );
 
     CREATE TABLE IF NOT EXISTS financial_documents (
@@ -420,6 +457,8 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_expenses_owner_date ON expenses(owner_email, date);
     CREATE INDEX IF NOT EXISTS idx_calendar_closures_owner_date ON calendar_closures(owner_email, date);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_owner_start ON calendar_events(owner_email, start_date);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_feed_id ON calendar_events(ical_feed_id);
+    CREATE INDEX IF NOT EXISTS idx_ical_feeds_owner_active ON ical_feeds(owner_email, is_active);
     CREATE INDEX IF NOT EXISTS idx_financial_documents_owner_import ON financial_documents(owner_email, import_id);
     CREATE INDEX IF NOT EXISTS idx_financial_documents_owner_period ON financial_documents(owner_email, period_start, period_end);
     CREATE INDEX IF NOT EXISTS idx_auth_users_owner_email ON auth_users(owner_email);
@@ -586,8 +625,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       owner_email TEXT NOT NULL DEFAULT 'legacy',
       import_id INTEGER NOT NULL DEFAULT 0,
+      ical_feed_id INTEGER,
       property_id INTEGER,
       property_name TEXT NOT NULL DEFAULT 'Default Property',
+      unit_name TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL DEFAULT 'other',
       external_event_id TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
@@ -597,6 +638,22 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       linked_booking_id INTEGER,
       last_synced_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS ical_feeds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_email TEXT NOT NULL DEFAULT 'legacy',
+      workspace_id TEXT NOT NULL DEFAULT 'legacy',
+      property_id INTEGER NOT NULL,
+      property_name TEXT NOT NULL DEFAULT 'Default Property',
+      listing_id INTEGER,
+      listing_name TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'other',
+      feed_url TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_synced_at TEXT,
+      last_sync_status TEXT NOT NULL DEFAULT 'never',
+      last_error TEXT
+    );
   `);
 
   if (!hasColumn(db, "calendar_events", "owner_email")) {
@@ -605,6 +662,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "calendar_events", "import_id")) {
     db.exec("ALTER TABLE calendar_events ADD COLUMN import_id INTEGER NOT NULL DEFAULT 0;");
+  }
+
+  if (!hasColumn(db, "calendar_events", "ical_feed_id")) {
+    db.exec("ALTER TABLE calendar_events ADD COLUMN ical_feed_id INTEGER;");
   }
 
   if (!hasColumn(db, "calendar_events", "property_id")) {
@@ -649,6 +710,54 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "calendar_events", "last_synced_at")) {
     db.exec("ALTER TABLE calendar_events ADD COLUMN last_synced_at TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "owner_email")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN owner_email TEXT NOT NULL DEFAULT 'legacy';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "workspace_id")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'legacy';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "property_id")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN property_id INTEGER NOT NULL DEFAULT 0;");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "property_name")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN property_name TEXT NOT NULL DEFAULT 'Default Property';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "listing_id")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN listing_id INTEGER;");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "listing_name")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN listing_name TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "source")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN source TEXT NOT NULL DEFAULT 'other';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "feed_url")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN feed_url TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "is_active")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "last_synced_at")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN last_synced_at TEXT;");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "last_sync_status")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN last_sync_status TEXT NOT NULL DEFAULT 'never';");
+  }
+
+  if (!hasColumn(db, "ical_feeds", "last_error")) {
+    db.exec("ALTER TABLE ical_feeds ADD COLUMN last_error TEXT;");
   }
 
   if (!hasColumn(db, "financial_documents", "owner_email")) {
@@ -714,6 +823,9 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
   if (!hasColumn(db, "user_settings", "tax_rate")) {
     db.exec("ALTER TABLE user_settings ADD COLUMN tax_rate REAL NOT NULL DEFAULT 25;");
   }
+
+  db.exec("CREATE INDEX IF NOT EXISTS idx_calendar_events_feed_id ON calendar_events(ical_feed_id);");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_ical_feeds_owner_active ON ical_feeds(owner_email, is_active);");
 
   if (!hasColumn(db, "properties", "country_code")) {
     db.exec("ALTER TABLE properties ADD COLUMN country_code TEXT NOT NULL DEFAULT 'US';");
@@ -831,6 +943,7 @@ async function initializePostgresSchema() {
           id BIGSERIAL PRIMARY KEY,
           owner_email TEXT NOT NULL,
           import_id BIGINT NOT NULL DEFAULT 0,
+          ical_feed_id BIGINT,
           property_id BIGINT,
           property_name TEXT NOT NULL DEFAULT 'Default Property',
           unit_name TEXT NOT NULL DEFAULT '',
@@ -842,6 +955,22 @@ async function initializePostgresSchema() {
           event_type TEXT NOT NULL DEFAULT 'unknown',
           linked_booking_id BIGINT,
           last_synced_at TIMESTAMPTZ NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ical_feeds (
+          id BIGSERIAL PRIMARY KEY,
+          owner_email TEXT NOT NULL,
+          workspace_id TEXT NOT NULL,
+          property_id BIGINT NOT NULL,
+          property_name TEXT NOT NULL DEFAULT 'Default Property',
+          listing_id BIGINT,
+          listing_name TEXT NOT NULL DEFAULT '',
+          source TEXT NOT NULL DEFAULT 'other',
+          feed_url TEXT NOT NULL DEFAULT '',
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          last_synced_at TIMESTAMPTZ,
+          last_sync_status TEXT NOT NULL DEFAULT 'never',
+          last_error TEXT
         );
 
         CREATE TABLE IF NOT EXISTS financial_documents (
@@ -925,6 +1054,8 @@ async function initializePostgresSchema() {
         CREATE INDEX IF NOT EXISTS idx_expenses_owner_date ON expenses(owner_email, date);
         CREATE INDEX IF NOT EXISTS idx_calendar_closures_owner_date ON calendar_closures(owner_email, date);
         CREATE INDEX IF NOT EXISTS idx_calendar_events_owner_start ON calendar_events(owner_email, start_date);
+        CREATE INDEX IF NOT EXISTS idx_calendar_events_feed_id ON calendar_events(ical_feed_id);
+        CREATE INDEX IF NOT EXISTS idx_ical_feeds_owner_active ON ical_feeds(owner_email, is_active);
         CREATE INDEX IF NOT EXISTS idx_financial_documents_owner_import ON financial_documents(owner_email, import_id);
         CREATE INDEX IF NOT EXISTS idx_financial_documents_owner_period ON financial_documents(owner_email, period_start, period_end);
         CREATE INDEX IF NOT EXISTS idx_auth_users_owner_email ON auth_users(owner_email);
@@ -1083,6 +1214,10 @@ async function initializePostgresSchema() {
       `);
       await pool.query(`
         ALTER TABLE calendar_events
+        ADD COLUMN IF NOT EXISTS ical_feed_id BIGINT
+      `);
+      await pool.query(`
+        ALTER TABLE calendar_events
         ADD COLUMN IF NOT EXISTS property_id BIGINT
       `);
       await pool.query(`
@@ -1124,6 +1259,54 @@ async function initializePostgresSchema() {
       await pool.query(`
         ALTER TABLE calendar_events
         ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS owner_email TEXT NOT NULL DEFAULT 'legacy'
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS workspace_id TEXT NOT NULL DEFAULT 'legacy'
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS property_id BIGINT NOT NULL DEFAULT 0
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS property_name TEXT NOT NULL DEFAULT 'Default Property'
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS listing_id BIGINT
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS listing_name TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'other'
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS feed_url TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS last_sync_status TEXT NOT NULL DEFAULT 'never'
+      `);
+      await pool.query(`
+        ALTER TABLE ical_feeds
+        ADD COLUMN IF NOT EXISTS last_error TEXT
       `);
       await pool.query(`
         ALTER TABLE financial_documents
@@ -1392,6 +1575,7 @@ function mapCalendarEventRecord(row: Record<string, unknown>): CalendarEventReco
   return {
     id: Number(getRowValue(row, "id")),
     importId: Number(getRowValue(row, "importId", "importid")),
+    icalFeedId: Number(getRowValue(row, "icalFeedId", "icalfeedid")) || null,
     propertyId: Number(getRowValue(row, "propertyId", "propertyid")) || null,
     propertyName: String(getRowValue(row, "propertyName", "propertyname")) || "Default Property",
     unitName: String(getRowValue(row, "unitName", "unitname") ?? ""),
@@ -1406,6 +1590,29 @@ function mapCalendarEventRecord(row: Record<string, unknown>): CalendarEventReco
       getRowValue(row, "lastSyncedAt", "lastsyncedat"),
       new Date().toISOString(),
     ),
+  };
+}
+
+function mapIcalFeedRecord(row: Record<string, unknown>): IcalFeedRecord {
+  return {
+    id: Number(getRowValue(row, "id")),
+    workspaceId: String(getRowValue(row, "workspaceId", "workspaceid") ?? ""),
+    propertyId: Number(getRowValue(row, "propertyId", "propertyid") ?? 0),
+    listingId: Number(getRowValue(row, "listingId", "listingid")) || null,
+    propertyName: String(getRowValue(row, "propertyName", "propertyname") ?? "Default Property"),
+    listingName: String(getRowValue(row, "listingName", "listingname") ?? ""),
+    source: String(getRowValue(row, "source") ?? "other") as CalendarEventSource,
+    feedUrl: String(getRowValue(row, "feedUrl", "feedurl") ?? ""),
+    isActive: Boolean(getRowValue(row, "isActive", "isactive", "is_active") ?? true),
+    lastSyncedAt: normalizeTimestampValue(
+      getRowValue(row, "lastSyncedAt", "lastsyncedat"),
+      "",
+    ) || null,
+    lastSyncStatus: String(
+      getRowValue(row, "lastSyncStatus", "lastsyncstatus") ?? "never",
+    ) as IcalFeedSyncStatus,
+    lastError: String(getRowValue(row, "lastError", "lasterror") ?? "") || null,
+    eventCount: Number(getRowValue(row, "eventCount", "eventcount") ?? 0),
   };
 }
 
@@ -1512,6 +1719,7 @@ function cloneCalendarEventRecord(event: StoredCalendarEvent): CalendarEventReco
   return {
     id: event.id,
     importId: event.importId,
+    icalFeedId: event.icalFeedId,
     propertyId: event.propertyId,
     propertyName: event.propertyName,
     unitName: event.unitName,
@@ -1523,6 +1731,24 @@ function cloneCalendarEventRecord(event: StoredCalendarEvent): CalendarEventReco
     eventType: event.eventType,
     linkedBookingId: event.linkedBookingId,
     lastSyncedAt: event.lastSyncedAt,
+  };
+}
+
+function cloneIcalFeedRecord(feed: StoredIcalFeed): IcalFeedRecord {
+  return {
+    id: feed.id,
+    workspaceId: feed.workspaceId,
+    propertyId: feed.propertyId,
+    listingId: feed.listingId,
+    propertyName: feed.propertyName,
+    listingName: feed.listingName,
+    source: feed.source,
+    feedUrl: feed.feedUrl,
+    isActive: feed.isActive,
+    lastSyncedAt: feed.lastSyncedAt,
+    lastSyncStatus: feed.lastSyncStatus,
+    lastError: feed.lastError,
+    eventCount: feed.eventCount,
   };
 }
 
@@ -3451,6 +3677,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
         SELECT
           id,
           import_id AS importId,
+          ical_feed_id AS icalFeedId,
           property_id AS propertyId,
           property_name AS propertyName,
           unit_name AS unitName,
@@ -3488,6 +3715,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
         SELECT
           id,
           import_id AS importId,
+          ical_feed_id AS icalFeedId,
           property_id AS propertyId,
           property_name AS propertyName,
           unit_name AS unitName,
@@ -3506,6 +3734,640 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
     )
     .all(normalizedEmail)
     .map((row) => mapCalendarEventRecord(row as Record<string, unknown>));
+}
+
+export async function getIcalFeeds(
+  ownerEmail: string,
+  options?: {
+    includeInactive?: boolean;
+  },
+): Promise<IcalFeedRecord[]> {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const includeInactive = options?.includeInactive ?? false;
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const result = await pool.query(
+      `
+        SELECT
+          feed.id,
+          feed.workspace_id AS workspaceId,
+          feed.property_id AS propertyId,
+          feed.property_name AS propertyName,
+          feed.listing_id AS listingId,
+          feed.listing_name AS listingName,
+          feed.source,
+          feed.feed_url AS feedUrl,
+          feed.is_active AS isActive,
+          feed.last_synced_at AS lastSyncedAt,
+          feed.last_sync_status AS lastSyncStatus,
+          feed.last_error AS lastError,
+          COUNT(event.id) AS eventCount
+        FROM ical_feeds feed
+        LEFT JOIN calendar_events event
+          ON event.ical_feed_id = feed.id
+         AND event.owner_email = feed.owner_email
+        WHERE feed.owner_email = $1
+          AND ($2::boolean = TRUE OR feed.is_active = TRUE)
+        GROUP BY feed.id
+        ORDER BY feed.is_active DESC, feed.property_name ASC, feed.listing_name ASC, feed.source ASC
+      `,
+      [normalizedEmail, includeInactive],
+    );
+
+    return result.rows.map((row) => mapIcalFeedRecord(row as Record<string, unknown>));
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+
+    return store.icalFeeds
+      .filter((feed) => feed.ownerEmail === normalizedEmail)
+      .filter((feed) => includeInactive || feed.isActive)
+      .sort((left, right) => {
+        if (left.isActive !== right.isActive) {
+          return left.isActive ? -1 : 1;
+        }
+
+        if (left.propertyName !== right.propertyName) {
+          return left.propertyName.localeCompare(right.propertyName);
+        }
+
+        if (left.listingName !== right.listingName) {
+          return left.listingName.localeCompare(right.listingName);
+        }
+
+        return left.source.localeCompare(right.source);
+      })
+      .map((feed) => ({
+        ...cloneIcalFeedRecord(feed),
+        eventCount: store.calendarEvents.filter(
+          (event) => event.ownerEmail === normalizedEmail && event.icalFeedId === feed.id,
+        ).length,
+      }));
+  }
+
+  const db = getSQLiteDatabase();
+  return db
+    .prepare(
+      `
+        SELECT
+          feed.id,
+          feed.workspace_id AS workspaceId,
+          feed.property_id AS propertyId,
+          feed.property_name AS propertyName,
+          feed.listing_id AS listingId,
+          feed.listing_name AS listingName,
+          feed.source,
+          feed.feed_url AS feedUrl,
+          feed.is_active AS isActive,
+          feed.last_synced_at AS lastSyncedAt,
+          feed.last_sync_status AS lastSyncStatus,
+          feed.last_error AS lastError,
+          COUNT(event.id) AS eventCount
+        FROM ical_feeds feed
+        LEFT JOIN calendar_events event
+          ON event.ical_feed_id = feed.id
+         AND event.owner_email = feed.owner_email
+        WHERE feed.owner_email = ?
+          AND (? = 1 OR feed.is_active = 1)
+        GROUP BY feed.id
+        ORDER BY feed.is_active DESC, feed.property_name ASC, feed.listing_name ASC, feed.source ASC
+      `,
+    )
+    .all(normalizedEmail, includeInactive ? 1 : 0)
+    .map((row) => mapIcalFeedRecord(row as Record<string, unknown>));
+}
+
+export async function getIcalFeedById({
+  ownerEmail,
+  feedId,
+}: {
+  ownerEmail: string;
+  feedId: number;
+}): Promise<IcalFeedRecord | null> {
+  const feeds = await getIcalFeeds(ownerEmail, { includeInactive: true });
+  return feeds.find((feed) => feed.id === feedId) ?? null;
+}
+
+export async function upsertIcalFeed({
+  ownerEmail,
+  propertyId,
+  propertyName,
+  listingId,
+  listingName,
+  source,
+  feedUrl,
+}: {
+  ownerEmail: string;
+  propertyId: number;
+  propertyName: string;
+  listingId?: number | null;
+  listingName: string;
+  source: CalendarEventSource;
+  feedUrl: string;
+}): Promise<number> {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const normalizedPropertyName = propertyName.trim() || "Default Property";
+  const normalizedListingName = listingName.trim();
+  const normalizedFeedUrl = feedUrl.trim();
+  const normalizedListingId = listingId ?? null;
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const duplicate = await pool.query(
+      `
+        SELECT id
+        FROM ical_feeds
+        WHERE owner_email = $1
+          AND property_id = $2
+          AND COALESCE(listing_id, 0) = COALESCE($3, 0)
+          AND source = $4
+        LIMIT 1
+      `,
+      [normalizedEmail, propertyId, normalizedListingId, source],
+    );
+
+    if (duplicate.rows[0]) {
+      const result = await pool.query(
+        `
+          UPDATE ical_feeds
+          SET
+            workspace_id = $1,
+            property_name = $2,
+            listing_name = $3,
+            feed_url = $4,
+            is_active = TRUE,
+            last_sync_status = 'pending',
+            last_error = NULL
+          WHERE id = $5 AND owner_email = $6
+          RETURNING id
+        `,
+        [
+          normalizedEmail,
+          normalizedPropertyName,
+          normalizedListingName,
+          normalizedFeedUrl,
+          Number(duplicate.rows[0]?.id ?? 0),
+          normalizedEmail,
+        ],
+      );
+
+      return Number(result.rows[0]?.id ?? 0);
+    }
+
+    const result = await pool.query(
+      `
+        INSERT INTO ical_feeds (
+          owner_email,
+          workspace_id,
+          property_id,
+          property_name,
+          listing_id,
+          listing_name,
+          source,
+          feed_url,
+          is_active,
+          last_sync_status
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'pending')
+        RETURNING id
+      `,
+      [
+        normalizedEmail,
+        normalizedEmail,
+        propertyId,
+        normalizedPropertyName,
+        normalizedListingId,
+        normalizedListingName,
+        source,
+        normalizedFeedUrl,
+      ],
+    );
+
+    return Number(result.rows[0]?.id ?? 0);
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const existingFeed = store.icalFeeds.find(
+      (feed) =>
+        feed.ownerEmail === normalizedEmail &&
+        feed.propertyId === propertyId &&
+        (feed.listingId ?? 0) === (normalizedListingId ?? 0) &&
+        feed.source === source,
+    );
+
+    if (existingFeed) {
+      existingFeed.workspaceId = normalizedEmail;
+      existingFeed.propertyName = normalizedPropertyName;
+      existingFeed.listingName = normalizedListingName;
+      existingFeed.feedUrl = normalizedFeedUrl;
+      existingFeed.isActive = true;
+      existingFeed.lastSyncStatus = "pending";
+      existingFeed.lastError = null;
+      return existingFeed.id;
+    }
+
+    const id = store.nextIcalFeedId++;
+    store.icalFeeds.push({
+      id,
+      ownerEmail: normalizedEmail,
+      workspaceId: normalizedEmail,
+      propertyId,
+      propertyName: normalizedPropertyName,
+      listingId: normalizedListingId,
+      listingName: normalizedListingName,
+      source,
+      feedUrl: normalizedFeedUrl,
+      isActive: true,
+      lastSyncedAt: null,
+      lastSyncStatus: "pending",
+      lastError: null,
+      eventCount: 0,
+    });
+    return id;
+  }
+
+  const db = getSQLiteDatabase();
+  const existingFeed = db
+    .prepare(
+      `
+        SELECT id
+        FROM ical_feeds
+        WHERE owner_email = ?
+          AND property_id = ?
+          AND COALESCE(listing_id, 0) = COALESCE(?, 0)
+          AND source = ?
+        LIMIT 1
+      `,
+    )
+    .get(normalizedEmail, propertyId, normalizedListingId, source) as { id?: number } | undefined;
+
+  if (existingFeed?.id) {
+    db.prepare(
+      `
+        UPDATE ical_feeds
+        SET
+          workspace_id = ?,
+          property_name = ?,
+          listing_name = ?,
+          feed_url = ?,
+          is_active = 1,
+          last_sync_status = 'pending',
+          last_error = NULL
+        WHERE id = ? AND owner_email = ?
+      `,
+    ).run(
+      normalizedEmail,
+      normalizedPropertyName,
+      normalizedListingName,
+      normalizedFeedUrl,
+      existingFeed.id,
+      normalizedEmail,
+    );
+
+    return Number(existingFeed.id);
+  }
+
+  const result = db
+    .prepare(
+      `
+        INSERT INTO ical_feeds (
+          owner_email,
+          workspace_id,
+          property_id,
+          property_name,
+          listing_id,
+          listing_name,
+          source,
+          feed_url,
+          is_active,
+          last_sync_status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')
+      `,
+    )
+    .run(
+      normalizedEmail,
+      normalizedEmail,
+      propertyId,
+      normalizedPropertyName,
+      normalizedListingId,
+      normalizedListingName,
+      source,
+      normalizedFeedUrl,
+    );
+
+  return Number(result.lastInsertRowid);
+}
+
+export async function updateIcalFeedSyncState({
+  ownerEmail,
+  feedId,
+  status,
+  syncedAt,
+  error,
+}: {
+  ownerEmail: string;
+  feedId: number;
+  status: IcalFeedSyncStatus;
+  syncedAt?: string | null;
+  error?: string | null;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    await pool.query(
+      `
+        UPDATE ical_feeds
+        SET
+          last_sync_status = $1,
+          last_synced_at = COALESCE($2, last_synced_at),
+          last_error = $3
+        WHERE id = $4 AND owner_email = $5
+      `,
+      [status, syncedAt ?? null, error ?? null, feedId, normalizedEmail],
+    );
+    return;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const feed = store.icalFeeds.find(
+      (entry) => entry.id === feedId && entry.ownerEmail === normalizedEmail,
+    );
+
+    if (!feed) {
+      return;
+    }
+
+    feed.lastSyncStatus = status;
+    if (typeof syncedAt !== "undefined") {
+      feed.lastSyncedAt = syncedAt;
+    }
+    feed.lastError = error ?? null;
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  db.prepare(
+    `
+      UPDATE ical_feeds
+      SET
+        last_sync_status = ?,
+        last_synced_at = COALESCE(?, last_synced_at),
+        last_error = ?
+      WHERE id = ? AND owner_email = ?
+    `,
+  ).run(status, syncedAt ?? null, error ?? null, feedId, normalizedEmail);
+}
+
+export async function replaceCalendarEventsForFeed({
+  ownerEmail,
+  feed,
+  events,
+  syncedAt,
+}: {
+  ownerEmail: string;
+  feed: Pick<IcalFeedRecord, "id" | "propertyId" | "propertyName" | "listingName" | "source">;
+  events: Array<{
+    externalEventId: string;
+    summary: string;
+    startDate: string;
+    endDate: string;
+    eventType: CalendarEventType;
+  }>;
+  syncedAt: string;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const normalizedPropertyName = feed.propertyName.trim();
+  const normalizedUnitName = feed.listingName.trim();
+  const feedId = Number(feed.id ?? 0);
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `
+          DELETE FROM calendar_events
+          WHERE owner_email = $1 AND ical_feed_id = $2
+        `,
+        [normalizedEmail, feedId],
+      );
+
+      for (const event of events) {
+        await client.query(
+          `
+            INSERT INTO calendar_events (
+              owner_email,
+              import_id,
+              ical_feed_id,
+              property_id,
+              property_name,
+              unit_name,
+              source,
+              external_event_id,
+              summary,
+              start_date,
+              end_date,
+              event_type,
+              linked_booking_id,
+              last_synced_at
+            )
+            VALUES ($1, 0, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12)
+          `,
+          [
+            normalizedEmail,
+            feedId,
+            feed.propertyId ?? null,
+            normalizedPropertyName,
+            normalizedUnitName,
+            feed.source,
+            event.externalEventId,
+            event.summary,
+            event.startDate,
+            event.endDate,
+            event.eventType,
+            syncedAt,
+          ],
+        );
+      }
+
+      await client.query("COMMIT");
+      return;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    store.calendarEvents = store.calendarEvents.filter(
+      (event) =>
+        !(
+          event.ownerEmail === normalizedEmail &&
+          event.icalFeedId === feedId
+        ),
+    );
+
+    for (const event of events) {
+      store.calendarEvents.push({
+        id: store.nextCalendarEventId++,
+        importId: 0,
+        ownerEmail: normalizedEmail,
+        icalFeedId: feedId,
+        propertyId: feed.propertyId ?? null,
+        propertyName: normalizedPropertyName,
+        unitName: normalizedUnitName,
+        source: feed.source,
+        externalEventId: event.externalEventId,
+        summary: event.summary,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        eventType: event.eventType,
+        linkedBookingId: null,
+        lastSyncedAt: syncedAt,
+      });
+    }
+
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  const transaction = db.transaction(() => {
+    db.prepare(
+      `
+        DELETE FROM calendar_events
+        WHERE owner_email = ?
+          AND ical_feed_id = ?
+      `,
+    ).run(normalizedEmail, feedId);
+
+    const insertEvent = db.prepare(
+      `
+        INSERT INTO calendar_events (
+          owner_email,
+          import_id,
+          ical_feed_id,
+          property_id,
+          property_name,
+          unit_name,
+          source,
+          external_event_id,
+          summary,
+          start_date,
+          end_date,
+          event_type,
+          linked_booking_id,
+          last_synced_at
+        )
+        VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+      `,
+    );
+
+    for (const event of events) {
+      insertEvent.run(
+        normalizedEmail,
+        feedId,
+        feed.propertyId ?? null,
+        normalizedPropertyName,
+        normalizedUnitName,
+        feed.source,
+        event.externalEventId,
+        event.summary,
+        event.startDate,
+        event.endDate,
+        event.eventType,
+        syncedAt,
+      );
+    }
+  });
+
+  transaction();
+}
+
+export async function disconnectIcalFeed({
+  ownerEmail,
+  feedId,
+}: {
+  ownerEmail: string;
+  feedId: number;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `
+          UPDATE ical_feeds
+          SET is_active = FALSE, last_error = NULL
+          WHERE id = $1 AND owner_email = $2
+        `,
+        [feedId, normalizedEmail],
+      );
+      await client.query(
+        "DELETE FROM calendar_events WHERE owner_email = $1 AND ical_feed_id = $2",
+        [normalizedEmail, feedId],
+      );
+      await client.query("COMMIT");
+      return;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const feed = store.icalFeeds.find(
+      (entry) => entry.id === feedId && entry.ownerEmail === normalizedEmail,
+    );
+
+    if (feed) {
+      feed.isActive = false;
+      feed.lastError = null;
+    }
+
+    store.calendarEvents = store.calendarEvents.filter(
+      (event) => !(event.ownerEmail === normalizedEmail && event.icalFeedId === feedId),
+    );
+    return;
+  }
+
+  const db = getSQLiteDatabase();
+  const transaction = db.transaction(() => {
+    db.prepare(
+      `
+        UPDATE ical_feeds
+        SET is_active = 0, last_error = NULL
+        WHERE id = ? AND owner_email = ?
+      `,
+    ).run(feedId, normalizedEmail);
+    db.prepare(
+      "DELETE FROM calendar_events WHERE owner_email = ? AND ical_feed_id = ?",
+    ).run(normalizedEmail, feedId);
+  });
+
+  transaction();
 }
 
 export async function getPropertyDefinitions(
@@ -3857,6 +4719,14 @@ export async function updatePropertyDefinition({
       "UPDATE expenses SET property_name = $1 WHERE owner_email = $2 AND property_name = $3",
       [normalizedName, normalizedEmail, currentName],
     );
+    await pool.query(
+      "UPDATE calendar_events SET property_name = $1 WHERE owner_email = $2 AND property_name = $3",
+      [normalizedName, normalizedEmail, currentName],
+    );
+    await pool.query(
+      "UPDATE ical_feeds SET property_name = $1 WHERE owner_email = $2 AND property_name = $3",
+      [normalizedName, normalizedEmail, currentName],
+    );
 
     return;
   }
@@ -3898,6 +4768,18 @@ export async function updatePropertyDefinition({
       }
     }
 
+    for (const event of store.calendarEvents) {
+      if (event.ownerEmail === normalizedEmail && event.propertyName === currentName) {
+        event.propertyName = normalizedName;
+      }
+    }
+
+    for (const feed of store.icalFeeds) {
+      if (feed.ownerEmail === normalizedEmail && feed.propertyName === currentName) {
+        feed.propertyName = normalizedName;
+      }
+    }
+
     return;
   }
 
@@ -3936,6 +4818,16 @@ export async function updatePropertyDefinition({
     normalizedEmail,
     property.name,
   );
+  db.prepare("UPDATE calendar_events SET property_name = ? WHERE owner_email = ? AND property_name = ?").run(
+    normalizedName,
+    normalizedEmail,
+    property.name,
+  );
+  db.prepare("UPDATE ical_feeds SET property_name = ? WHERE owner_email = ? AND property_name = ?").run(
+    normalizedName,
+    normalizedEmail,
+    property.name,
+  );
 }
 
 export async function deletePropertyDefinition({
@@ -3966,7 +4858,7 @@ export async function deletePropertyDefinition({
     }
 
     const propertyName = String(getRowValue(propertyRow, "name"));
-    const [bookingUsage, expenseUsage, importUsage, closureUsage] = await Promise.all([
+    const [bookingUsage, expenseUsage, importUsage, closureUsage, eventUsage, feedUsage] = await Promise.all([
       pool.query(
         "SELECT COUNT(*) AS count FROM bookings WHERE owner_email = $1 AND property_name = $2",
         [normalizedEmail, propertyName],
@@ -3981,6 +4873,14 @@ export async function deletePropertyDefinition({
       ),
       pool.query(
         "SELECT COUNT(*) AS count FROM calendar_closures WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      ),
+      pool.query(
+        "SELECT COUNT(*) AS count FROM calendar_events WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      ),
+      pool.query(
+        "SELECT COUNT(*) AS count FROM ical_feeds WHERE owner_email = $1 AND property_name = $2 AND is_active = TRUE",
         [normalizedEmail, propertyName],
       ),
     ]);
@@ -4000,9 +4900,15 @@ export async function deletePropertyDefinition({
     const propertiesCount = Number(
       getRowValue(propertiesCountResult.rows[0] as Record<string, unknown>, "count"),
     );
+    const eventCount = Number(
+      getRowValue(eventUsage.rows[0] as Record<string, unknown>, "count"),
+    );
+    const feedCount = Number(
+      getRowValue(feedUsage.rows[0] as Record<string, unknown>, "count"),
+    );
 
-    if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0) && !deleteLinkedData) {
-      throw new Error("This property still has linked imports, bookings, closed days, or expenses. Confirm destructive delete to remove everything tied to it.");
+    if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0 || eventCount > 0 || feedCount > 0) && !deleteLinkedData) {
+      throw new Error("This property still has linked imports, bookings, closed days, calendar feeds, or expenses. Confirm destructive delete to remove everything tied to it.");
     }
 
     await pool.query("BEGIN");
@@ -4023,6 +4929,14 @@ export async function deletePropertyDefinition({
       );
       await pool.query(
         "DELETE FROM financial_documents WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      );
+      await pool.query(
+        "DELETE FROM calendar_events WHERE owner_email = $1 AND property_name = $2",
+        [normalizedEmail, propertyName],
+      );
+      await pool.query(
+        "DELETE FROM ical_feeds WHERE owner_email = $1 AND property_name = $2",
         [normalizedEmail, propertyName],
       );
       await pool.query(
@@ -4078,9 +4992,15 @@ export async function deletePropertyDefinition({
     const closureCount = store.closures.filter(
       (closure) => closure.ownerEmail === normalizedEmail && closure.propertyName === property.name,
     ).length;
+    const eventCount = store.calendarEvents.filter(
+      (event) => event.ownerEmail === normalizedEmail && event.propertyName === property.name,
+    ).length;
+    const feedCount = store.icalFeeds.filter(
+      (feed) => feed.ownerEmail === normalizedEmail && feed.propertyName === property.name && feed.isActive,
+    ).length;
 
-    if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0) && !deleteLinkedData) {
-      throw new Error("This property still has linked imports, bookings, closed days, or expenses. Confirm destructive delete to remove everything tied to it.");
+    if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0 || eventCount > 0 || feedCount > 0) && !deleteLinkedData) {
+      throw new Error("This property still has linked imports, bookings, closed days, calendar feeds, or expenses. Confirm destructive delete to remove everything tied to it.");
     }
 
     if (deleteLinkedData) {
@@ -4095,6 +5015,12 @@ export async function deletePropertyDefinition({
       );
       store.financialDocuments = store.financialDocuments.filter(
         (document) => !(document.ownerEmail === normalizedEmail && document.propertyName === property.name),
+      );
+      store.calendarEvents = store.calendarEvents.filter(
+        (event) => !(event.ownerEmail === normalizedEmail && event.propertyName === property.name),
+      );
+      store.icalFeeds = store.icalFeeds.filter(
+        (feed) => !(feed.ownerEmail === normalizedEmail && feed.propertyName === property.name),
       );
       store.imports = store.imports.filter(
         (entry) => !(entry.ownerEmail === normalizedEmail && entry.propertyName === property.name),
@@ -4140,6 +5066,12 @@ export async function deletePropertyDefinition({
   const closureUsage = db
     .prepare("SELECT COUNT(*) AS count FROM calendar_closures WHERE owner_email = ? AND property_name = ?")
     .get(normalizedEmail, property.name) as { count?: number } | undefined;
+  const eventUsage = db
+    .prepare("SELECT COUNT(*) AS count FROM calendar_events WHERE owner_email = ? AND property_name = ?")
+    .get(normalizedEmail, property.name) as { count?: number } | undefined;
+  const feedUsage = db
+    .prepare("SELECT COUNT(*) AS count FROM ical_feeds WHERE owner_email = ? AND property_name = ? AND is_active = 1")
+    .get(normalizedEmail, property.name) as { count?: number } | undefined;
   const propertiesCount = db
     .prepare("SELECT COUNT(*) AS count FROM properties WHERE owner_email = ?")
     .get(normalizedEmail) as { count?: number } | undefined;
@@ -4148,9 +5080,11 @@ export async function deletePropertyDefinition({
   const expenseCount = expenseUsage?.count ?? 0;
   const importCount = importUsage?.count ?? 0;
   const closureCount = closureUsage?.count ?? 0;
+  const eventCount = eventUsage?.count ?? 0;
+  const feedCount = feedUsage?.count ?? 0;
 
-  if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0) && !deleteLinkedData) {
-    throw new Error("This property still has linked imports, bookings, closed days, or expenses. Confirm destructive delete to remove everything tied to it.");
+  if ((bookingCount > 0 || expenseCount > 0 || importCount > 0 || closureCount > 0 || eventCount > 0 || feedCount > 0) && !deleteLinkedData) {
+    throw new Error("This property still has linked imports, bookings, closed days, calendar feeds, or expenses. Confirm destructive delete to remove everything tied to it.");
   }
 
   const transaction = db.transaction(() => {
@@ -4168,6 +5102,14 @@ export async function deletePropertyDefinition({
         property.name,
       );
       db.prepare("DELETE FROM financial_documents WHERE owner_email = ? AND property_name = ?").run(
+        normalizedEmail,
+        property.name,
+      );
+      db.prepare("DELETE FROM calendar_events WHERE owner_email = ? AND property_name = ?").run(
+        normalizedEmail,
+        property.name,
+      );
+      db.prepare("DELETE FROM ical_feeds WHERE owner_email = ? AND property_name = ?").run(
         normalizedEmail,
         property.name,
       );
@@ -5908,6 +6850,8 @@ export async function deleteManagedUser(ownerEmail: string) {
       await client.query("DELETE FROM bookings WHERE owner_email = $1", [normalizedEmail]);
       await client.query("DELETE FROM expenses WHERE owner_email = $1", [normalizedEmail]);
       await client.query("DELETE FROM calendar_closures WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM calendar_events WHERE owner_email = $1", [normalizedEmail]);
+      await client.query("DELETE FROM ical_feeds WHERE owner_email = $1", [normalizedEmail]);
       await client.query("DELETE FROM financial_documents WHERE owner_email = $1", [normalizedEmail]);
       await client.query("DELETE FROM imports WHERE owner_email = $1", [normalizedEmail]);
       await client.query("DELETE FROM property_units WHERE owner_email = $1", [normalizedEmail]);
@@ -5931,6 +6875,8 @@ export async function deleteManagedUser(ownerEmail: string) {
     store.bookings = store.bookings.filter((entry) => entry.ownerEmail !== normalizedEmail);
     store.expenses = store.expenses.filter((entry) => entry.ownerEmail !== normalizedEmail);
     store.closures = store.closures.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.calendarEvents = store.calendarEvents.filter((entry) => entry.ownerEmail !== normalizedEmail);
+    store.icalFeeds = store.icalFeeds.filter((entry) => entry.ownerEmail !== normalizedEmail);
     store.financialDocuments = store.financialDocuments.filter((entry) => entry.ownerEmail !== normalizedEmail);
     store.imports = store.imports.filter((entry) => entry.ownerEmail !== normalizedEmail);
     store.propertyUnits = store.propertyUnits.filter((entry) => entry.ownerEmail !== normalizedEmail);
@@ -5945,6 +6891,8 @@ export async function deleteManagedUser(ownerEmail: string) {
   db.prepare("DELETE FROM bookings WHERE owner_email = ?").run(normalizedEmail);
   db.prepare("DELETE FROM expenses WHERE owner_email = ?").run(normalizedEmail);
   db.prepare("DELETE FROM calendar_closures WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM calendar_events WHERE owner_email = ?").run(normalizedEmail);
+  db.prepare("DELETE FROM ical_feeds WHERE owner_email = ?").run(normalizedEmail);
   db.prepare("DELETE FROM financial_documents WHERE owner_email = ?").run(normalizedEmail);
   db.prepare("DELETE FROM imports WHERE owner_email = ?").run(normalizedEmail);
   db.prepare("DELETE FROM property_units WHERE owner_email = ?").run(normalizedEmail);

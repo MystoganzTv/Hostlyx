@@ -5,7 +5,10 @@ import {
   startOfMonth,
 } from "date-fns";
 import { redirect } from "next/navigation";
+import { CalendarAutoSync } from "@/components/calendar-auto-sync";
+import { CalendarFeedsPanel } from "@/components/calendar-feeds-panel";
 import { CalendarPanel } from "@/components/calendar-panel";
+import { CalendarIcalLauncher } from "@/components/calendar-ical-launcher";
 import { FilterBar } from "@/components/filter-bar";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -14,6 +17,7 @@ import {
   getBookings,
   getCalendarEvents,
   getCalendarClosures,
+  getIcalFeeds,
   getLatestImport,
   getPropertyDefinitions,
   getUserSettings,
@@ -90,13 +94,14 @@ export default async function CalendarPage({
     redirect("/dashboard/properties?setup=1");
   }
 
-  const [bookings, calendarEvents, closures, latestImport, userSettings, resolvedSearchParams] = await Promise.all([
+  const [bookings, calendarEvents, closures, latestImport, userSettings, resolvedSearchParams, icalFeeds] = await Promise.all([
     getBookings(ownerEmail),
     getCalendarEvents(ownerEmail),
     getCalendarClosures(ownerEmail),
     getLatestImport(ownerEmail),
     getUserSettings(ownerEmail, userName),
     searchParams,
+    getIcalFeeds(ownerEmail),
   ]);
 
   const filters = getDashboardFilters(
@@ -171,41 +176,48 @@ export default async function CalendarPage({
     <WorkspaceShell
       activePage="calendar"
       pageTitle="Calendar"
-      pageSubtitle="See bookings, check-ins, check-outs, and closed days laid out month by month."
+      pageSubtitle="See bookings, check-ins, check-outs, and closed days month by month, and connect iCal feeds per listing."
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
       currencyCode={currencyCode}
       latestImport={latestImport}
       actions={
-        <FilterBar
-          mode="calendar"
-          years={Array.from(
-            new Set([
-              ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),
-              ...calendarEvents.map((event) => parseISO(event.startDate).getFullYear()),
-              ...closures.map((closure) => parseISO(closure.date).getFullYear()),
-            ]),
-          ).sort((a, b) => b - a)}
-          channels={Array.from(new Set(bookings.map((booking) => booking.channel))).sort((a, b) =>
-            a.localeCompare(b),
-          )}
-          countries={Array.from(new Set(properties.map((property) => property.countryCode)))}
-          selectedYear={filters.year}
-          selectedMonth={filters.month}
-          selectedChannel={filters.channel}
-          selectedCountryCode={filters.countryCode}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <FilterBar
+            mode="calendar"
+            years={Array.from(
+              new Set([
+                ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),
+                ...calendarEvents.map((event) => parseISO(event.startDate).getFullYear()),
+                ...closures.map((closure) => parseISO(closure.date).getFullYear()),
+              ]),
+            ).sort((a, b) => b - a)}
+            channels={Array.from(new Set(bookings.map((booking) => booking.channel))).sort((a, b) =>
+              a.localeCompare(b),
+            )}
+            countries={Array.from(new Set(properties.map((property) => property.countryCode)))}
+            selectedYear={filters.year}
+            selectedMonth={filters.month}
+            selectedChannel={filters.channel}
+            selectedCountryCode={filters.countryCode}
+          />
+          <CalendarIcalLauncher properties={properties} />
+        </div>
       }
     >
-      <CalendarPanel
-        rangeLabel={rangeLabel}
-        bookings={countryAndChannelBookings}
-        calendarEvents={countryCalendarEvents}
-        closures={countryClosures}
-        monthAnchors={monthAnchors}
-        currencyCode={currencyCode}
-      />
+      <div className="space-y-6">
+        <CalendarAutoSync enabled={icalFeeds.some((feed) => feed.isActive)} />
+        <CalendarFeedsPanel feeds={icalFeeds} />
+        <CalendarPanel
+          rangeLabel={rangeLabel}
+          bookings={countryAndChannelBookings}
+          calendarEvents={countryCalendarEvents}
+          closures={countryClosures}
+          monthAnchors={monthAnchors}
+          currencyCode={currencyCode}
+        />
+      </div>
     </WorkspaceShell>
   );
 }

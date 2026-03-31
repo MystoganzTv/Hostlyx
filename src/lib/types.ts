@@ -11,6 +11,7 @@ export type BookingMatchStatus =
   | "conflict_blocked_calendar";
 export type CalendarEventSource = "airbnb" | "booking" | "vrbo" | "other";
 export type CalendarEventType = "booking" | "blocked" | "unknown";
+export type IcalFeedSyncStatus = "never" | "pending" | "success" | "error";
 export type CurrencyCode = "USD" | "EUR" | "GBP";
 export type CountryCode = "US" | "ES" | "GB";
 export type SubscriptionPlan = "trial" | "starter" | "pro" | "portfolio";
@@ -88,6 +89,7 @@ export type CalendarClosureRecord = {
 export type CalendarEventRecord = {
   id?: number;
   importId?: number;
+  icalFeedId?: number | null;
   propertyId?: number | null;
   propertyName: string;
   unitName: string;
@@ -99,6 +101,22 @@ export type CalendarEventRecord = {
   eventType: CalendarEventType;
   linkedBookingId?: number | null;
   lastSyncedAt: string;
+};
+
+export type IcalFeedRecord = {
+  id?: number;
+  workspaceId: string;
+  propertyId: number;
+  listingId?: number | null;
+  propertyName: string;
+  listingName: string;
+  source: CalendarEventSource;
+  feedUrl: string;
+  isActive: boolean;
+  lastSyncedAt?: string | null;
+  lastSyncStatus: IcalFeedSyncStatus;
+  lastError?: string | null;
+  eventCount: number;
 };
 
 export type ImportSummary = {
