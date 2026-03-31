@@ -41,6 +41,7 @@ export function ReconcileStatementLauncher({
           properties={properties}
           title="Add a financial statement"
           subtitle="Upload an Airbnb or Booking.com payout statement so Reconcile can compare expected payout against actual payout."
+          appearance="compact"
           onCancel={() => setIsOpen(false)}
           onImportComplete={() => setIsOpen(false)}
         />

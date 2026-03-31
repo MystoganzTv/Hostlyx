@@ -370,6 +370,7 @@ export function UploadPanel({
   title = "Bring your data",
   subtitle = "Upload your Airbnb, Booking.com, or Excel files to see your real numbers.",
   refreshOnSuccess = true,
+  appearance = "default",
   onImportComplete,
   onCancel,
 }: {
@@ -377,6 +378,7 @@ export function UploadPanel({
   title?: string;
   subtitle?: string;
   refreshOnSuccess?: boolean;
+  appearance?: "default" | "compact";
   onImportComplete?: (payload: ImportCompletePayload) => void;
   onCancel?: () => void;
 }) {
@@ -441,33 +443,7 @@ export function UploadPanel({
     }
   }, [preview?.financialStatement?.rawData]);
 
-  const importButtonLabel = useMemo(() => {
-    if (phase === "importing") {
-      return "Importing data...";
-    }
-
-    if (!preview) {
-      return "Import data";
-    }
-
-    if (isFinancialStatementReady) {
-      return "Save financial statement";
-    }
-
-    if (isBlockedFinancialStatement) {
-      return "Needs payout total";
-    }
-
-    if (preview.blocksImport) {
-      return "Use a reservations export";
-    }
-
-    if (actionableRows > 0) {
-      return `Import ${actionableRows} approved row${actionableRows === 1 ? "" : "s"}`;
-    }
-
-    return "Map columns manually";
-  }, [actionableRows, isBlockedFinancialStatement, isFinancialStatementReady, phase, preview]);
+  const isCompactAppearance = appearance === "compact";
 
   const selectedTableRow = useMemo(() => {
     if (!preview?.tableRows.length) {
@@ -807,19 +783,6 @@ export function UploadPanel({
     }));
   }
 
-  function openBookingFix(row: ReviewRow) {
-    if (!row.booking) {
-      return;
-    }
-
-    setBookingFixDraft({
-      rowIndex: row.rowIndex,
-      title: row.title,
-      reasons: row.reasons,
-      booking: { ...row.booking },
-    });
-  }
-
   function updateBookingFixField(field: keyof ImportEditableBooking, value: string) {
     setBookingFixDraft((current) => {
       if (!current) {
@@ -934,25 +897,6 @@ export function UploadPanel({
     window.setTimeout(() => {
       importButtonRef.current?.focus({ preventScroll: true });
     }, 80);
-  }
-
-  function scrollToAttentionTarget() {
-    const target =
-      (needsFocusedMapping ? mappingRef.current : null) ??
-      (preview &&
-      (preview.errorRows > 0 ||
-        preview.warningRows > 0 ||
-        preview.duplicateRows > 0 ||
-        preview.conflictRows > 0)
-        ? reviewRef.current
-        : null) ??
-      sourceDetectedRef.current ??
-      panelRef.current;
-
-    target?.scrollIntoView({
-      behavior: "smooth",
-      block: target === panelRef.current ? "start" : "center",
-    });
   }
 
   useEffect(() => {
@@ -1199,28 +1143,44 @@ export function UploadPanel({
         ) : null}
 
         <div className="relative">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className={`flex flex-wrap items-start justify-between gap-4 ${isCompactAppearance ? "sm:gap-3" : ""}`}>
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--workspace-border)] bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--workspace-muted)]">
                 <Sparkles className="h-4 w-4 text-[var(--workspace-accent)]" />
-                Import Center
+                {isCompactAppearance ? "Reconcile" : "Import Center"}
               </div>
               <div>
-                <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[var(--workspace-text)] sm:text-4xl">
+                <h2
+                  className={`font-semibold tracking-[-0.05em] text-[var(--workspace-text)] ${
+                    isCompactAppearance ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"
+                  }`}
+                >
                   {title}
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">{subtitle}</p>
+                <p
+                  className={`max-w-2xl text-sm text-[var(--workspace-muted)] ${
+                    isCompactAppearance ? "mt-2 leading-6" : "mt-3 leading-7"
+                  }`}
+                >
+                  {subtitle}
+                </p>
               </div>
             </div>
-            <div className="workspace-soft-card rounded-[26px] px-4 py-4 text-right text-sm text-[var(--workspace-muted)]">
+            <div
+              className={`workspace-soft-card text-right text-sm text-[var(--workspace-muted)] ${
+                isCompactAppearance ? "rounded-[22px] px-4 py-3" : "rounded-[26px] px-4 py-4"
+              }`}
+            >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
                 Supported
               </p>
-              <p className="mt-2 text-base font-medium text-[var(--workspace-text)]">CSV & XLSX</p>
+              <p className={`font-medium text-[var(--workspace-text)] ${isCompactAppearance ? "mt-1 text-sm" : "mt-2 text-base"}`}>
+                CSV & XLSX
+              </p>
             </div>
           </div>
 
-        <div className="mt-8 space-y-6">
+        <div className={`${isCompactAppearance ? "mt-6" : "mt-8"} space-y-6`}>
           <input
             ref={inputRef}
             type="file"

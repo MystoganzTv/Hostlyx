@@ -2,7 +2,6 @@ import {
   eachMonthOfInterval,
   format,
   parseISO,
-  startOfMonth,
 } from "date-fns";
 import { redirect } from "next/navigation";
 import { CalendarAutoSync } from "@/components/calendar-auto-sync";
@@ -28,6 +27,33 @@ export const runtime = "nodejs";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+const CALENDAR_STREAM_PAST_YEARS = 8;
+const CALENDAR_STREAM_FUTURE_YEARS = 8;
+
+function getCalendarTimelineBounds(
+  bookings: Awaited<ReturnType<typeof getBookings>>,
+  calendarEvents: Awaited<ReturnType<typeof getCalendarEvents>>,
+  closures: Awaited<ReturnType<typeof getCalendarClosures>>,
+) {
+  const today = new Date();
+  const allDates = [
+    ...bookings.map((booking) => parseISO(booking.checkIn)),
+    ...bookings.map((booking) => parseISO(booking.checkout)),
+    ...calendarEvents.map((event) => parseISO(event.startDate)),
+    ...calendarEvents.map((event) => parseISO(event.endDate)),
+    ...closures.map((closure) => parseISO(closure.date)),
+  ].filter((date) => !Number.isNaN(date.getTime()));
+  const fallbackYear = today.getFullYear();
+  const sortedDates = allDates.sort((left, right) => left.getTime() - right.getTime());
+  const earliestYear = sortedDates[0]?.getFullYear() ?? fallbackYear;
+  const latestYear = sortedDates.at(-1)?.getFullYear() ?? fallbackYear;
+
+  return {
+    startYear: Math.min(fallbackYear - CALENDAR_STREAM_PAST_YEARS, earliestYear),
+    endYear: Math.max(fallbackYear + CALENDAR_STREAM_FUTURE_YEARS, latestYear),
+  };
+}
+
 function getCalendarMonthAnchors(
   bookings: Awaited<ReturnType<typeof getBookings>>,
   calendarEvents: Awaited<ReturnType<typeof getCalendarEvents>>,
@@ -46,43 +72,28 @@ function getCalendarMonthAnchors(
     });
   }
 
-  const allDates = [
-    ...bookings.map((booking) => parseISO(booking.checkIn)),
-    ...bookings.map((booking) => parseISO(booking.checkout)),
-    ...calendarEvents.map((event) => parseISO(event.startDate)),
-    ...calendarEvents.map((event) => parseISO(event.endDate)),
-    ...closures.map((closure) => parseISO(closure.date)),
-  ].filter((date) => !Number.isNaN(date.getTime()));
-
+  const { startYear, endYear } = getCalendarTimelineBounds(bookings, calendarEvents, closures);
   const availableYears = Array.from(
-    new Set(allDates.map((date) => date.getFullYear())),
-  ).sort((left, right) => left - right);
+    { length: endYear - startYear + 1 },
+    (_, index) => startYear + index,
+  );
 
   if (month !== "all") {
-    if (availableYears.length === 0) {
-      return [new Date(new Date().getFullYear(), month - 1, 1)];
-    }
-
     return availableYears.map((availableYear) => new Date(availableYear, month - 1, 1));
   }
 
-  if (allDates.length === 0) {
-    return [startOfMonth(new Date())];
-  }
-
-  const sortedDates = allDates.sort((left, right) => left.getTime() - right.getTime());
-
-    return eachMonthOfInterval({
-      start: startOfMonth(sortedDates[0]),
-      end: startOfMonth(sortedDates.at(-1) ?? new Date()),
-    });
-  }
+  return eachMonthOfInterval({
+    start: new Date(startYear, 0, 1),
+    end: new Date(endYear, 11, 1),
+  });
+}
 
 function resolveCalendarYear(
   searchParams: Record<string, string | string[] | undefined>,
   availableYears: number[],
 ) {
-  const defaultYear = availableYears[0] ?? new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+  const defaultYear = availableYears.includes(currentYear) ? currentYear : availableYears[0] ?? currentYear;
   const yearParam = Array.isArray(searchParams.year) ? searchParams.year[0] : searchParams.year;
 
   if (yearParam === "all") {
@@ -140,13 +151,11 @@ export default async function CalendarPage({
     properties,
     userSettings.primaryCountryCode,
   );
+  const { startYear, endYear } = getCalendarTimelineBounds(bookings, calendarEvents, closures);
   const availableCalendarYears = Array.from(
-    new Set([
-      ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),
-      ...calendarEvents.map((event) => parseISO(event.startDate).getFullYear()),
-      ...closures.map((closure) => parseISO(closure.date).getFullYear()),
-    ].filter((year) => Number.isInteger(year))),
-  ).sort((a, b) => b - a);
+    { length: endYear - startYear + 1 },
+    (_, index) => endYear - index,
+  );
   const selectedCalendarYear = resolveCalendarYear(resolvedSearchParams, availableCalendarYears);
   const selectedCalendarMonth = resolveCalendarMonth(resolvedSearchParams);
   const propertyCountryMap = new Map(
