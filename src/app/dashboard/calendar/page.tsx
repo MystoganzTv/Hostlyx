@@ -234,6 +234,7 @@ export default async function CalendarPage({
       userEmail={ownerEmail}
       currencyCode={currencyCode}
       latestImport={latestImport}
+      stickyHeader
       actions={
         <div className="flex flex-wrap items-center justify-end gap-3">
           <FilterBar
@@ -252,25 +253,21 @@ export default async function CalendarPage({
         </div>
       }
     >
-      <div className="space-y-6 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:overflow-hidden">
+      <div className="space-y-6">
         <CalendarAutoSync
           enabled={icalFeeds.some((feed) => feed.isActive)}
           force={hasLegacySyncedEventDetails}
         />
-        <div className="xl:shrink-0">
-          <CalendarFeedsPanel feeds={icalFeeds} />
-        </div>
-        <div className="xl:min-h-0 xl:flex-1">
-          <CalendarPanel
-            key={calendarViewKey}
-            rangeLabel={rangeLabel}
-            bookings={countryAndChannelBookings}
-            calendarEvents={countryCalendarEvents}
-            closures={countryClosures}
-            monthAnchors={monthAnchors}
-            currencyCode={currencyCode}
-          />
-        </div>
+        <CalendarFeedsPanel feeds={icalFeeds} />
+        <CalendarPanel
+          key={calendarViewKey}
+          rangeLabel={rangeLabel}
+          bookings={countryAndChannelBookings}
+          calendarEvents={countryCalendarEvents}
+          closures={countryClosures}
+          monthAnchors={monthAnchors}
+          currencyCode={currencyCode}
+        />
       </div>
     </WorkspaceShell>
   );

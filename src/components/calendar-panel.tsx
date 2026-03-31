@@ -556,7 +556,6 @@ export function CalendarPanel({
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const monthScrollerRef = useRef<HTMLDivElement | null>(null);
   const monthSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reservationCount = useMemo(
     () => buildTimelineItems(bookings, calendarEvents).length,
@@ -577,7 +576,7 @@ export function CalendarPanel({
   }, [monthAnchors]);
 
   useEffect(() => {
-    const targetNode = monthSectionRefs.current[initialMonthKey] ?? monthScrollerRef.current ?? panelRef.current;
+    const targetNode = monthSectionRefs.current[initialMonthKey] ?? panelRef.current;
 
     if (!targetNode) {
       return;
@@ -596,8 +595,8 @@ export function CalendarPanel({
   }, [initialMonthKey, monthAnchorKey]);
 
   return (
-    <div ref={panelRef} className="space-y-6 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
-      <div className="grid gap-4 md:grid-cols-4 xl:shrink-0">
+    <div ref={panelRef} className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="workspace-card rounded-[24px] p-5">
           <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
           <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
@@ -616,45 +615,40 @@ export function CalendarPanel({
         </div>
       </div>
 
-      <div className="workspace-card rounded-[30px] p-6 sm:p-7 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-        <div
-          ref={monthScrollerRef}
-          className="space-y-0 xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:pr-2"
-        >
-          {monthAnchors.map((anchorDate) => {
-            const monthKey = format(anchorDate, "yyyy-MM");
-            const monthBookings = bookings.filter((booking) => intersectsMonth(booking, anchorDate));
-            const monthCalendarEvents = calendarEvents.filter((event) => {
-              const eventStart = parseISO(event.startDate);
-              const eventEnd = parseISO(event.endDate);
-              return eventStart <= endOfMonth(anchorDate) && eventEnd > startOfMonth(anchorDate);
-            });
-            const monthClosures = closures.filter((closure) =>
-              isWithinInterval(parseISO(closure.date), {
-                start: startOfMonth(anchorDate),
-                end: endOfMonth(anchorDate),
-              }),
-            );
+      <div className="workspace-card rounded-[30px] p-6 sm:p-7">
+        {monthAnchors.map((anchorDate) => {
+          const monthKey = format(anchorDate, "yyyy-MM");
+          const monthBookings = bookings.filter((booking) => intersectsMonth(booking, anchorDate));
+          const monthCalendarEvents = calendarEvents.filter((event) => {
+            const eventStart = parseISO(event.startDate);
+            const eventEnd = parseISO(event.endDate);
+            return eventStart <= endOfMonth(anchorDate) && eventEnd > startOfMonth(anchorDate);
+          });
+          const monthClosures = closures.filter((closure) =>
+            isWithinInterval(parseISO(closure.date), {
+              start: startOfMonth(anchorDate),
+              end: endOfMonth(anchorDate),
+            }),
+          );
 
-            return (
-              <div
-                key={monthKey}
-                ref={(node) => {
-                  monthSectionRefs.current[monthKey] = node;
-                }}
-              >
-                <MonthCalendar
-                  anchorDate={anchorDate}
-                  bookings={monthBookings}
-                  calendarEvents={monthCalendarEvents}
-                  closures={monthClosures}
-                  onSelectBooking={setSelectedBooking}
-                  onSelectCalendarEvent={setSelectedCalendarEvent}
-                />
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div
+              key={monthKey}
+              ref={(node) => {
+                monthSectionRefs.current[monthKey] = node;
+              }}
+            >
+              <MonthCalendar
+                anchorDate={anchorDate}
+                bookings={monthBookings}
+                calendarEvents={monthCalendarEvents}
+                closures={monthClosures}
+                onSelectBooking={setSelectedBooking}
+                onSelectCalendarEvent={setSelectedCalendarEvent}
+              />
+            </div>
+          );
+        })}
       </div>
 
       <Modal
