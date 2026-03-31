@@ -35,6 +35,17 @@ function getCalendarMonthAnchors(
   year: number | "all",
   month: number | "all",
 ) {
+  if (year !== "all" && month !== "all") {
+    return [new Date(year, month - 1, 1)];
+  }
+
+  if (year !== "all") {
+    return eachMonthOfInterval({
+      start: new Date(year, 0, 1),
+      end: new Date(year, 11, 1),
+    });
+  }
+
   const allDates = [
     ...bookings.map((booking) => parseISO(booking.checkIn)),
     ...bookings.map((booking) => parseISO(booking.checkout)),
@@ -42,14 +53,6 @@ function getCalendarMonthAnchors(
     ...calendarEvents.map((event) => parseISO(event.endDate)),
     ...closures.map((closure) => parseISO(closure.date)),
   ].filter((date) => !Number.isNaN(date.getTime()));
-
-  if (year !== "all" && month !== "all") {
-    return [new Date(year, month - 1, 1)];
-  }
-
-  if (year !== "all") {
-    return Array.from({ length: 12 }, (_, index) => new Date(year, index, 1));
-  }
 
   const availableYears = Array.from(
     new Set(allDates.map((date) => date.getFullYear())),
@@ -148,17 +151,8 @@ export default async function CalendarPage({
     countryClosures,
     filters.year,
     filters.month,
-  ).filter((anchorDate) => {
-    if (filters.year !== "all" && anchorDate.getFullYear() !== filters.year) {
-      return false;
-    }
-
-    if (filters.month !== "all" && anchorDate.getMonth() !== filters.month - 1) {
-      return false;
-    }
-
-    return true;
-  });
+  );
+  const calendarViewKey = `${filters.year}-${filters.month}-${filters.countryCode}-${filters.channel}`;
 
   const displayCountryCode =
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
@@ -210,6 +204,7 @@ export default async function CalendarPage({
         <CalendarAutoSync enabled={icalFeeds.some((feed) => feed.isActive)} />
         <CalendarFeedsPanel feeds={icalFeeds} />
         <CalendarPanel
+          key={calendarViewKey}
           rangeLabel={rangeLabel}
           bookings={countryAndChannelBookings}
           calendarEvents={countryCalendarEvents}

@@ -426,8 +426,12 @@ export function CalendarPanel({
   );
 
   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "auto",
+    });
     panelRef.current?.scrollIntoView({
-      behavior: "smooth",
+      behavior: "auto",
       block: "start",
     });
   }, [monthAnchorKey]);
