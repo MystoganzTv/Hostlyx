@@ -56,7 +56,7 @@ function getCalendarMonthAnchors(
 
   const availableYears = Array.from(
     new Set(allDates.map((date) => date.getFullYear())),
-  ).sort((left, right) => left - right);
+  ).sort((left, right) => right - left);
 
   if (month !== "all") {
     if (availableYears.length === 0) {
@@ -72,11 +72,11 @@ function getCalendarMonthAnchors(
 
   const sortedDates = allDates.sort((left, right) => left.getTime() - right.getTime());
 
-  return eachMonthOfInterval({
-    start: startOfMonth(sortedDates[0]),
-    end: startOfMonth(sortedDates.at(-1) ?? new Date()),
-  });
-}
+    return eachMonthOfInterval({
+      start: startOfMonth(sortedDates[0]),
+      end: startOfMonth(sortedDates.at(-1) ?? new Date()),
+    }).reverse();
+  }
 
 function resolveCalendarYear(
   searchParams: Record<string, string | string[] | undefined>,
@@ -188,6 +188,9 @@ export default async function CalendarPage({
     selectedCalendarMonth,
   );
   const calendarViewKey = `${selectedCalendarYear}-${selectedCalendarMonth}-${filters.countryCode}-${filters.channel}`;
+  const hasLegacySyncedEventDetails = calendarEvents.some(
+    (event) => event.icalFeedId && !event.description.trim(),
+  );
 
   const displayCountryCode =
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
@@ -230,7 +233,10 @@ export default async function CalendarPage({
       }
     >
       <div className="space-y-6">
-        <CalendarAutoSync enabled={icalFeeds.some((feed) => feed.isActive)} />
+        <CalendarAutoSync
+          enabled={icalFeeds.some((feed) => feed.isActive)}
+          force={hasLegacySyncedEventDetails}
+        />
         <CalendarFeedsPanel feeds={icalFeeds} />
         <CalendarPanel
           key={calendarViewKey}

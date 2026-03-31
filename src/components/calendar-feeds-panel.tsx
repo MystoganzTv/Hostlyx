@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { formatDistanceToNowStrict, parseISO } from "date-fns";
 import { Link2, RefreshCw, Trash2 } from "lucide-react";
-import { SectionCard } from "@/components/section-card";
+import { Modal } from "@/components/modal";
 import type { IcalFeedRecord } from "@/lib/types";
 
 function getSourceLabel(source: IcalFeedRecord["source"]) {
@@ -66,7 +66,7 @@ function formatLastSynced(value: string | null | undefined) {
     return "Not synced yet";
   }
 
-  return `${formatDistanceToNowStrict(parsed, { addSuffix: true })}`;
+  return formatDistanceToNowStrict(parsed, { addSuffix: true });
 }
 
 function maskFeedUrl(feedUrl: string) {
@@ -85,8 +85,30 @@ export function CalendarFeedsPanel({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const activeFeeds = useMemo(() => feeds.filter((feed) => feed.isActive), [feeds]);
+  const latestSyncedAt = useMemo(() => {
+    const timestamps = activeFeeds
+      .map((feed) => {
+        if (!feed.lastSyncedAt) {
+          return null;
+        }
+
+        const parsed = parseISO(feed.lastSyncedAt);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      })
+      .filter((value): value is Date => value instanceof Date);
+
+    if (timestamps.length === 0) {
+      return null;
+    }
+
+    return timestamps.sort((left, right) => right.getTime() - left.getTime())[0];
+  }, [activeFeeds]);
+  const totalEvents = activeFeeds.reduce((sum, feed) => sum + feed.eventCount, 0);
 
   function refreshFeed(feedId: number) {
     setMessage(null);
@@ -140,20 +162,71 @@ export function CalendarFeedsPanel({
     });
   }
 
-  return (
-    <SectionCard
-      title="Connected iCal feeds"
-      subtitle="Saved calendar connections stay separate from financial bookings. Use them for occupancy, check-ins, check-outs, and blocked dates."
-    >
-      <div className="space-y-4">
-        {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
-        {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+  if (feeds.length === 0) {
+    return null;
+  }
 
-        {feeds.length === 0 ? (
-          <div className="workspace-soft-card rounded-[24px] p-5 text-sm leading-6 text-[var(--workspace-muted)]">
-            No saved iCal feeds yet. Connect one from the Calendar action bar to start syncing events automatically.
+  return (
+    <>
+      <div className="workspace-card rounded-[24px] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <div>
+              <p className="text-lg font-semibold text-[var(--workspace-text)]">Connected iCal</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--workspace-muted)]">
+                {activeFeeds.length} active feed{activeFeeds.length === 1 ? "" : "s"} syncing into Calendar only.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--workspace-muted)]">
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                {totalEvents} synced event{totalEvents === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                {latestSyncedAt
+                  ? `Latest sync ${formatDistanceToNowStrict(latestSyncedAt, { addSuffix: true })}`
+                  : "Waiting for first sync"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {activeFeeds.map((feed) => (
+                <span
+                  key={feed.id}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-[var(--workspace-text)]"
+                >
+                  {feed.propertyName} · {getSourceLabel(feed.source)}
+                </span>
+              ))}
+            </div>
           </div>
-        ) : (
+
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="workspace-button-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition"
+          >
+            <Link2 className="h-4 w-4" />
+            Manage feeds
+          </button>
+        </div>
+      </div>
+
+      <Modal
+        open={isModalOpen}
+        title="Connected iCal feeds"
+        onClose={() => setIsModalOpen(false)}
+        alignTop
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+            Saved calendar connections stay separate from financial bookings. Use them for occupancy,
+            check-ins, check-outs, and blocked dates.
+          </p>
+
+          {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+          {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+
           <div className="grid gap-4 xl:grid-cols-2">
             {feeds.map((feed) => (
               <article key={feed.id} className="workspace-soft-card rounded-[24px] p-5">
@@ -174,26 +247,34 @@ export function CalendarFeedsPanel({
                     </div>
                   </div>
 
-                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${getStatusTone(feed.lastSyncStatus)}`}>
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${getStatusTone(feed.lastSyncStatus)}`}
+                  >
                     {getStatusLabel(feed)}
                   </span>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Source</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                      Source
+                    </p>
                     <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
                       {getSourceLabel(feed.source)}
                     </p>
                   </div>
                   <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Events</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                      Events
+                    </p>
                     <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
                       {feed.eventCount}
                     </p>
                   </div>
                   <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">Last synced</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                      Last synced
+                    </p>
                     <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
                       {formatLastSynced(feed.lastSyncedAt)}
                     </p>
@@ -233,8 +314,8 @@ export function CalendarFeedsPanel({
               </article>
             ))}
           </div>
-        )}
-      </div>
-    </SectionCard>
+        </div>
+      </Modal>
+    </>
   );
 }

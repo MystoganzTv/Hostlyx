@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 export function CalendarAutoSync({
   enabled,
+  force,
 }: {
   enabled: boolean;
+  force?: boolean;
 }) {
   const router = useRouter();
   const hasStartedRef = useRef(false);
@@ -21,7 +23,7 @@ export function CalendarAutoSync({
 
     void (async () => {
       try {
-        const response = await fetch("/api/calendar/feeds/sync-due", {
+        const response = await fetch(`/api/calendar/feeds/sync-due${force ? "?force=1" : ""}`, {
           method: "POST",
         });
 
@@ -45,7 +47,7 @@ export function CalendarAutoSync({
     return () => {
       isCancelled = true;
     };
-  }, [enabled, router]);
+  }, [enabled, force, router]);
 
   return null;
 }

@@ -38,6 +38,7 @@ type CalendarTimelineItem = {
   channel: string;
   variant: "financial_booking" | "calendar_booking" | "blocked_conflict";
   booking?: BookingRecord;
+  calendarEvent?: CalendarEventRecord;
 };
 
 function buildCalendarDays(anchor: Date) {
@@ -96,6 +97,57 @@ function getGuestLabel(booking: BookingRecord) {
   return extraGuests > 0 ? `${primary} + ${extraGuests}` : primary;
 }
 
+function extractReservationUrl(description: string) {
+  const match = description.match(/Reservation URL:\s*(https?:\/\/\S+)/i);
+  return match?.[1]?.trim() ?? "";
+}
+
+function extractReservationCode(description: string) {
+  const reservationUrl = extractReservationUrl(description);
+
+  if (!reservationUrl) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(reservationUrl);
+    const match = parsed.pathname.match(/\/details\/([^/?#]+)/i);
+    return match?.[1]?.trim() ?? "";
+  } catch {
+    const match = reservationUrl.match(/\/details\/([^/?#]+)/i);
+    return match?.[1]?.trim() ?? "";
+  }
+}
+
+function extractPhoneLast4(description: string) {
+  const match = description.match(/Phone Number \(Last 4 Digits\):\s*(\d{4})/i);
+  return match?.[1]?.trim() ?? "";
+}
+
+function getCalendarEventLabel(event: CalendarEventRecord) {
+  const summary = event.summary.trim() || "Calendar booking";
+  const reservationCode = extractReservationCode(event.description);
+
+  if (reservationCode) {
+    return `${summary} · ${reservationCode}`;
+  }
+
+  const phoneLast4 = extractPhoneLast4(event.description);
+  return phoneLast4 ? `${summary} · ${phoneLast4}` : summary;
+}
+
+function getCalendarEventNotes(description: string) {
+  return description
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line &&
+        !line.toLowerCase().startsWith("reservation url:") &&
+        !line.toLowerCase().startsWith("phone number (last 4 digits):"),
+    );
+}
+
 function buildTimelineItems(
   bookings: BookingRecord[],
   calendarEvents: CalendarEventRecord[],
@@ -128,9 +180,10 @@ function buildTimelineItems(
       id: `calendar-${event.id ?? event.externalEventId}-${event.startDate}`,
       startDate: event.startDate,
       endDate: event.endDate,
-      label: event.summary.trim() || "Calendar booking",
+      label: getCalendarEventLabel(event),
       channel: event.source,
       variant: "calendar_booking",
+      calendarEvent: event,
     }));
 
   return [...bookingItems, ...calendarBookingItems];
@@ -266,6 +319,7 @@ function MonthCalendar({
   compact = false,
   abbreviatedTitle = false,
   onSelectBooking,
+  onSelectCalendarEvent,
 }: {
   anchorDate: Date;
   bookings: BookingRecord[];
@@ -274,6 +328,7 @@ function MonthCalendar({
   compact?: boolean;
   abbreviatedTitle?: boolean;
   onSelectBooking: (booking: BookingRecord) => void;
+  onSelectCalendarEvent: (event: CalendarEventRecord) => void;
 }) {
   const days = buildCalendarDays(anchorDate);
   const weeks = chunkWeeks(days);
@@ -356,17 +411,24 @@ function MonthCalendar({
                     style={{ gridAutoRows: `${barHeight}px` }}
                   >
                     {segments.map((segment) => (
-                      <button
-                        type="button"
-                        key={`${segment.item.id}-${segment.startIndex}-${segment.track}`}
-                        onClick={() => {
-                          if (segment.item.booking) {
-                            onSelectBooking(segment.item.booking);
-                          }
-                        }}
-                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 text-left shadow-[0_10px_24px_rgba(2,6,23,0.22)] transition ${
-                          segment.item.booking ? "hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--workspace-accent)]/70" : "cursor-default"
-                        } ${getBookingTone(segment.item.channel, segment.item.variant)}`}
+	                      <button
+	                        type="button"
+	                        key={`${segment.item.id}-${segment.startIndex}-${segment.track}`}
+	                        onClick={() => {
+	                          if (segment.item.booking) {
+	                            onSelectBooking(segment.item.booking);
+	                            return;
+	                          }
+
+	                          if (segment.item.calendarEvent) {
+	                            onSelectCalendarEvent(segment.item.calendarEvent);
+	                          }
+	                        }}
+	                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 text-left shadow-[0_10px_24px_rgba(2,6,23,0.22)] transition ${
+	                          segment.item.booking || segment.item.calendarEvent
+	                            ? "hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--workspace-accent)]/70"
+	                            : "cursor-default"
+	                        } ${getBookingTone(segment.item.channel, segment.item.variant)}`}
                         style={{
                           gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
                           gridRow: segment.track + 1,
@@ -417,6 +479,7 @@ export function CalendarPanel({
   currencyCode: CurrencyCode;
 }) {
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
+  const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const showOverviewGrid = monthAnchors.length > 1;
   const isYearGrid = monthAnchors.length === 12;
@@ -489,6 +552,7 @@ export function CalendarPanel({
               compact={showOverviewGrid}
               abbreviatedTitle={isYearGrid}
               onSelectBooking={setSelectedBooking}
+              onSelectCalendarEvent={setSelectedCalendarEvent}
             />
           );
         })}
@@ -614,6 +678,123 @@ export function CalendarPanel({
               <button
                 type="button"
                 onClick={() => setSelectedBooking(null)}
+                className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
+              >
+                Close details
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(selectedCalendarEvent)}
+        title={selectedCalendarEvent ? getCalendarEventLabel(selectedCalendarEvent) : "Synced calendar event"}
+        onClose={() => setSelectedCalendarEvent(null)}
+      >
+        {selectedCalendarEvent ? (
+          <div className="space-y-5">
+            <div className="rounded-full border border-slate-300/18 bg-slate-400/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-100">
+              Synced iCal event
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Stay window</p>
+                <h3 className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                  {selectedCalendarEvent.summary || "Reserved"}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+                  {formatDateLabel(selectedCalendarEvent.startDate)} to {formatDateLabel(selectedCalendarEvent.endDate)}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Property</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {selectedCalendarEvent.propertyName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Listing</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {selectedCalendarEvent.unitName || "Primary listing"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservation code</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {extractReservationCode(selectedCalendarEvent.description) || "Not provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Phone last 4</p>
+                    <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                      {extractPhoneLast4(selectedCalendarEvent.description) || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Sync details</p>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Source</span>
+                    <span className="font-medium capitalize text-[var(--workspace-text)]">
+                      {selectedCalendarEvent.source}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Type</span>
+                    <span className="font-medium text-[var(--workspace-text)]">
+                      {selectedCalendarEvent.eventType === "blocked" ? "Blocked" : "Reservation"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">Last synced</span>
+                    <span className="font-medium text-[var(--workspace-text)]">
+                      {formatDateLabel(selectedCalendarEvent.lastSyncedAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">External id</span>
+                    <span className="max-w-[230px] truncate font-medium text-[var(--workspace-text)]">
+                      {selectedCalendarEvent.externalEventId || "Not provided"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {extractReservationUrl(selectedCalendarEvent.description) ? (
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservation link</p>
+                <a
+                  href={extractReservationUrl(selectedCalendarEvent.description)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex text-sm font-medium text-[var(--workspace-accent)] hover:underline"
+                >
+                  Open reservation in Airbnb
+                </a>
+              </div>
+            ) : null}
+
+            {getCalendarEventNotes(selectedCalendarEvent.description).length > 0 ? (
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Imported notes</p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--workspace-text)]">
+                  {getCalendarEventNotes(selectedCalendarEvent.description).map((note) => (
+                    <p key={note}>{note}</p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedCalendarEvent(null)}
                 className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
                 Close details

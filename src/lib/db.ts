@@ -353,6 +353,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       source TEXT NOT NULL DEFAULT 'other',
       external_event_id TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
       start_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
       event_type TEXT NOT NULL DEFAULT 'unknown',
@@ -632,6 +633,7 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       source TEXT NOT NULL DEFAULT 'other',
       external_event_id TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
       start_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
       event_type TEXT NOT NULL DEFAULT 'unknown',
@@ -690,6 +692,10 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "calendar_events", "summary")) {
     db.exec("ALTER TABLE calendar_events ADD COLUMN summary TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "calendar_events", "description")) {
+    db.exec("ALTER TABLE calendar_events ADD COLUMN description TEXT NOT NULL DEFAULT '';");
   }
 
   if (!hasColumn(db, "calendar_events", "start_date")) {
@@ -950,6 +956,7 @@ async function initializePostgresSchema() {
           source TEXT NOT NULL DEFAULT 'other',
           external_event_id TEXT NOT NULL DEFAULT '',
           summary TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
           start_date TEXT NOT NULL,
           end_date TEXT NOT NULL,
           event_type TEXT NOT NULL DEFAULT 'unknown',
@@ -1239,6 +1246,10 @@ async function initializePostgresSchema() {
       await pool.query(`
         ALTER TABLE calendar_events
         ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE calendar_events
+        ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''
       `);
       await pool.query(`
         ALTER TABLE calendar_events
@@ -1582,6 +1593,7 @@ function mapCalendarEventRecord(row: Record<string, unknown>): CalendarEventReco
     source: String(getRowValue(row, "source") ?? "other") as CalendarEventSource,
     externalEventId: String(getRowValue(row, "externalEventId", "externaleventid") ?? ""),
     summary: String(getRowValue(row, "summary") ?? ""),
+    description: String(getRowValue(row, "description") ?? ""),
     startDate: String(getRowValue(row, "startDate", "startdate") ?? ""),
     endDate: String(getRowValue(row, "endDate", "enddate") ?? ""),
     eventType: String(getRowValue(row, "eventType", "eventtype") ?? "unknown") as CalendarEventType,
@@ -1726,6 +1738,7 @@ function cloneCalendarEventRecord(event: StoredCalendarEvent): CalendarEventReco
     source: event.source,
     externalEventId: event.externalEventId,
     summary: event.summary,
+    description: event.description,
     startDate: event.startDate,
     endDate: event.endDate,
     eventType: event.eventType,
@@ -3684,6 +3697,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
           source,
           external_event_id AS externalEventId,
           summary,
+          description,
           start_date AS startDate,
           end_date AS endDate,
           event_type AS eventType,
@@ -3722,6 +3736,7 @@ export async function getCalendarEvents(ownerEmail: string): Promise<CalendarEve
           source,
           external_event_id AS externalEventId,
           summary,
+          description,
           start_date AS startDate,
           end_date AS endDate,
           event_type AS eventType,
@@ -4138,6 +4153,7 @@ export async function replaceCalendarEventsForFeed({
   events: Array<{
     externalEventId: string;
     summary: string;
+    description: string;
     startDate: string;
     endDate: string;
     eventType: CalendarEventType;
@@ -4177,13 +4193,14 @@ export async function replaceCalendarEventsForFeed({
               source,
               external_event_id,
               summary,
+              description,
               start_date,
               end_date,
               event_type,
               linked_booking_id,
               last_synced_at
             )
-            VALUES ($1, 0, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, $12)
+            VALUES ($1, 0, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULL, $13)
           `,
           [
             normalizedEmail,
@@ -4194,6 +4211,7 @@ export async function replaceCalendarEventsForFeed({
             feed.source,
             event.externalEventId,
             event.summary,
+            event.description,
             event.startDate,
             event.endDate,
             event.eventType,
@@ -4234,6 +4252,7 @@ export async function replaceCalendarEventsForFeed({
         source: feed.source,
         externalEventId: event.externalEventId,
         summary: event.summary,
+        description: event.description,
         startDate: event.startDate,
         endDate: event.endDate,
         eventType: event.eventType,
@@ -4267,13 +4286,14 @@ export async function replaceCalendarEventsForFeed({
           source,
           external_event_id,
           summary,
+          description,
           start_date,
           end_date,
           event_type,
           linked_booking_id,
           last_synced_at
         )
-        VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+        VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
       `,
     );
 
@@ -4287,6 +4307,7 @@ export async function replaceCalendarEventsForFeed({
         feed.source,
         event.externalEventId,
         event.summary,
+        event.description,
         event.startDate,
         event.endDate,
         event.eventType,

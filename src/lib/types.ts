@@ -96,6 +96,7 @@ export type CalendarEventRecord = {
   source: CalendarEventSource;
   externalEventId: string;
   summary: string;
+  description: string;
   startDate: string;
   endDate: string;
   eventType: CalendarEventType;

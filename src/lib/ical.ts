@@ -4,6 +4,7 @@ import type { CalendarEventSource, CalendarEventType } from "./types";
 type ParsedIcalEvent = {
   externalEventId: string;
   summary: string;
+  description: string;
   startDate: string;
   endDate: string;
   eventType: CalendarEventType;
@@ -227,6 +228,7 @@ export function parseIcalEvents(
       {
         externalEventId: buildExternalEventId(source, rawEvent, index),
         summary: rawEvent.summary || "Imported iCal event",
+        description: rawEvent.description || "",
         startDate,
         endDate,
         eventType: inferEventType(rawEvent),
