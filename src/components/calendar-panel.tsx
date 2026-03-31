@@ -12,6 +12,7 @@ import {
   max,
   min,
   parseISO,
+  startOfDay,
   startOfMonth,
 } from "date-fns";
 import Link from "next/link";
@@ -20,7 +21,6 @@ import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-ba
 import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
 import { getBookingStatusState } from "@/lib/booking-status";
 import { Modal } from "@/components/modal";
-import { SectionCard } from "@/components/section-card";
 import type {
   BookingRecord,
   CalendarEventRecord,
@@ -334,6 +334,7 @@ function MonthCalendar({
   const weeks = chunkWeeks(days);
   const monthLabel = format(anchorDate, abbreviatedTitle ? "MMMM" : "MMMM yyyy");
   const monthKey = format(anchorDate, "yyyy-MM");
+  const isPastMonth = endOfMonth(anchorDate) < startOfMonth(startOfDay(new Date()));
   const timelineItems = buildTimelineItems(bookings, calendarEvents).filter((item) => {
     const stayStart = parseISO(item.startDate);
     const stayEnd = parseISO(item.endDate);
@@ -346,10 +347,29 @@ function MonthCalendar({
   const blockedDateSet = buildBlockedDateSet(anchorDate, closures, calendarEvents);
 
   return (
-    <SectionCard
-      title={monthLabel}
-      subtitle={`${formatNumber(checkIns.length)} check-ins, ${formatNumber(checkOuts.length)} check-outs, ${formatNumber(blockedDateSet.size)} closed days`}
+    <section
+      className={`space-y-4 border-t border-white/6 py-8 first:border-t-0 first:pt-0 ${
+        isPastMonth ? "opacity-55 [filter:grayscale(0.5)]" : ""
+      }`}
     >
+      <div className="flex flex-col gap-3 border-b border-white/6 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-semibold tracking-[-0.05em] text-[var(--workspace-text)]">
+            {monthLabel}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+            {formatNumber(checkIns.length)} check-ins, {formatNumber(checkOuts.length)} check-outs,{" "}
+            {formatNumber(blockedDateSet.size)} closed days
+          </p>
+        </div>
+
+        {isPastMonth ? (
+          <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+            Past month
+          </span>
+        ) : null}
+      </div>
+
       <div className="space-y-3">
         <div className="grid grid-cols-7 gap-2">
           {weekdayLabels.map((label) => (
@@ -406,29 +426,26 @@ function MonthCalendar({
                 </div>
 
                 <div className="absolute inset-x-0" style={{ top: overlayTop }}>
-                  <div
-                    className="grid grid-cols-7 gap-2"
-                    style={{ gridAutoRows: `${barHeight}px` }}
-                  >
+                  <div className="grid grid-cols-7 gap-2" style={{ gridAutoRows: `${barHeight}px` }}>
                     {segments.map((segment) => (
-	                      <button
-	                        type="button"
-	                        key={`${segment.item.id}-${segment.startIndex}-${segment.track}`}
-	                        onClick={() => {
-	                          if (segment.item.booking) {
-	                            onSelectBooking(segment.item.booking);
-	                            return;
-	                          }
+                      <button
+                        type="button"
+                        key={`${segment.item.id}-${segment.startIndex}-${segment.track}`}
+                        onClick={() => {
+                          if (segment.item.booking) {
+                            onSelectBooking(segment.item.booking);
+                            return;
+                          }
 
-	                          if (segment.item.calendarEvent) {
-	                            onSelectCalendarEvent(segment.item.calendarEvent);
-	                          }
-	                        }}
-	                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 text-left shadow-[0_10px_24px_rgba(2,6,23,0.22)] transition ${
-	                          segment.item.booking || segment.item.calendarEvent
-	                            ? "hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--workspace-accent)]/70"
-	                            : "cursor-default"
-	                        } ${getBookingTone(segment.item.channel, segment.item.variant)}`}
+                          if (segment.item.calendarEvent) {
+                            onSelectCalendarEvent(segment.item.calendarEvent);
+                          }
+                        }}
+                        className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border px-3 text-left shadow-[0_10px_24px_rgba(2,6,23,0.22)] transition ${
+                          segment.item.booking || segment.item.calendarEvent
+                            ? "hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--workspace-accent)]/70"
+                            : "cursor-default"
+                        } ${getBookingTone(segment.item.channel, segment.item.variant)}`}
                         style={{
                           gridColumn: `${segment.startIndex + 1} / span ${segment.span}`,
                           gridRow: segment.track + 1,
@@ -459,7 +476,7 @@ function MonthCalendar({
           })}
         </div>
       </div>
-    </SectionCard>
+    </section>
   );
 }
 
@@ -481,8 +498,6 @@ export function CalendarPanel({
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const showOverviewGrid = monthAnchors.length > 1;
-  const isYearGrid = monthAnchors.length === 12;
   const reservationCount = useMemo(
     () => buildTimelineItems(bookings, calendarEvents).length,
     [bookings, calendarEvents],
@@ -524,13 +539,7 @@ export function CalendarPanel({
         </div>
       </div>
 
-      <div
-        className={
-          showOverviewGrid
-            ? "grid gap-6"
-            : "grid gap-6"
-        }
-      >
+      <div className="workspace-card rounded-[30px] p-6 sm:p-7">
         {monthAnchors.map((anchorDate) => {
           const monthKey = format(anchorDate, "yyyy-MM");
           const monthBookings = bookings.filter((booking) => intersectsMonth(booking, anchorDate));
@@ -553,8 +562,6 @@ export function CalendarPanel({
               bookings={monthBookings}
               calendarEvents={monthCalendarEvents}
               closures={monthClosures}
-              compact={showOverviewGrid}
-              abbreviatedTitle={isYearGrid}
               onSelectBooking={setSelectedBooking}
               onSelectCalendarEvent={setSelectedCalendarEvent}
             />
