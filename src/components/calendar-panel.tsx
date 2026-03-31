@@ -498,6 +498,7 @@ export function CalendarPanel({
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const monthSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reservationCount = useMemo(
     () => buildTimelineItems(bookings, calendarEvents).length,
     [bookings, calendarEvents],
@@ -506,17 +507,34 @@ export function CalendarPanel({
     () => monthAnchors.map((anchorDate) => format(anchorDate, "yyyy-MM")).join(","),
     [monthAnchors],
   );
+  const initialMonthKey = useMemo(() => {
+    const todayKey = format(startOfMonth(new Date()), "yyyy-MM");
+
+    if (monthAnchors.some((anchorDate) => format(anchorDate, "yyyy-MM") === todayKey)) {
+      return todayKey;
+    }
+
+    return monthAnchors[0] ? format(monthAnchors[0], "yyyy-MM") : "";
+  }, [monthAnchors]);
 
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "auto",
+    const targetNode = monthSectionRefs.current[initialMonthKey] ?? panelRef.current;
+
+    if (!targetNode) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      targetNode.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
     });
-    panelRef.current?.scrollIntoView({
-      behavior: "auto",
-      block: "start",
-    });
-  }, [monthAnchorKey]);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [initialMonthKey, monthAnchorKey]);
 
   return (
     <div ref={panelRef} className="space-y-6">
@@ -556,15 +574,21 @@ export function CalendarPanel({
           );
 
           return (
-            <MonthCalendar
+            <div
               key={monthKey}
-              anchorDate={anchorDate}
-              bookings={monthBookings}
-              calendarEvents={monthCalendarEvents}
-              closures={monthClosures}
-              onSelectBooking={setSelectedBooking}
-              onSelectCalendarEvent={setSelectedCalendarEvent}
-            />
+              ref={(node) => {
+                monthSectionRefs.current[monthKey] = node;
+              }}
+            >
+              <MonthCalendar
+                anchorDate={anchorDate}
+                bookings={monthBookings}
+                calendarEvents={monthCalendarEvents}
+                closures={monthClosures}
+                onSelectBooking={setSelectedBooking}
+                onSelectCalendarEvent={setSelectedCalendarEvent}
+              />
+            </div>
           );
         })}
       </div>

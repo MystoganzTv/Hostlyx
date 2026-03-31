@@ -56,7 +56,7 @@ function getCalendarMonthAnchors(
 
   const availableYears = Array.from(
     new Set(allDates.map((date) => date.getFullYear())),
-  ).sort((left, right) => right - left);
+  ).sort((left, right) => left - right);
 
   if (month !== "all") {
     if (availableYears.length === 0) {
@@ -75,7 +75,7 @@ function getCalendarMonthAnchors(
     return eachMonthOfInterval({
       start: startOfMonth(sortedDates[0]),
       end: startOfMonth(sortedDates.at(-1) ?? new Date()),
-    }).reverse();
+    });
   }
 
 function resolveCalendarYear(
