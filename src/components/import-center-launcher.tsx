@@ -71,7 +71,8 @@ export function ImportCenterLauncher({
 
       <Modal
         open={isUploadOpen}
-        title="Import bookings or expenses"
+        bare
+        alignTop
         onClose={() => setIsUploadOpen(false)}
       >
         <UploadPanel

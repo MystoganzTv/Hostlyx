@@ -33,7 +33,8 @@ export function ReconcileStatementLauncher({
 
       <Modal
         open={isOpen}
-        title="Import statement for Reconcile"
+        bare
+        alignTop
         onClose={() => setIsOpen(false)}
       >
         <UploadPanel

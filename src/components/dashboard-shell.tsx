@@ -919,7 +919,8 @@ export function DashboardShell({
 
       <Modal
         open={isUploadOpen}
-        title="Bring your data"
+        bare
+        alignTop
         onClose={() => setIsUploadOpen(false)}
       >
         <UploadPanel properties={properties} onCancel={() => setIsUploadOpen(false)} />
