@@ -670,8 +670,9 @@ export function buildImportPreview(
 
   if (source === "financial_statement") {
     const statement = extractFinancialStatement(workbook);
-    const blockMessage =
-      "This looks like a financial statement, not individual bookings.";
+    const blockMessage = statement
+      ? "This looks like a financial statement. Hostlyx will save it for Reconcile instead of creating booking rows."
+      : "This looks like a financial statement, but Hostlyx still needs a readable payout total before it can save it to Reconcile.";
 
     return {
       source,
@@ -679,9 +680,7 @@ export function buildImportPreview(
       fileName,
       requiresManualMapping: false,
       blocksImport: !statement,
-      blockMessage: statement
-        ? blockMessage
-        : "This looks like a financial statement, but Hostlyx could not read a payout total yet.",
+      blockMessage,
       manualMapping: null,
       totalRowsRead: workbook.sheets.reduce((sum, sheet) => sum + Math.max(0, sheet.rows.length - 1), 0),
       validRows: statement ? 1 : 0,

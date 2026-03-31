@@ -11,6 +11,10 @@ const airbnbFinancialColumns = {
     "yourearnings",
     "hostpayout",
     "expectedpayout",
+    "paidout",
+    "amountpaidout",
+    "actualpaidout",
+    "actualamountpaidout",
     "ganancias",
     "pagoneto",
     "ingresonetodelanfitrion",
@@ -45,7 +49,18 @@ const airbnbFinancialColumns = {
 } as const;
 
 const bookingFinancialColumns = {
-  payout: ["payout", "netpayout", "payableamount", "amounttopayout", "netamount", "pagoneto"],
+  payout: [
+    "payout",
+    "netpayout",
+    "payableamount",
+    "amounttopayout",
+    "netamount",
+    "paidout",
+    "amountpaidout",
+    "actualpaidout",
+    "actualamountpaidout",
+    "pagoneto",
+  ],
   fees: ["commission", "commissionamount", "platformfee", "servicefee", "comision"],
   taxes: ["tax", "taxes", "taxamount", "vat", "iva", "impuestos", "tasas"],
   date: ["date", "issuedate", "statementdate", "payoutdate", "servicedate", "fechadelservicio"],

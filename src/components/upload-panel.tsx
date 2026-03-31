@@ -319,7 +319,7 @@ function getSourcePresentation(source: ImportPreviewPayload["source"]) {
         icon: CircleDollarSign,
         badge: "Financial statement",
         description:
-          "This looks like a financial statement, not individual bookings.",
+          "This file is for Reconcile. Hostlyx can save payout totals, fees, and taxes from it when the payout amount is readable.",
       };
     default:
       return {
@@ -416,6 +416,11 @@ export function UploadPanel({
   }, [approvedRowIds.length, preview, validExpenseRows]);
 
   const isFinancialPreview = preview?.source === "financial_statement";
+  const isBlockedFinancialStatement = Boolean(
+    preview &&
+      preview.source === "financial_statement" &&
+      preview.blocksImport,
+  );
   const isFinancialStatementReady = Boolean(
     preview &&
       preview.source === "financial_statement" &&
@@ -449,6 +454,10 @@ export function UploadPanel({
       return "Save financial statement";
     }
 
+    if (isBlockedFinancialStatement) {
+      return "Needs payout total";
+    }
+
     if (preview.blocksImport) {
       return "Use a reservations export";
     }
@@ -458,7 +467,7 @@ export function UploadPanel({
     }
 
     return "Map columns manually";
-  }, [actionableRows, isFinancialStatementReady, phase, preview]);
+  }, [actionableRows, isBlockedFinancialStatement, isFinancialStatementReady, phase, preview]);
 
   const selectedTableRow = useMemo(() => {
     if (!preview?.tableRows.length) {
@@ -652,7 +661,10 @@ export function UploadPanel({
     if (preview.blocksImport) {
       setToast({
         tone: "error",
-        message: preview.blockMessage ?? "This file is not the right format for booking imports.",
+        message:
+          isBlockedFinancialStatement
+            ? preview.blockMessage ?? "This financial statement still needs a readable payout total."
+            : preview.blockMessage ?? "This file is not the right format for booking imports.",
       });
       return;
     }
@@ -1385,8 +1397,14 @@ export function UploadPanel({
                       </p>
                       {preview.blocksImport ? (
                         <div className="mt-4 flex flex-wrap items-center gap-3">
-                          <span className="rounded-full border border-rose-400/20 bg-rose-300/[0.08] px-3 py-1.5 text-xs font-medium text-rose-100">
-                            {preview.source === "financial_statement"
+                          <span
+                            className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                              isBlockedFinancialStatement
+                                ? "border-amber-400/20 bg-amber-300/[0.08] text-amber-100"
+                                : "border-rose-400/20 bg-rose-300/[0.08] text-rose-100"
+                            }`}
+                          >
+                            {isBlockedFinancialStatement
                               ? "We still need a readable payout total"
                               : "Use a reservations or earnings export instead"}
                           </span>
@@ -1424,7 +1442,9 @@ export function UploadPanel({
                   <span
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                       preview.blocksImport
-                        ? "border-rose-400/24 bg-rose-400/10 text-rose-100"
+                        ? isBlockedFinancialStatement
+                          ? "border-amber-400/24 bg-amber-400/10 text-amber-100"
+                          : "border-rose-400/24 bg-rose-400/10 text-rose-100"
                         : preview.source === "financial_statement"
                         ? "border-[var(--workspace-accent)]/24 bg-[rgba(125,211,197,0.12)] text-[var(--workspace-accent)]"
                         : preview.errorRows === 0 && preview.duplicateRows === 0 && preview.warningRows === 0
@@ -1433,7 +1453,9 @@ export function UploadPanel({
                     }`}
                   >
                     {preview.blocksImport
-                      ? "Wrong file type"
+                      ? isBlockedFinancialStatement
+                        ? "Statement incomplete"
+                        : "Wrong file type"
                       : isFinancialStatementReady
                       ? "Statement ready"
                       : preview.source === "financial_statement"
@@ -1448,15 +1470,29 @@ export function UploadPanel({
               </div>
 
               {preview.blocksImport ? (
-                <div className="rounded-[28px] border border-rose-400/18 bg-rose-300/[0.07] p-5 sm:p-6">
-                  <p className="text-sm font-medium text-rose-50/95">
-                    {preview.source === "financial_statement"
-                      ? "Hostlyx recognized a financial statement, but we still need a readable payout total before it can be imported."
+                <div
+                  className={`rounded-[28px] border p-5 sm:p-6 ${
+                    isBlockedFinancialStatement
+                      ? "border-amber-400/18 bg-amber-300/[0.07]"
+                      : "border-rose-400/18 bg-rose-300/[0.07]"
+                  }`}
+                >
+                  <p
+                    className={`text-sm font-medium ${
+                      isBlockedFinancialStatement ? "text-amber-50/95" : "text-rose-50/95"
+                    }`}
+                  >
+                    {isBlockedFinancialStatement
+                      ? "Hostlyx recognized a financial statement, but the payout total is still missing or unreadable."
                       : "This file is useful for invoices and VAT records, but it is not the right source for bookings."}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-rose-50/75">
-                    {preview.source === "financial_statement"
-                      ? "Try a cleaner payout or statement export, or one that includes the actual amount paid out, then upload it again."
+                  <p
+                    className={`mt-2 text-sm leading-6 ${
+                      isBlockedFinancialStatement ? "text-amber-50/75" : "text-rose-50/75"
+                    }`}
+                  >
+                    {isBlockedFinancialStatement
+                      ? "Try a cleaner statement export, or one that includes a column like payout, amount paid out, or actual amount paid out, then upload it again."
                       : "Export your Airbnb reservations or earnings file instead, then upload it here to populate bookings, payout, and stay dates."}
                   </p>
                 </div>
