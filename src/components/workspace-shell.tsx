@@ -320,7 +320,7 @@ export function WorkspaceShell({
         </aside>
 
         <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)] xl:min-h-0 xl:overflow-hidden">
-          <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:h-full xl:overflow-y-auto xl:overscroll-contain xl:p-9">
+          <div className="min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:flex xl:h-full xl:flex-col xl:overflow-y-auto xl:overscroll-contain xl:p-9">
             <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-4xl">
@@ -333,7 +333,7 @@ export function WorkspaceShell({
               ) : null}
             </div>
 
-            <div className="min-w-0">{children}</div>
+            <div className="min-w-0 xl:min-h-0 xl:flex-1">{children}</div>
           </div>
         </div>
       </div>

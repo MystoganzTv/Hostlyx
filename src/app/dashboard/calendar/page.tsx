@@ -252,21 +252,25 @@ export default async function CalendarPage({
         </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:overflow-hidden">
         <CalendarAutoSync
           enabled={icalFeeds.some((feed) => feed.isActive)}
           force={hasLegacySyncedEventDetails}
         />
-        <CalendarFeedsPanel feeds={icalFeeds} />
-        <CalendarPanel
-          key={calendarViewKey}
-          rangeLabel={rangeLabel}
-          bookings={countryAndChannelBookings}
-          calendarEvents={countryCalendarEvents}
-          closures={countryClosures}
-          monthAnchors={monthAnchors}
-          currencyCode={currencyCode}
-        />
+        <div className="xl:shrink-0">
+          <CalendarFeedsPanel feeds={icalFeeds} />
+        </div>
+        <div className="xl:min-h-0 xl:flex-1">
+          <CalendarPanel
+            key={calendarViewKey}
+            rangeLabel={rangeLabel}
+            bookings={countryAndChannelBookings}
+            calendarEvents={countryCalendarEvents}
+            closures={countryClosures}
+            monthAnchors={monthAnchors}
+            currencyCode={currencyCode}
+          />
+        </div>
       </div>
     </WorkspaceShell>
   );
