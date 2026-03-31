@@ -78,6 +78,32 @@ function getCalendarMonthAnchors(
   });
 }
 
+function resolveCalendarYear(
+  searchParams: Record<string, string | string[] | undefined>,
+  availableYears: number[],
+) {
+  const defaultYear = availableYears[0] ?? new Date().getFullYear();
+  const yearParam = Array.isArray(searchParams.year) ? searchParams.year[0] : searchParams.year;
+
+  if (yearParam === "all") {
+    return "all" as const;
+  }
+
+  const parsedYear = Number(yearParam);
+  return Number.isInteger(parsedYear) ? parsedYear : defaultYear;
+}
+
+function resolveCalendarMonth(searchParams: Record<string, string | string[] | undefined>) {
+  const monthParam = Array.isArray(searchParams.month) ? searchParams.month[0] : searchParams.month;
+
+  if (monthParam === "all") {
+    return "all" as const;
+  }
+
+  const parsedMonth = Number(monthParam);
+  return Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12 ? parsedMonth : "all";
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -114,6 +140,15 @@ export default async function CalendarPage({
     properties,
     userSettings.primaryCountryCode,
   );
+  const availableCalendarYears = Array.from(
+    new Set([
+      ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),
+      ...calendarEvents.map((event) => parseISO(event.startDate).getFullYear()),
+      ...closures.map((closure) => parseISO(closure.date).getFullYear()),
+    ].filter((year) => Number.isInteger(year))),
+  ).sort((a, b) => b - a);
+  const selectedCalendarYear = resolveCalendarYear(resolvedSearchParams, availableCalendarYears);
+  const selectedCalendarMonth = resolveCalendarMonth(resolvedSearchParams);
   const propertyCountryMap = new Map(
     properties.map((property) => [property.name.trim().toLowerCase(), property.countryCode]),
   );
@@ -149,22 +184,22 @@ export default async function CalendarPage({
     countryAndChannelBookings,
     countryCalendarEvents,
     countryClosures,
-    filters.year,
-    filters.month,
+    selectedCalendarYear,
+    selectedCalendarMonth,
   );
-  const calendarViewKey = `${filters.year}-${filters.month}-${filters.countryCode}-${filters.channel}`;
+  const calendarViewKey = `${selectedCalendarYear}-${selectedCalendarMonth}-${filters.countryCode}-${filters.channel}`;
 
   const displayCountryCode =
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
   const currencyCode = getCurrencyForCountry(displayCountryCode);
   const rangeLabel =
-    filters.year === "all"
-      ? filters.month === "all"
+    selectedCalendarYear === "all"
+      ? selectedCalendarMonth === "all"
         ? "All imported months"
-        : `Every ${format(new Date(2000, filters.month - 1, 1), "MMMM")}`
-      : filters.month === "all"
-        ? String(filters.year)
-        : format(new Date(filters.year, filters.month - 1, 1), "MMMM yyyy");
+        : `Every ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM")}`
+      : selectedCalendarMonth === "all"
+        ? String(selectedCalendarYear)
+        : format(new Date(selectedCalendarYear, selectedCalendarMonth - 1, 1), "MMMM yyyy");
 
   return (
     <WorkspaceShell
@@ -180,19 +215,13 @@ export default async function CalendarPage({
         <div className="flex flex-wrap items-center justify-end gap-3">
           <FilterBar
             mode="calendar"
-            years={Array.from(
-              new Set([
-                ...bookings.map((booking) => parseISO(booking.checkIn).getFullYear()),
-                ...calendarEvents.map((event) => parseISO(event.startDate).getFullYear()),
-                ...closures.map((closure) => parseISO(closure.date).getFullYear()),
-              ]),
-            ).sort((a, b) => b - a)}
+            years={availableCalendarYears}
             channels={Array.from(new Set(bookings.map((booking) => booking.channel))).sort((a, b) =>
               a.localeCompare(b),
             )}
             countries={Array.from(new Set(properties.map((property) => property.countryCode)))}
-            selectedYear={filters.year}
-            selectedMonth={filters.month}
+            selectedYear={selectedCalendarYear}
+            selectedMonth={selectedCalendarMonth}
             selectedChannel={filters.channel}
             selectedCountryCode={filters.countryCode}
           />

@@ -480,25 +480,16 @@ export function CalendarPanel({
           );
 
           return (
-            <div key={monthKey} className="space-y-4">
-              <div className="flex items-center gap-4 px-1">
-                <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(88,196,182,0.02),rgba(88,196,182,0.22),rgba(148,163,184,0.05))]" />
-                <span className="rounded-full border border-[var(--accent-soft-strong)]/55 bg-[linear-gradient(180deg,rgba(88,196,182,0.1)_0%,rgba(255,255,255,0.03)_100%)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-text)]/88 shadow-[0_8px_18px_rgba(88,196,182,0.08)]">
-                  {format(anchorDate, "MMMM yyyy")}
-                </span>
-                <div className="h-px flex-1 bg-[linear-gradient(90deg,rgba(148,163,184,0.05),rgba(88,196,182,0.22),rgba(88,196,182,0.02))]" />
-              </div>
-
-              <MonthCalendar
-                anchorDate={anchorDate}
-                bookings={monthBookings}
-                calendarEvents={monthCalendarEvents}
-                closures={monthClosures}
-                compact={showOverviewGrid}
-                abbreviatedTitle={isYearGrid}
-                onSelectBooking={setSelectedBooking}
-              />
-            </div>
+            <MonthCalendar
+              key={monthKey}
+              anchorDate={anchorDate}
+              bookings={monthBookings}
+              calendarEvents={monthCalendarEvents}
+              closures={monthClosures}
+              compact={showOverviewGrid}
+              abbreviatedTitle={isYearGrid}
+              onSelectBooking={setSelectedBooking}
+            />
           );
         })}
       </div>

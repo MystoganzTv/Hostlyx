@@ -36,6 +36,11 @@ const rangeOptions: Array<{ value: DashboardDateRangePreset; label: string }> = 
 const rangeFilterStorageKey = "hostlyx:filters:range";
 const calendarFilterStorageKey = "hostlyx:filters:calendar";
 
+function buildFilterHref(pathname: string, params: URLSearchParams) {
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 type FilterBarProps = {
   countries: CountryCode[];
   channels: string[];
@@ -123,6 +128,18 @@ export function FilterBar(props: FilterBarProps) {
 
     try {
       const parsed = JSON.parse(savedFilters) as Record<string, string | undefined>;
+      const shouldRestoreCalendarFilters =
+        mode === "range"
+          ? true
+          : (parsed.year && parsed.year !== "all") ||
+            (parsed.month && parsed.month !== "all") ||
+            (parsed.channel && parsed.channel !== "all") ||
+            (parsed.country && parsed.country !== "all");
+
+      if (!shouldRestoreCalendarFilters) {
+        return;
+      }
+
       const params = new URLSearchParams(searchParams.toString());
 
       if (mode === "range") {
@@ -153,7 +170,7 @@ export function FilterBar(props: FilterBarProps) {
       }
 
       if (params.toString()) {
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        router.replace(buildFilterHref(pathname, params), { scroll: false });
       }
     } catch {
       window.localStorage.removeItem(
@@ -189,8 +206,7 @@ export function FilterBar(props: FilterBarProps) {
 
   function replaceParams(params: URLSearchParams) {
     startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: mode === "calendar" });
-      router.refresh();
+      router.replace(buildFilterHref(pathname, params), { scroll: mode === "calendar" });
     });
   }
 
