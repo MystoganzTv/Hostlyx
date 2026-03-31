@@ -1,7 +1,9 @@
 import {
+  addMonths,
   eachMonthOfInterval,
   format,
   parseISO,
+  startOfMonth,
 } from "date-fns";
 import { redirect } from "next/navigation";
 import { CalendarAutoSync } from "@/components/calendar-auto-sync";
@@ -29,6 +31,8 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const CALENDAR_STREAM_PAST_YEARS = 8;
 const CALENDAR_STREAM_FUTURE_YEARS = 8;
+const CALENDAR_TIMELINE_PAST_MONTHS = 12;
+const CALENDAR_TIMELINE_FUTURE_MONTHS = 18;
 
 function getCalendarTimelineBounds(
   bookings: Awaited<ReturnType<typeof getBookings>>,
@@ -82,9 +86,13 @@ function getCalendarMonthAnchors(
     return availableYears.map((availableYear) => new Date(availableYear, month - 1, 1));
   }
 
+  const today = new Date();
+  const timelineStart = startOfMonth(addMonths(today, -CALENDAR_TIMELINE_PAST_MONTHS));
+  const timelineEnd = startOfMonth(addMonths(today, CALENDAR_TIMELINE_FUTURE_MONTHS));
+
   return eachMonthOfInterval({
-    start: new Date(startYear, 0, 1),
-    end: new Date(endYear, 11, 1),
+    start: timelineStart,
+    end: timelineEnd,
   });
 }
 
@@ -209,8 +217,8 @@ export default async function CalendarPage({
     selectedCalendarYear === "all"
       ? selectedCalendarMonth === "all"
         ? hasScopedFilters
-          ? "Filtered history"
-          : "Imported history"
+          ? "Filtered timeline"
+          : "Rolling timeline"
         : `Every ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM")}`
       : selectedCalendarMonth === "all"
         ? String(selectedCalendarYear)
