@@ -483,6 +483,10 @@ export function CalendarPanel({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const showOverviewGrid = monthAnchors.length > 1;
   const isYearGrid = monthAnchors.length === 12;
+  const reservationCount = useMemo(
+    () => buildTimelineItems(bookings, calendarEvents).length,
+    [bookings, calendarEvents],
+  );
   const monthAnchorKey = useMemo(
     () => monthAnchors.map((anchorDate) => format(anchorDate, "yyyy-MM")).join(","),
     [monthAnchors],
@@ -507,8 +511,8 @@ export function CalendarPanel({
           <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
         </div>
         <div className="workspace-card rounded-[24px] p-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Months visible</p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(monthAnchors.length)}</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservations tracked</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(reservationCount)}</p>
         </div>
         <div className="workspace-card rounded-[24px] p-5">
           <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Check-ins</p>

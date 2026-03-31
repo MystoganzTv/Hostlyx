@@ -195,10 +195,13 @@ export default async function CalendarPage({
   const displayCountryCode =
     filters.countryCode === "all" ? userSettings.primaryCountryCode : filters.countryCode;
   const currencyCode = getCurrencyForCountry(displayCountryCode);
+  const hasScopedFilters = filters.countryCode !== "all" || filters.channel !== "all";
   const rangeLabel =
     selectedCalendarYear === "all"
       ? selectedCalendarMonth === "all"
-        ? "All imported months"
+        ? hasScopedFilters
+          ? "Filtered history"
+          : "Imported history"
         : `Every ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM")}`
       : selectedCalendarMonth === "all"
         ? String(selectedCalendarYear)
