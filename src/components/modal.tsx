@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function Modal({
   open,
@@ -44,7 +45,7 @@ export function Modal({
     return null;
   }
 
-  return (
+  const modalContent = (
     <div ref={modalViewportRef} className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6">
       <div className={`flex min-h-full justify-center ${alignTop ? "items-start py-4 sm:py-8" : "items-center"}`}>
         {dismissible ? (
@@ -96,4 +97,10 @@ export function Modal({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 }
