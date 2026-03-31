@@ -124,16 +124,74 @@ function extractPhoneLast4(description: string) {
   return match?.[1]?.trim() ?? "";
 }
 
-function getCalendarEventLabel(event: CalendarEventRecord) {
-  const summary = event.summary.trim() || "Calendar booking";
-  const reservationCode = extractReservationCode(event.description);
+function extractGuestName(description: string) {
+  const patterns = [
+    /^(?:guest|guest name|name|booker|reserved for):\s*(.+)$/im,
+    /^traveler:\s*(.+)$/im,
+  ];
 
-  if (reservationCode) {
-    return `${summary} · ${reservationCode}`;
+  for (const pattern of patterns) {
+    const match = description.match(pattern)?.[1]?.trim();
+
+    if (match) {
+      return match;
+    }
   }
 
-  const phoneLast4 = extractPhoneLast4(event.description);
-  return phoneLast4 ? `${summary} · ${phoneLast4}` : summary;
+  return "";
+}
+
+function isGenericCalendarSummary(summary: string) {
+  const normalized = summary.trim().toLowerCase();
+
+  return (
+    !normalized ||
+    normalized === "reserved" ||
+    normalized === "booked" ||
+    normalized === "booking" ||
+    normalized === "calendar booking" ||
+    normalized === "imported ical event"
+  );
+}
+
+function getSourceGuestFallback(source: string) {
+  const normalized = source.trim();
+
+  if (!normalized) {
+    return "Reserved guest";
+  }
+
+  return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)} guest`;
+}
+
+function getCalendarEventDisplayName(event: CalendarEventRecord) {
+  const guestName = extractGuestName(event.description);
+
+  if (guestName) {
+    return guestName;
+  }
+
+  const summary = event.summary.trim();
+  if (!isGenericCalendarSummary(summary)) {
+    return summary;
+  }
+
+  return getSourceGuestFallback(event.source);
+}
+
+function getCalendarEventStayTitle(event: CalendarEventRecord) {
+  const guestName = extractGuestName(event.description);
+
+  if (guestName) {
+    return guestName;
+  }
+
+  const summary = event.summary.trim();
+  if (!isGenericCalendarSummary(summary)) {
+    return summary;
+  }
+
+  return event.eventType === "blocked" ? "Blocked dates" : "Reserved";
 }
 
 function getCalendarEventNotes(description: string) {
@@ -180,7 +238,7 @@ function buildTimelineItems(
       id: `calendar-${event.id ?? event.externalEventId}-${event.startDate}`,
       startDate: event.startDate,
       endDate: event.endDate,
-      label: getCalendarEventLabel(event),
+      label: getCalendarEventDisplayName(event),
       channel: event.source,
       variant: "calendar_booking",
       calendarEvent: event,
@@ -724,7 +782,7 @@ export function CalendarPanel({
 
       <Modal
         open={Boolean(selectedCalendarEvent)}
-        title={selectedCalendarEvent ? getCalendarEventLabel(selectedCalendarEvent) : "Synced calendar event"}
+        title={selectedCalendarEvent ? getCalendarEventDisplayName(selectedCalendarEvent) : "Synced calendar event"}
         onClose={() => setSelectedCalendarEvent(null)}
       >
         {selectedCalendarEvent ? (
@@ -737,11 +795,16 @@ export function CalendarPanel({
               <div className="workspace-soft-card rounded-[24px] p-5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Stay window</p>
                 <h3 className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                  {selectedCalendarEvent.summary || "Reserved"}
+                  {getCalendarEventStayTitle(selectedCalendarEvent)}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
                   {formatDateLabel(selectedCalendarEvent.startDate)} to {formatDateLabel(selectedCalendarEvent.endDate)}
                 </p>
+                {!extractGuestName(selectedCalendarEvent.description) && isGenericCalendarSummary(selectedCalendarEvent.summary) ? (
+                  <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
+                    {getSourceGuestFallback(selectedCalendarEvent.source)} shown here because this iCal feed does not expose the guest name.
+                  </p>
+                ) : null}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Property</p>
