@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { formatMetricValue } from "@/lib/format";
+import type { AppLocale } from "@/lib/i18n";
 import type { CurrencyCode } from "@/lib/types";
 
 export function MetricCard({
@@ -7,6 +8,7 @@ export function MetricCard({
   value,
   format,
   currencyCode,
+  locale = "en",
   helper,
   icon,
 }: {
@@ -14,6 +16,7 @@ export function MetricCard({
   value: number;
   format: "currency" | "percent" | "number";
   currencyCode: CurrencyCode;
+  locale?: AppLocale;
   helper?: string;
   icon?: ReactNode;
 }) {
@@ -23,7 +26,7 @@ export function MetricCard({
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">{label}</p>
           <p className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)] sm:text-3xl">
-            {formatMetricValue(value, format, currencyCode)}
+            {formatMetricValue(value, format, currencyCode, locale)}
           </p>
         </div>
         {icon ? (

@@ -1,4 +1,5 @@
 import { SectionCard } from "@/components/section-card";
+import { useLocale } from "@/components/locale-provider";
 import { MetricCard } from "@/components/metric-card";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import type { CurrencyCode, DashboardView, MonthlyPoint } from "@/lib/types";
@@ -22,6 +23,8 @@ export function MonthlySummaryPanel({
   currencyCode: CurrencyCode;
   rangeLabel: string;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const monthsInView = view.monthlySummary.length;
   const topMonth = findTopMonth(view.monthlySummary);
   const averageRevenue =
@@ -32,49 +35,49 @@ export function MonthlySummaryPanel({
   const cards = view.mixedCurrencyMode
     ? [
         {
-          label: "Months in View",
+          label: isSpanish ? "Meses en vista" : "Months in View",
           value: monthsInView,
           format: "number" as const,
         },
         {
-          label: "Bookings",
+          label: isSpanish ? "Reservas" : "Bookings",
           value: view.metrics.bookingsCount,
           format: "number" as const,
         },
         {
-          label: "Guests",
+          label: isSpanish ? "Huéspedes" : "Guests",
           value: view.metrics.guestsCount,
           format: "number" as const,
         },
         {
-          label: "Nights",
+          label: isSpanish ? "Noches" : "Nights",
           value: view.metrics.nightsBooked,
           format: "number" as const,
         },
       ]
     : [
         {
-          label: "Months in View",
+          label: isSpanish ? "Meses en vista" : "Months in View",
           value: monthsInView,
           format: "number" as const,
         },
         {
-          label: "Average Monthly Revenue",
+          label: isSpanish ? "Ingreso mensual medio" : "Average Monthly Revenue",
           value: averageRevenue,
           format: "currency" as const,
         },
         {
-          label: "Average Monthly Profit",
+          label: isSpanish ? "Beneficio mensual medio" : "Average Monthly Profit",
           value: averageProfit,
           format: "currency" as const,
         },
         {
-          label: "Bookings",
+          label: isSpanish ? "Reservas" : "Bookings",
           value: view.metrics.bookingsCount,
           format: "number" as const,
         },
         {
-          label: "Guests",
+          label: isSpanish ? "Huéspedes" : "Guests",
           value: view.metrics.guestsCount,
           format: "number" as const,
         },
@@ -83,27 +86,35 @@ export function MonthlySummaryPanel({
   return (
     <div className="space-y-6">
       <SectionCard
-        title="How This View Works"
-        subtitle="This page compares months against each other instead of zooming into one single month."
+        title={isSpanish ? "Cómo funciona esta vista" : "How This View Works"}
+        subtitle={
+          isSpanish
+            ? "Esta página compara meses entre sí en lugar de hacer zoom en un solo mes."
+            : "This page compares months against each other instead of zooming into one single month."
+        }
       >
         <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="workspace-soft-card rounded-[22px] p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Reporting window
+              {isSpanish ? "Ventana de reporte" : "Reporting window"}
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
               {rangeLabel}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-              Hostlyx groups your saved bookings and expenses month by month so you can compare seasonality, pace, and profitability.
+              {isSpanish
+                ? "Hostlyx agrupa tus reservas y gastos guardados mes a mes para que puedas comparar estacionalidad, ritmo y rentabilidad."
+                : "Hostlyx groups your saved bookings and expenses month by month so you can compare seasonality, pace, and profitability."}
             </p>
           </div>
           <div className="workspace-soft-card rounded-[22px] p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Reading tip
+              {isSpanish ? "Consejo de lectura" : "Reading tip"}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-              Revenue and payout are grouped by booking check-in month. Expenses stay in their own expense month. Use this page to compare months, then use Dashboard or Calendar when you want a closer operational view.
+              {isSpanish
+                ? "Ingresos y payout se agrupan por el mes de check-in de la reserva. Los gastos se quedan en su propio mes de gasto. Usa esta página para comparar meses y luego Dashboard o Calendar cuando quieras una vista operativa más cercana."
+                : "Revenue and payout are grouped by booking check-in month. Expenses stay in their own expense month. Use this page to compare months, then use Dashboard or Calendar when you want a closer operational view."}
             </p>
           </div>
         </div>
@@ -117,53 +128,66 @@ export function MonthlySummaryPanel({
             value={card.value}
             format={card.format}
             currencyCode={currencyCode}
+            locale={locale}
           />
         ))}
       </div>
 
       {view.mixedCurrencyMode ? (
         <SectionCard
-          title="Monthly Portfolio View"
-          subtitle="Select one market to see exact money values by month."
+          title={isSpanish ? "Vista portfolio mensual" : "Monthly Portfolio View"}
+          subtitle={
+            isSpanish
+              ? "Selecciona un mercado para ver valores monetarios exactos por mes."
+              : "Select one market to see exact money values by month."
+          }
         >
           <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
-            `All markets` mixes real currencies, so Hostlyx only shows non-monetary monthly data here until you choose one market.
+            {isSpanish
+              ? "`All markets` mezcla monedas reales, así que Hostlyx solo muestra aquí datos mensuales no monetarios hasta que elijas un mercado."
+              : "`All markets` mixes real currencies, so Hostlyx only shows non-monetary monthly data here until you choose one market."}
           </div>
         </SectionCard>
       ) : null}
 
       {topMonth && !view.mixedCurrencyMode ? (
         <SectionCard
-          title="Best Month"
-          subtitle="Quick read on the strongest month in the current filter window."
+          title={isSpanish ? "Mejor mes" : "Best Month"}
+          subtitle={
+            isSpanish
+              ? "Lectura rápida del mes más fuerte en la ventana de filtros actual."
+              : "Quick read on the strongest month in the current filter window."
+          }
         >
           <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="workspace-soft-card rounded-[22px] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Top month
+                {isSpanish ? "Mes top" : "Top month"}
               </p>
               <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                 {topMonth.label}
               </p>
               <p className="mt-2 text-sm text-[var(--workspace-muted)]">
-                {formatNumber(topMonth.bookings)} bookings, {formatNumber(topMonth.guests)} guests, and {formatNumber(topMonth.nights)} nights
+                {isSpanish
+                  ? `${formatNumber(topMonth.bookings, locale)} reservas, ${formatNumber(topMonth.guests, locale)} huéspedes y ${formatNumber(topMonth.nights, locale)} noches`
+                  : `${formatNumber(topMonth.bookings, locale)} bookings, ${formatNumber(topMonth.guests, locale)} guests, and ${formatNumber(topMonth.nights, locale)} nights`}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="workspace-soft-card rounded-[22px] p-4">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                  Revenue
+                  {isSpanish ? "Ingresos" : "Revenue"}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[var(--workspace-text)]">
-                  {formatCurrency(topMonth.revenue, false, currencyCode)}
+                  {formatCurrency(topMonth.revenue, false, currencyCode, locale)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                  Profit
+                  {isSpanish ? "Beneficio" : "Profit"}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[var(--workspace-text)]">
-                  {formatCurrency(topMonth.profit, false, currencyCode)}
+                  {formatCurrency(topMonth.profit, false, currencyCode, locale)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
@@ -171,15 +195,15 @@ export function MonthlySummaryPanel({
                   Payout
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[var(--workspace-text)]">
-                  {formatCurrency(topMonth.payout, false, currencyCode)}
+                  {formatCurrency(topMonth.payout, false, currencyCode, locale)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                  Margin
+                  {isSpanish ? "Margen" : "Margin"}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[var(--workspace-text)]">
-                  {formatPercent(topMonth.revenue > 0 ? topMonth.profit / topMonth.revenue : 0)}
+                  {formatPercent(topMonth.revenue > 0 ? topMonth.profit / topMonth.revenue : 0, locale)}
                 </p>
               </div>
             </div>
@@ -188,8 +212,12 @@ export function MonthlySummaryPanel({
       ) : null}
 
       <SectionCard
-        title="Monthly Breakdown"
-        subtitle="Revenue, payout, expenses, profit, bookings, and nights grouped by month."
+        title={isSpanish ? "Desglose mensual" : "Monthly Breakdown"}
+        subtitle={
+          isSpanish
+            ? "Ingresos, payout, gastos, beneficio, reservas y noches agrupados por mes."
+            : "Revenue, payout, expenses, profit, bookings, and nights grouped by month."
+        }
       >
         <div className="space-y-3 md:hidden">
           {view.monthlySummary.map((month) => {
@@ -206,12 +234,12 @@ export function MonthlySummaryPanel({
                       {month.label}
                     </p>
                     <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                      {formatNumber(month.bookings)} bookings • {formatNumber(month.guests)} guests • {formatNumber(month.nights)} nights
+                      {formatNumber(month.bookings, locale)} {isSpanish ? "reservas" : "bookings"} • {formatNumber(month.guests, locale)} {isSpanish ? "huéspedes" : "guests"} • {formatNumber(month.nights, locale)} {isSpanish ? "noches" : "nights"}
                     </p>
                   </div>
                   {!view.mixedCurrencyMode ? (
                     <p className="text-sm font-semibold text-[var(--workspace-text)]">
-                      {formatCurrency(month.profit, false, currencyCode)}
+                      {formatCurrency(month.profit, false, currencyCode, locale)}
                     </p>
                   ) : null}
                 </div>
@@ -220,26 +248,26 @@ export function MonthlySummaryPanel({
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Bookings
+                        {isSpanish ? "Reservas" : "Bookings"}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatNumber(month.bookings)}
+                        {formatNumber(month.bookings, locale)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Guests
+                        {isSpanish ? "Huéspedes" : "Guests"}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatNumber(month.guests)}
+                        {formatNumber(month.guests, locale)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Nights
+                        {isSpanish ? "Noches" : "Nights"}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatNumber(month.nights)}
+                        {formatNumber(month.nights, locale)}
                       </p>
                     </div>
                   </div>
@@ -247,10 +275,10 @@ export function MonthlySummaryPanel({
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Revenue
+                        {isSpanish ? "Ingresos" : "Revenue"}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatCurrency(month.revenue, false, currencyCode)}
+                        {formatCurrency(month.revenue, false, currencyCode, locale)}
                       </p>
                     </div>
                     <div>
@@ -258,7 +286,7 @@ export function MonthlySummaryPanel({
                         Payout
                       </p>
                       <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatCurrency(month.payout, false, currencyCode)}
+                        {formatCurrency(month.payout, false, currencyCode, locale)}
                       </p>
                     </div>
                     <div>

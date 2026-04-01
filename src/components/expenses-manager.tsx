@@ -3,6 +3,7 @@
 import { type FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Edit3, Trash2 } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 import { PropertyUnitFieldGroup } from "@/components/property-unit-field-group";
 import { WorkspaceDateField } from "@/components/workspace-date-field";
 import { formatCurrency, formatDateLabel } from "@/lib/format";
@@ -22,6 +23,8 @@ export function ExpensesManager({
   currencyCode: CurrencyCode;
   properties: PropertyDefinition[];
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingExpense, setEditingExpense] = useState<ExpenseRecord | null>(null);
@@ -51,15 +54,15 @@ export function ExpensesManager({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The expense could not be updated.");
+            setError(payload.error ?? (isSpanish ? "No se pudo actualizar el gasto." : "The expense could not be updated."));
             return;
           }
 
-          setMessage(payload.message ?? "Expense updated.");
+          setMessage(payload.message ?? (isSpanish ? "Gasto actualizado." : "Expense updated."));
           setEditingExpense(null);
           router.refresh();
         } catch {
-          setError("The expense could not be updated.");
+          setError(isSpanish ? "No se pudo actualizar el gasto." : "The expense could not be updated.");
         }
       })();
     });
@@ -83,15 +86,15 @@ export function ExpensesManager({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The expense could not be deleted.");
+            setError(payload.error ?? (isSpanish ? "No se pudo eliminar el gasto." : "The expense could not be deleted."));
             return;
           }
 
-          setMessage(payload.message ?? "Expense deleted.");
+          setMessage(payload.message ?? (isSpanish ? "Gasto eliminado." : "Expense deleted."));
           setExpenseToDelete(null);
           router.refresh();
         } catch {
-          setError("The expense could not be deleted.");
+          setError(isSpanish ? "No se pudo eliminar el gasto." : "The expense could not be deleted.");
         }
       })();
     });
@@ -107,12 +110,12 @@ export function ExpensesManager({
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-slate-500">
               <tr>
-                <th className="pb-3 pr-4 font-medium">Property</th>
-                <th className="pb-3 pr-4 font-medium">Date</th>
-                <th className="pb-3 pr-4 font-medium">Category</th>
-                <th className="pb-3 pr-4 font-medium">Description</th>
-                <th className="pb-3 pr-4 font-medium">Amount</th>
-                <th className="pb-3 font-medium">Actions</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Propiedad" : "Property"}</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Fecha" : "Date"}</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Categoría" : "Category"}</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Descripción" : "Description"}</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Importe" : "Amount"}</th>
+                <th className="pb-3 font-medium">{isSpanish ? "Acciones" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -121,10 +124,10 @@ export function ExpensesManager({
                   <td className="py-4 pr-4">
                     <div>
                       <p className="font-medium text-[var(--workspace-text)]">{expense.propertyName}</p>
-                      <p className="mt-1 text-xs text-slate-400">{expense.unitName || "Primary listing"}</p>
+                      <p className="mt-1 text-xs text-slate-400">{expense.unitName || (isSpanish ? "Listing principal" : "Primary listing")}</p>
                     </div>
                   </td>
-                  <td className="py-4 pr-4">{formatDateLabel(expense.date)}</td>
+                  <td className="py-4 pr-4">{formatDateLabel(expense.date, locale)}</td>
                   <td className="py-4 pr-4">{expense.category}</td>
                   <td className="py-4 pr-4">
                     <div>
@@ -141,7 +144,7 @@ export function ExpensesManager({
                         className="workspace-button-secondary inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
-                        Edit
+                        {isSpanish ? "Editar" : "Edit"}
                       </button>
                       <button
                         type="button"
@@ -150,7 +153,7 @@ export function ExpensesManager({
                         className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete
+                        {isSpanish ? "Eliminar" : "Delete"}
                       </button>
                     </div>
                   </td>

@@ -21,6 +21,7 @@ import {
   getSubscriptionBadge,
   getTrialDaysLeft,
 } from "@/lib/subscription";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,8 @@ export default async function DashboardPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -59,8 +62,12 @@ export default async function DashboardPage({
     return (
       <WorkspaceShell
         activePage="dashboard"
-        pageTitle="Dashboard Locked"
-        pageSubtitle="Your free trial has ended. Upgrade to keep using the financial dashboard."
+        pageTitle={isSpanish ? "Dashboard bloqueado" : "Dashboard Locked"}
+        pageSubtitle={
+          isSpanish
+            ? "Tu prueba gratuita ha terminado. Actualiza para seguir usando el dashboard financiero."
+            : "Your free trial has ended. Upgrade to keep using the financial dashboard."
+        }
         businessName={userSettings.businessName}
         userName={userName}
         userEmail={ownerEmail}
@@ -72,17 +79,21 @@ export default async function DashboardPage({
             href="/pricing"
             className="rounded-2xl border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.24)_0%,rgba(245,158,11,0.16)_100%)] px-4 py-3 text-sm font-semibold text-amber-50 shadow-[0_18px_36px_rgba(245,158,11,0.18)] transition hover:border-amber-200/28 hover:bg-[linear-gradient(135deg,rgba(251,191,36,0.3)_0%,rgba(245,158,11,0.2)_100%)]"
           >
-            Choose a Plan
+            {isSpanish ? "Elegir un plan" : "Choose a Plan"}
           </Link>
         }
       >
         <div className="space-y-6">
           <SubscriptionUpgradeCard
-            title="Upgrade to reopen your dashboard"
+            title={isSpanish ? "Actualiza para reabrir tu dashboard" : "Upgrade to reopen your dashboard"}
             description={
               trialDaysLeft > 0
-                ? `Your 7-day trial is almost over. Choose a plan now to keep access to the dashboard without interruption.`
-                : "Your bookings, expenses, and imported files are still safe in Hostlyx. Choose a paid plan to keep using the dashboard."
+                ? isSpanish
+                  ? "Tu prueba de 7 días está a punto de terminar. Elige un plan ahora para mantener acceso al dashboard sin interrupciones."
+                  : "Your 7-day trial is almost over. Choose a plan now to keep access to the dashboard without interruption."
+                : isSpanish
+                  ? "Tus reservas, gastos y archivos importados siguen a salvo en Hostlyx. Elige un plan de pago para seguir usando el dashboard."
+                  : "Your bookings, expenses, and imported files are still safe in Hostlyx. Choose a paid plan to keep using the dashboard."
             }
           />
         </div>
@@ -112,6 +123,7 @@ export default async function DashboardPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
@@ -123,8 +135,12 @@ export default async function DashboardPage({
       businessName={userSettings.businessName}
       currencyCode={view.displayCurrencyCode}
       properties={properties}
-      pageTitle="Financial Overview"
-      pageSubtitle="Track what the business earned, spent, and kept during the selected period."
+      pageTitle={isSpanish ? "Visión financiera" : "Financial Overview"}
+      pageSubtitle={
+        isSpanish
+          ? "Sigue lo que el negocio ingresó, gastó y retuvo durante el periodo seleccionado."
+          : "Track what the business earned, spent, and kept during the selected period."
+      }
       insightsEnabled={canAccessInsights(subscription)}
       reportExportEnabled={canAccessReports(subscription)}
       subscriptionBadge={subscriptionBadge}

@@ -20,6 +20,7 @@ import {
 } from "@/lib/db";
 import { formatNumber } from "@/lib/format";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,8 @@ export default async function BookingsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -68,6 +71,7 @@ export default async function BookingsPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
   const filteredBookings = filterBookingsForFilters({
     bookings,
@@ -83,8 +87,12 @@ export default async function BookingsPage({
   return (
     <WorkspaceShell
       activePage="bookings"
-      pageTitle="Bookings"
-      pageSubtitle="Review guest stays, payouts, and property or listing assignments."
+      pageTitle={isSpanish ? "Reservas" : "Bookings"}
+      pageSubtitle={
+        isSpanish
+          ? "Revisa estancias de huéspedes, payouts y asignaciones de propiedad o listing."
+          : "Review guest stays, payouts, and property or listing assignments."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -107,7 +115,7 @@ export default async function BookingsPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <SectionCard title="Bookings in view">
+          <SectionCard title={isSpanish ? "Reservas en vista" : "Bookings in view"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <BookOpenText className="h-5 w-5" />
@@ -117,7 +125,7 @@ export default async function BookingsPage({
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Properties in view">
+          <SectionCard title={isSpanish ? "Propiedades en vista" : "Properties in view"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Home className="h-5 w-5" />
@@ -127,16 +135,22 @@ export default async function BookingsPage({
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Editing">
+          <SectionCard title={isSpanish ? "Edición" : "Editing"}>
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Use this page to review imported stays, correct guest data, and keep bookings accurate directly inside Hostlyx.
+              {isSpanish
+                ? "Usa esta página para revisar estancias importadas, corregir datos del huésped y mantener las reservas precisas dentro de Hostlyx."
+                : "Use this page to review imported stays, correct guest data, and keep bookings accurate directly inside Hostlyx."}
             </p>
           </SectionCard>
         </div>
 
         <SectionCard
-          title="All Bookings"
-          subtitle="Use the filters above to focus by market, date range, and channel."
+          title={isSpanish ? "Todas las reservas" : "All Bookings"}
+          subtitle={
+            isSpanish
+              ? "Usa los filtros de arriba para enfocar por mercado, rango de fechas y canal."
+              : "Use the filters above to focus by market, date range, and channel."
+          }
         >
           <BookingsManager
             bookings={filteredBookings}

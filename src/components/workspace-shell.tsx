@@ -20,6 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useLocale } from "@/components/locale-provider";
 import { SignOutButton } from "@/components/auth-buttons";
 import { isAdminOwnerEmail } from "@/lib/admin";
 import { formatDateLabel } from "@/lib/format";
@@ -54,19 +56,19 @@ type ReconcileBadge = {
 
 const baseNavItems: Array<{
   id: ActivePage;
-  label: string;
+  label: { en: string; es: string };
   href: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { id: "calendar", label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-  { id: "bookings", label: "Bookings", href: "/dashboard/bookings", icon: BookOpenText },
-  { id: "expenses", label: "Expenses", href: "/dashboard/expenses", icon: ReceiptText },
-  { id: "cashflow", label: "Cashflow", href: "/dashboard/cashflow", icon: Wallet },
-  { id: "reconcile", label: "Reconcile", href: "/dashboard/reconcile", icon: Scale },
-  { id: "performance", label: "Performance", href: "/dashboard/performance", icon: ChartNoAxesCombined },
-  { id: "reports", label: "Reports", href: "/dashboard/reports", icon: FileText },
-  { id: "imports", label: "Import Center", href: "/dashboard/imports", icon: DatabaseZap },
+  { id: "dashboard", label: { en: "Dashboard", es: "Dashboard" }, href: "/dashboard", icon: LayoutDashboard },
+  { id: "calendar", label: { en: "Calendar", es: "Calendario" }, href: "/dashboard/calendar", icon: CalendarDays },
+  { id: "bookings", label: { en: "Bookings", es: "Reservas" }, href: "/dashboard/bookings", icon: BookOpenText },
+  { id: "expenses", label: { en: "Expenses", es: "Gastos" }, href: "/dashboard/expenses", icon: ReceiptText },
+  { id: "cashflow", label: { en: "Cashflow", es: "Flujo de caja" }, href: "/dashboard/cashflow", icon: Wallet },
+  { id: "reconcile", label: { en: "Reconcile", es: "Conciliar" }, href: "/dashboard/reconcile", icon: Scale },
+  { id: "performance", label: { en: "Performance", es: "Rendimiento" }, href: "/dashboard/performance", icon: ChartNoAxesCombined },
+  { id: "reports", label: { en: "Reports", es: "Informes" }, href: "/dashboard/reports", icon: FileText },
+  { id: "imports", label: { en: "Import Center", es: "Centro de importación" }, href: "/dashboard/imports", icon: DatabaseZap },
 ];
 
 function navClassName(active: boolean) {
@@ -108,6 +110,8 @@ export function WorkspaceShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -146,7 +150,12 @@ export function WorkspaceShell({
 
   const mainNavItems = baseNavItems;
   const adminNavItem = isAdminOwnerEmail(userEmail)
-    ? { id: "admin" as const, label: "Admin Panel", href: "/dashboard/admin", icon: Shield }
+    ? {
+        id: "admin" as const,
+        label: isSpanish ? "Panel admin" : "Admin Panel",
+        href: "/dashboard/admin",
+        icon: Shield,
+      }
     : null;
 
   return (
@@ -163,9 +172,9 @@ export function WorkspaceShell({
               <button
                 type="button"
                 onClick={toggleSidebar}
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={isCollapsed ? (isSpanish ? "Expandir sidebar" : "Expand sidebar") : isSpanish ? "Contraer sidebar" : "Collapse sidebar"}
                 className="hidden xl:inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-white transition hover:bg-white/[0.08]"
-                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={isCollapsed ? (isSpanish ? "Expandir sidebar" : "Expand sidebar") : isSpanish ? "Contraer sidebar" : "Collapse sidebar"}
               >
                 {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
               </button>
@@ -176,7 +185,7 @@ export function WorkspaceShell({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-white">{businessName}</p>
                     <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                      {currencyCode} workspace
+                      {currencyCode} {isSpanish ? "workspace" : "workspace"}
                     </p>
                   </div>
                   {subscriptionBadge &&
@@ -201,15 +210,25 @@ export function WorkspaceShell({
                     className={`mt-4 rounded-[18px] border p-3 ${subscriptionTimerClassName(subscriptionBadge.tone)}`}
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
-                      {subscriptionBadge.tone === "expired" ? "Trial ended" : "Trial countdown"}
+                      {isSpanish
+                        ? subscriptionBadge.tone === "expired"
+                          ? "Prueba terminada"
+                          : "Cuenta regresiva"
+                        : subscriptionBadge.tone === "expired"
+                          ? "Trial ended"
+                          : "Trial countdown"}
                     </p>
                     <p className="mt-2 text-sm font-semibold">
                       {subscriptionBadge.detail}
                     </p>
                     <p className="mt-1 text-xs text-inherit/80">
                       {subscriptionBadge.tone === "expired"
-                        ? "Upgrade to keep using the dashboard."
-                        : "Upgrade before it ends so access stays uninterrupted."}
+                        ? isSpanish
+                          ? "Actualiza para seguir usando el dashboard."
+                          : "Upgrade to keep using the dashboard."
+                        : isSpanish
+                          ? "Actualiza antes de que termine para no perder acceso."
+                          : "Upgrade before it ends so access stays uninterrupted."}
                     </p>
                   </div>
                 ) : null}
@@ -226,10 +245,10 @@ export function WorkspaceShell({
                   key={item.id}
                   href={item.href}
                   className={`${navClassName(activePage === item.id)} ${isCollapsed ? "justify-center px-3" : ""}`}
-                  title={item.label}
+                  title={item.label[locale]}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {!isCollapsed ? <span className="min-w-0 truncate">{item.label}</span> : null}
+                  {!isCollapsed ? <span className="min-w-0 truncate">{item.label[locale]}</span> : null}
                   {!isCollapsed && item.id === "reconcile" && reconcileBadge ? (
                     <span
                       className={`ml-auto shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
@@ -276,7 +295,7 @@ export function WorkspaceShell({
                     }`}
                   >
                     <Building2 className="h-3.5 w-3.5" />
-                    Listings
+                    {isSpanish ? "Listings" : "Listings"}
                   </Link>
                   <Link
                     href="/settings"
@@ -285,21 +304,24 @@ export function WorkspaceShell({
                     }`}
                     >
                       <Settings2 className="h-3.5 w-3.5" />
-                      Settings
+                      {isSpanish ? "Ajustes" : "Settings"}
                     </Link>
+                  <LanguageToggle compact />
                 </div>
 
                 <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-sidebar-muted)]">
-                    Last import
+                    {isSpanish ? "Última importación" : "Last import"}
                   </p>
                   <p className="mt-2 text-sm font-medium text-white">
-                    {latestImport?.fileName ?? "No workbook yet"}
+                    {latestImport?.fileName ?? (isSpanish ? "Todavía sin archivo" : "No workbook yet")}
                   </p>
                   <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
                     {latestImport
-                      ? `${latestImport.propertyName} • ${formatDateLabel(latestImport.importedAt.slice(0, 10))}`
-                      : "Import a workbook if you need to bring old data in"}
+                      ? `${latestImport.propertyName} • ${formatDateLabel(latestImport.importedAt.slice(0, 10), locale)}`
+                      : isSpanish
+                        ? "Importa un archivo si necesitas traer datos anteriores"
+                        : "Import a workbook if you need to bring old data in"}
                   </p>
                 </div>
 
@@ -316,7 +338,7 @@ export function WorkspaceShell({
               <div className="flex justify-center">
                 <SignOutButton
                   label=""
-                  ariaLabel="Sign out"
+                  ariaLabel={isSpanish ? "Cerrar sesión" : "Sign out"}
                   icon={<LogOut className="h-4 w-4" />}
                   className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white transition hover:bg-white/[0.08]"
                 />

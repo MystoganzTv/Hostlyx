@@ -3,35 +3,11 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import { Funnel } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 import { WorkspaceDateField } from "@/components/workspace-date-field";
 import { WorkspaceSelect } from "@/components/workspace-select";
 import { getMarketDefinition } from "@/lib/markets";
 import type { CountryCode, DashboardDateRangePreset } from "@/lib/types";
-
-const monthOptions = [
-  { value: "all", label: "All months" },
-  { value: "1", label: "January" },
-  { value: "2", label: "February" },
-  { value: "3", label: "March" },
-  { value: "4", label: "April" },
-  { value: "5", label: "May" },
-  { value: "6", label: "June" },
-  { value: "7", label: "July" },
-  { value: "8", label: "August" },
-  { value: "9", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
-];
-
-const rangeOptions: Array<{ value: DashboardDateRangePreset; label: string }> = [
-  { value: "all-time", label: "All time" },
-  { value: "this-year", label: "This year" },
-  { value: "last-year", label: "Last year" },
-  { value: "this-month", label: "This month" },
-  { value: "last-90-days", label: "Last 90 days" },
-  { value: "custom", label: "Custom" },
-];
 
 const rangeFilterStorageKey = "hostlyx:filters:range";
 const calendarFilterStorageKey = "hostlyx:filters:calendar";
@@ -73,6 +49,8 @@ type FilterBarProps = {
 );
 
 export function FilterBar(props: FilterBarProps) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -83,6 +61,29 @@ export function FilterBar(props: FilterBarProps) {
   const embedded = props.embedded ?? false;
   const [draftStartDate, setDraftStartDate] = useState(rangeProps?.selectedStartDate ?? "");
   const [draftEndDate, setDraftEndDate] = useState(rangeProps?.selectedEndDate ?? "");
+  const monthOptions = [
+    { value: "all", label: isSpanish ? "Todos los meses" : "All months" },
+    { value: "1", label: isSpanish ? "Enero" : "January" },
+    { value: "2", label: isSpanish ? "Febrero" : "February" },
+    { value: "3", label: isSpanish ? "Marzo" : "March" },
+    { value: "4", label: isSpanish ? "Abril" : "April" },
+    { value: "5", label: isSpanish ? "Mayo" : "May" },
+    { value: "6", label: isSpanish ? "Junio" : "June" },
+    { value: "7", label: isSpanish ? "Julio" : "July" },
+    { value: "8", label: isSpanish ? "Agosto" : "August" },
+    { value: "9", label: isSpanish ? "Septiembre" : "September" },
+    { value: "10", label: isSpanish ? "Octubre" : "October" },
+    { value: "11", label: isSpanish ? "Noviembre" : "November" },
+    { value: "12", label: isSpanish ? "Diciembre" : "December" },
+  ];
+  const rangeOptions: Array<{ value: DashboardDateRangePreset; label: string }> = [
+    { value: "all-time", label: isSpanish ? "Todo el tiempo" : "All time" },
+    { value: "this-year", label: isSpanish ? "Este año" : "This year" },
+    { value: "last-year", label: isSpanish ? "Año pasado" : "Last year" },
+    { value: "this-month", label: isSpanish ? "Este mes" : "This month" },
+    { value: "last-90-days", label: isSpanish ? "Últimos 90 días" : "Last 90 days" },
+    { value: "custom", label: isSpanish ? "Personalizado" : "Custom" },
+  ];
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -210,6 +211,14 @@ export function FilterBar(props: FilterBarProps) {
     });
   }
 
+  const channelOptions = [
+    { value: "all", label: isSpanish ? "Todos los canales" : "All channels" },
+    ...props.channels.map((channel) => ({
+      value: channel,
+      label: channel,
+    })),
+  ];
+
   function updateRangeFilter(key: "range" | "start" | "end" | "channel" | "country", value: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("year");
@@ -305,7 +314,7 @@ export function FilterBar(props: FilterBarProps) {
     >
       <div className="flex items-center gap-2 px-2 text-sm font-semibold text-[var(--workspace-muted)]">
         <Funnel className="h-4 w-4 text-[var(--workspace-accent)]" />
-        Filters
+        {isSpanish ? "Filtros" : "Filters"}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -322,7 +331,7 @@ export function FilterBar(props: FilterBarProps) {
               : "workspace-button-secondary"
           }`}
         >
-          All markets
+          {isSpanish ? "Todos los mercados" : "All markets"}
         </button>
         {props.countries.map((countryCode) => {
           const market = getMarketDefinition(countryCode);
@@ -384,20 +393,20 @@ export function FilterBar(props: FilterBarProps) {
             <>
               <WorkspaceDateField
                 name="start"
-                label="Start date"
+                label={isSpanish ? "Fecha inicial" : "Start date"}
                 value={draftStartDate}
                 onChange={(value) => updateCustomDateField("start", value)}
-                placeholder="Start date"
+                placeholder={isSpanish ? "Fecha inicial" : "Start date"}
                 compact
                 hideLabel
                 className="min-w-[170px]"
               />
               <WorkspaceDateField
                 name="end"
-                label="End date"
+                label={isSpanish ? "Fecha final" : "End date"}
                 value={draftEndDate}
                 onChange={(value) => updateCustomDateField("end", value)}
-                placeholder="End date"
+                placeholder={isSpanish ? "Fecha final" : "End date"}
                 compact
                 hideLabel
                 className="min-w-[170px]"
@@ -413,7 +422,7 @@ export function FilterBar(props: FilterBarProps) {
             value={String(calendarProps?.selectedYear ?? "all")}
             onChange={(value) => updateCalendarFilter("year", value)}
             options={[
-              { value: "all", label: "All years" },
+              { value: "all", label: isSpanish ? "Todos los años" : "All years" },
               ...(calendarProps?.years ?? []).map((year) => ({ value: String(year), label: String(year) })),
             ]}
           />
@@ -439,10 +448,7 @@ export function FilterBar(props: FilterBarProps) {
               ? updateRangeFilter("channel", value)
               : updateCalendarFilter("channel", value)
           }
-          options={[
-            { value: "all", label: "All Channels" },
-            ...props.channels.map((channel) => ({ value: channel, label: channel })),
-          ]}
+          options={channelOptions}
         />
       ) : null}
     </div>

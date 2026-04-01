@@ -13,10 +13,13 @@ import {
   getUserSettings,
 } from "@/lib/db";
 import { formatNumber } from "@/lib/format";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
 export default async function PropertiesPage() {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -143,11 +146,15 @@ export default async function PropertiesPage() {
   return (
     <WorkspaceShell
       activePage="properties"
-      pageTitle="Listings"
+      pageTitle={isSpanish ? "Listings" : "Listings"}
       pageSubtitle={
         isSetupMode
-          ? "Complete your first property and listing setup before anything else in Hostlyx."
-          : "Organize the portfolio into properties and the listings that belong to them."
+          ? isSpanish
+            ? "Completa tu primera configuración de propiedad y listing antes de cualquier otra cosa en Hostlyx."
+            : "Complete your first property and listing setup before anything else in Hostlyx."
+          : isSpanish
+            ? "Organiza la cartera en propiedades y los listings que pertenecen a cada una."
+            : "Organize the portfolio into properties and the listings that belong to them."
       }
       businessName={userSettings.businessName}
       userName={userName}
@@ -158,26 +165,36 @@ export default async function PropertiesPage() {
       <div className="space-y-6">
         {isSetupMode ? (
           <SectionCard
-            title="Start With Your First Listing Setup"
-            subtitle="Hostlyx opens the setup modal automatically because every booking, expense, calendar sync, and import must belong to a real property and listing structure first."
+            title={isSpanish ? "Empieza con tu primer setup de listing" : "Start With Your First Listing Setup"}
+            subtitle={
+              isSpanish
+                ? "Hostlyx abre el modal de setup automáticamente porque cada reserva, gasto, sync de calendario e importación debe pertenecer primero a una estructura real de propiedad y listing."
+                : "Hostlyx opens the setup modal automatically because every booking, expense, calendar sync, and import must belong to a real property and listing structure first."
+            }
           >
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="workspace-soft-card rounded-[24px] p-4">
-                <p className="text-sm font-semibold text-[var(--workspace-text)]">Single house</p>
+                <p className="text-sm font-semibold text-[var(--workspace-text)]">{isSpanish ? "Casa completa" : "Single house"}</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  Choose this when you rent the full home as one listing. No extra listings are required.
+                  {isSpanish
+                    ? "Elige esto cuando alquilas la vivienda completa como un solo listing. No hacen falta listings extra."
+                    : "Choose this when you rent the full home as one listing. No extra listings are required."}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[24px] p-4">
-                <p className="text-sm font-semibold text-[var(--workspace-text)]">Multi-listing property</p>
+                <p className="text-sm font-semibold text-[var(--workspace-text)]">{isSpanish ? "Propiedad con varios listings" : "Multi-listing property"}</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  Tell Hostlyx how many listings you operate there, and we will create them automatically for you.
+                  {isSpanish
+                    ? "Dile a Hostlyx cuántos listings operas ahí y los crearemos automáticamente por ti."
+                    : "Tell Hostlyx how many listings you operate there, and we will create them automatically for you."}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[24px] p-4">
-                <p className="text-sm font-semibold text-[var(--workspace-text)]">What unlocks next</p>
+                <p className="text-sm font-semibold text-[var(--workspace-text)]">{isSpanish ? "Qué se desbloquea después" : "What unlocks next"}</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  Once the first property exists, dashboard, imports, bookings, and expenses become available.
+                  {isSpanish
+                    ? "Cuando exista la primera propiedad, dashboard, imports, bookings y expenses pasan a estar disponibles."
+                    : "Once the first property exists, dashboard, imports, bookings, and expenses become available."}
                 </p>
               </div>
             </div>
@@ -185,7 +202,7 @@ export default async function PropertiesPage() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-3">
-          <SectionCard title="Properties">
+          <SectionCard title={isSpanish ? "Propiedades" : "Properties"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Building2 className="h-5 w-5" />
@@ -195,7 +212,7 @@ export default async function PropertiesPage() {
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Listings">
+          <SectionCard title={isSpanish ? "Listings" : "Listings"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
@@ -205,19 +222,25 @@ export default async function PropertiesPage() {
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="How to use it">
+          <SectionCard title={isSpanish ? "Cómo usarlo" : "How to use it"}>
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Imports are assigned to the property you choose during upload. Listings live under that property, so calendar sync and operational tracking can stay listing-specific while reporting still rolls up cleanly.
+              {isSpanish
+                ? "Las importaciones se asignan a la propiedad que elijas durante el upload. Los listings viven bajo esa propiedad, así que el sync de calendario y el seguimiento operativo pueden seguir siendo específicos del listing mientras el reporting se consolida limpio."
+                : "Imports are assigned to the property you choose during upload. Listings live under that property, so calendar sync and operational tracking can stay listing-specific while reporting still rolls up cleanly."}
             </p>
           </SectionCard>
         </div>
 
         <SectionCard
-          title={isSetupMode ? "Create Your First Listing Structure" : "Listings Setup"}
+          title={isSetupMode ? (isSpanish ? "Crea tu primera estructura de listings" : "Create Your First Listing Structure") : isSpanish ? "Setup de listings" : "Listings Setup"}
           subtitle={
             isSetupMode
-              ? "Tell Hostlyx whether this is a single-home rental or a property with several listings."
-              : "Create the portfolio structure first, then assign bookings and expenses to the right property and listing."
+              ? isSpanish
+                ? "Dile a Hostlyx si esto es un alquiler de casa completa o una propiedad con varios listings."
+                : "Tell Hostlyx whether this is a single-home rental or a property with several listings."
+              : isSpanish
+                ? "Crea primero la estructura de la cartera y luego asigna reservas y gastos a la propiedad y listing correctos."
+                : "Create the portfolio structure first, then assign bookings and expenses to the right property and listing."
           }
         >
           <PropertiesManager

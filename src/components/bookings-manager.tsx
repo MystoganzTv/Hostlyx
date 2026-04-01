@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState, useTransition } f
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Edit3, Trash2 } from "lucide-react";
 import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-badges";
+import { useLocale } from "@/components/locale-provider";
 import { PropertyUnitFieldGroup } from "@/components/property-unit-field-group";
 import { WorkspaceDateField } from "@/components/workspace-date-field";
 import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
@@ -40,6 +41,8 @@ export function BookingsManager({
   properties: PropertyDefinition[];
   highlightedBookingKey?: string | null;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -120,15 +123,15 @@ export function BookingsManager({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The booking could not be updated.");
+            setError(payload.error ?? (isSpanish ? "No se pudo actualizar la reserva." : "The booking could not be updated."));
             return;
           }
 
-          setMessage(payload.message ?? "Booking updated.");
+          setMessage(payload.message ?? (isSpanish ? "Reserva actualizada." : "Booking updated."));
           setEditingBooking(null);
           router.refresh();
         } catch {
-          setError("The booking could not be updated.");
+          setError(isSpanish ? "No se pudo actualizar la reserva." : "The booking could not be updated.");
         }
       })();
     });
@@ -152,15 +155,15 @@ export function BookingsManager({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The booking could not be deleted.");
+            setError(payload.error ?? (isSpanish ? "No se pudo eliminar la reserva." : "The booking could not be deleted."));
             return;
           }
 
-          setMessage(payload.message ?? "Booking deleted.");
+          setMessage(payload.message ?? (isSpanish ? "Reserva eliminada." : "Booking deleted."));
           setBookingToDelete(null);
           router.refresh();
         } catch {
-          setError("The booking could not be deleted.");
+          setError(isSpanish ? "No se pudo eliminar la reserva." : "The booking could not be deleted.");
         }
       })();
     });
@@ -173,7 +176,15 @@ export function BookingsManager({
         {error ? <p className="text-sm text-rose-500">{error}</p> : null}
         {highlightedBooking ? (
           <div className="rounded-[20px] border border-[var(--accent-soft-strong)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent-text)]">
-            Highlighting <span className="font-semibold text-white">{highlightedBooking.guestName}</span> from the calendar view.
+            {isSpanish ? (
+              <>
+                Resaltando <span className="font-semibold text-white">{highlightedBooking.guestName}</span> desde la vista de calendario.
+              </>
+            ) : (
+              <>
+                Highlighting <span className="font-semibold text-white">{highlightedBooking.guestName}</span> from the calendar view.
+              </>
+            )}
           </div>
         ) : null}
 
@@ -181,15 +192,15 @@ export function BookingsManager({
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Property</th>
-                  <th className="pb-3 pr-4 font-medium">Guest</th>
-                  <th className="pb-3 pr-4 font-medium">Stay</th>
-                  <th className="pb-3 pr-4 font-medium">Booking Ref</th>
-                  <th className="pb-3 pr-4 font-medium">Guests</th>
-                  <th className="pb-3 pr-4 font-medium">Channel</th>
-                  <th className="pb-3 pr-4 font-medium">Revenue</th>
-                <th className="pb-3 pr-4 font-medium">Payout</th>
-                <th className="pb-3 font-medium">Actions</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Propiedad" : "Property"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Huésped" : "Guest"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Estancia" : "Stay"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Ref reserva" : "Booking Ref"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Huéspedes" : "Guests"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Canal" : "Channel"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Ingresos" : "Revenue"}</th>
+                <th className="pb-3 pr-4 font-medium">{isSpanish ? "Payout" : "Payout"}</th>
+                <th className="pb-3 font-medium">{isSpanish ? "Acciones" : "Actions"}</th>
               </tr>
             </thead>
             <tbody>
@@ -217,7 +228,7 @@ export function BookingsManager({
                   <td className="py-4 pr-4">
                     <div>
                       <p className="font-medium text-[var(--workspace-text)]">{booking.propertyName}</p>
-                      <p className="mt-1 text-xs text-slate-400">{booking.unitName || "Primary listing"}</p>
+                      <p className="mt-1 text-xs text-slate-400">{booking.unitName || (isSpanish ? "Listing principal" : "Primary listing")}</p>
                     </div>
                   </td>
                   <td className="py-4 pr-4">
@@ -230,12 +241,12 @@ export function BookingsManager({
                     </div>
                   </td>
                   <td className="py-4 pr-4">
-                    {formatDateLabel(booking.checkIn)} to {formatDateLabel(booking.checkout)}
+                    {formatDateLabel(booking.checkIn, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(booking.checkout, locale)}
                   </td>
                   <td className="py-4 pr-4 text-xs text-slate-300">
-                    {booking.bookingNumber || "Not set"}
+                    {booking.bookingNumber || (isSpanish ? "Sin definir" : "Not set")}
                   </td>
-                  <td className="py-4 pr-4">{formatNumber(booking.guestCount)}</td>
+                  <td className="py-4 pr-4">{formatNumber(booking.guestCount, locale)}</td>
                   <td className="py-4 pr-4">
                     <BookingChannelBadge channel={booking.channel} />
                   </td>
@@ -249,7 +260,7 @@ export function BookingsManager({
                         className="workspace-button-secondary inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
-                        Edit
+                        {isSpanish ? "Editar" : "Edit"}
                       </button>
                       <button
                         type="button"
@@ -258,7 +269,7 @@ export function BookingsManager({
                         className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete
+                        {isSpanish ? "Eliminar" : "Delete"}
                       </button>
                     </div>
                   </td>

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { SignInButton } from "@/components/auth-buttons";
 import { BrandLogo } from "@/components/brand-logo";
 import { EmailAuthForm } from "@/components/email-auth-form";
+import { LanguageToggle } from "@/components/language-toggle";
 import { getAuthSession, hasGoogleAuthConfig } from "@/lib/auth";
+import { getRequestLocale } from "@/lib/server-locale";
 
 function GoogleMark() {
   return (
@@ -29,6 +31,8 @@ function GoogleMark() {
 }
 
 export default async function LoginPage() {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
 
   if (session?.user?.email) {
@@ -40,6 +44,10 @@ export default async function LoginPage() {
       <div className="login-glow absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl" />
 
       <div className="login-card relative z-[1] w-full max-w-[560px] rounded-[34px] px-6 py-8 sm:px-11 sm:py-10">
+        <div className="flex justify-end">
+          <LanguageToggle compact />
+        </div>
+
         <div className="flex justify-center">
           <div className="login-brand-orb flex h-28 w-28 items-center justify-center rounded-full">
             <BrandLogo hideWordmark />
@@ -48,23 +56,23 @@ export default async function LoginPage() {
 
         <div className="mt-8 text-center">
           <h1 className="text-4xl font-semibold tracking-[-0.06em] text-slate-950">
-            Welcome to Hostlyx
+            {isSpanish ? "Bienvenido a Hostlyx" : "Welcome to Hostlyx"}
           </h1>
-          <p className="mt-3 text-lg text-slate-500">Sign in to continue</p>
+          <p className="mt-3 text-lg text-slate-500">{isSpanish ? "Inicia sesión para continuar" : "Sign in to continue"}</p>
         </div>
 
         <div className="mt-10 space-y-6">
           <SignInButton
             disabled={!hasGoogleAuthConfig}
             icon={<GoogleMark />}
-            label="Continue with Google"
+            label={isSpanish ? "Continuar con Google" : "Continue with Google"}
             className="login-google-button flex w-full items-center justify-center gap-3 rounded-[18px] px-5 py-4 text-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           />
 
           <div className="flex items-center gap-4">
             <span className="h-px flex-1 bg-slate-200" />
             <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Or
+              {isSpanish ? "O" : "Or"}
             </span>
             <span className="h-px flex-1 bg-slate-200" />
           </div>
@@ -73,27 +81,31 @@ export default async function LoginPage() {
 
           {!hasGoogleAuthConfig ? (
             <div className="rounded-[18px] border border-amber-400/25 bg-amber-400/12 px-4 py-3 text-sm leading-6 text-amber-900">
-              Google login is not configured in production yet. Add
-              `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Netlify, then
-              redeploy.
+              {isSpanish
+                ? "Google login todavía no está configurado en producción. Añade `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Netlify y vuelve a desplegar."
+                : "Google login is not configured in production yet. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Netlify, then redeploy."}
             </div>
           ) : (
             <p className="text-center text-sm leading-6 text-slate-500">
-              Use Google if you want the fastest access, or sign in with email and password below.
+              {isSpanish
+                ? "Usa Google si quieres el acceso más rápido, o entra con email y contraseña abajo."
+                : "Use Google if you want the fastest access, or sign in with email and password below."}
             </p>
           )}
         </div>
 
         <div className="mt-8 flex flex-col gap-3 text-center text-sm font-medium text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="transition hover:text-slate-900">
-            Back to home
+            {isSpanish ? "Volver al inicio" : "Back to home"}
           </Link>
           <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:block" />
-          <p>Create an account with email or continue with Google</p>
+          <p>{isSpanish ? "Crea una cuenta con email o continúa con Google" : "Create an account with email or continue with Google"}</p>
         </div>
 
         <div className="mt-8 rounded-[22px] bg-slate-950 px-5 py-4 text-sm text-slate-300">
-          Production data persists when Netlify DB or `DATABASE_URL` is configured.
+          {isSpanish
+            ? "Los datos de producción persisten cuando Netlify DB o `DATABASE_URL` están configurados."
+            : "Production data persists when Netlify DB or `DATABASE_URL` is configured."}
         </div>
       </div>
     </main>

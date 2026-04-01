@@ -13,6 +13,7 @@ import { CashflowPanel } from "@/components/cashflow-panel";
 import { FilterBar } from "@/components/filter-bar";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ export default async function CashflowPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -62,13 +65,18 @@ export default async function CashflowPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
     <WorkspaceShell
       activePage="cashflow"
-      pageTitle="Cashflow"
-      pageSubtitle="See payout in, expenses out, and net movement across your reporting window."
+      pageTitle={isSpanish ? "Flujo de caja" : "Cashflow"}
+      pageSubtitle={
+        isSpanish
+          ? "Ve entradas por payout, salidas por gastos y el movimiento neto en tu ventana de reporte."
+          : "See payout in, expenses out, and net movement across your reporting window."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}

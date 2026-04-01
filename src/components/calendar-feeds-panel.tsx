@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { formatDistanceToNowStrict, parseISO } from "date-fns";
 import { Link2, RefreshCw, Trash2 } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
+import { getDateFnsLocale } from "@/lib/i18n";
 import { Modal } from "@/components/modal";
 import type { IcalFeedRecord } from "@/lib/types";
 
-function getSourceLabel(source: IcalFeedRecord["source"]) {
+function getSourceLabel(source: IcalFeedRecord["source"], locale: "en" | "es") {
   if (source === "booking") {
     return "Booking.com";
   }
@@ -17,7 +19,7 @@ function getSourceLabel(source: IcalFeedRecord["source"]) {
   }
 
   if (source === "other") {
-    return "Other";
+    return locale === "es" ? "Otro" : "Other";
   }
 
   return "Airbnb";
@@ -39,9 +41,9 @@ function getStatusTone(status: IcalFeedRecord["lastSyncStatus"]) {
   return "border-white/10 bg-white/[0.04] text-[var(--workspace-muted)]";
 }
 
-function getStatusLabel(feed: IcalFeedRecord) {
+function getStatusLabel(feed: IcalFeedRecord, locale: "en" | "es") {
   if (feed.lastSyncStatus === "success") {
-    return "Synced";
+    return locale === "es" ? "Sincronizado" : "Synced";
   }
 
   if (feed.lastSyncStatus === "error") {
@@ -49,24 +51,27 @@ function getStatusLabel(feed: IcalFeedRecord) {
   }
 
   if (feed.lastSyncStatus === "pending") {
-    return "Syncing";
+    return locale === "es" ? "Sincronizando" : "Syncing";
   }
 
-  return "Never synced";
+  return locale === "es" ? "Nunca sincronizado" : "Never synced";
 }
 
-function formatLastSynced(value: string | null | undefined) {
+function formatLastSynced(value: string | null | undefined, locale: "en" | "es") {
   if (!value) {
-    return "Not synced yet";
+    return locale === "es" ? "Aún sin sincronizar" : "Not synced yet";
   }
 
   const parsed = parseISO(value);
 
   if (Number.isNaN(parsed.getTime())) {
-    return "Not synced yet";
+    return locale === "es" ? "Aún sin sincronizar" : "Not synced yet";
   }
 
-  return formatDistanceToNowStrict(parsed, { addSuffix: true });
+  return formatDistanceToNowStrict(parsed, {
+    addSuffix: true,
+    locale: getDateFnsLocale(locale),
+  });
 }
 
 function maskFeedUrl(feedUrl: string) {
@@ -83,6 +88,8 @@ export function CalendarFeedsPanel({
 }: {
   feeds: IcalFeedRecord[];
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,14 +130,23 @@ export function CalendarFeedsPanel({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The iCal feed could not be refreshed.");
+            setError(
+              payload.error ??
+                (isSpanish
+                  ? "No se pudo refrescar el feed iCal."
+                  : "The iCal feed could not be refreshed."),
+            );
             return;
           }
 
-          setMessage(payload.message ?? "Feed refreshed.");
+          setMessage(payload.message ?? (isSpanish ? "Feed refrescado." : "Feed refreshed."));
           router.refresh();
         } catch {
-          setError("The iCal feed could not be refreshed.");
+          setError(
+            isSpanish
+              ? "No se pudo refrescar el feed iCal."
+              : "The iCal feed could not be refreshed.",
+          );
         }
       })();
     });
@@ -149,14 +165,23 @@ export function CalendarFeedsPanel({
           const payload = (await response.json()) as { error?: string; message?: string };
 
           if (!response.ok) {
-            setError(payload.error ?? "The iCal feed could not be disconnected.");
+            setError(
+              payload.error ??
+                (isSpanish
+                  ? "No se pudo desconectar el feed iCal."
+                  : "The iCal feed could not be disconnected."),
+            );
             return;
           }
 
-          setMessage(payload.message ?? "Feed disconnected.");
+          setMessage(payload.message ?? (isSpanish ? "Feed desconectado." : "Feed disconnected."));
           router.refresh();
         } catch {
-          setError("The iCal feed could not be disconnected.");
+          setError(
+            isSpanish
+              ? "No se pudo desconectar el feed iCal."
+              : "The iCal feed could not be disconnected.",
+          );
         }
       })();
     });
@@ -172,20 +197,36 @@ export function CalendarFeedsPanel({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <div>
-              <p className="text-lg font-semibold text-[var(--workspace-text)]">Connected iCal</p>
+              <p className="text-lg font-semibold text-[var(--workspace-text)]">
+                {isSpanish ? "iCal conectado" : "Connected iCal"}
+              </p>
               <p className="mt-1 text-sm leading-6 text-[var(--workspace-muted)]">
-                {activeFeeds.length} active feed{activeFeeds.length === 1 ? "" : "s"} syncing into Calendar only.
+                {isSpanish
+                  ? `${activeFeeds.length} feed${activeFeeds.length === 1 ? "" : "s"} activo${activeFeeds.length === 1 ? "" : "s"} sincronizando solo en Calendar.`
+                  : `${activeFeeds.length} active feed${activeFeeds.length === 1 ? "" : "s"} syncing into Calendar only.`}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--workspace-muted)]">
               <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-                {totalEvents} synced event{totalEvents === 1 ? "" : "s"}
+                {isSpanish
+                  ? `${totalEvents} evento${totalEvents === 1 ? "" : "s"} sincronizado${totalEvents === 1 ? "" : "s"}`
+                  : `${totalEvents} synced event${totalEvents === 1 ? "" : "s"}`}
               </span>
               <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
                 {latestSyncedAt
-                  ? `Latest sync ${formatDistanceToNowStrict(latestSyncedAt, { addSuffix: true })}`
-                  : "Waiting for first sync"}
+                  ? isSpanish
+                    ? `Última sincronización ${formatDistanceToNowStrict(latestSyncedAt, {
+                        addSuffix: true,
+                        locale: getDateFnsLocale(locale),
+                      })}`
+                    : `Latest sync ${formatDistanceToNowStrict(latestSyncedAt, {
+                        addSuffix: true,
+                        locale: getDateFnsLocale(locale),
+                      })}`
+                  : isSpanish
+                    ? "Esperando la primera sincronización"
+                    : "Waiting for first sync"}
               </span>
             </div>
 
@@ -195,7 +236,7 @@ export function CalendarFeedsPanel({
                   key={feed.id}
                   className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-[var(--workspace-text)]"
                 >
-                  {feed.propertyName} · {getSourceLabel(feed.source)}
+                  {feed.propertyName} · {getSourceLabel(feed.source, locale)}
                 </span>
               ))}
             </div>
@@ -207,21 +248,22 @@ export function CalendarFeedsPanel({
             className="workspace-button-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition"
           >
             <Link2 className="h-4 w-4" />
-            Manage feeds
+            {isSpanish ? "Gestionar feeds" : "Manage feeds"}
           </button>
         </div>
       </div>
 
       <Modal
         open={isModalOpen}
-        title="Connected iCal feeds"
+        title={isSpanish ? "Feeds iCal conectados" : "Connected iCal feeds"}
         onClose={() => setIsModalOpen(false)}
         alignTop
       >
         <div className="space-y-4">
           <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-            Saved calendar connections stay separate from financial bookings. Use them for occupancy,
-            check-ins, check-outs, and blocked dates.
+            {isSpanish
+              ? "Las conexiones guardadas de calendario se mantienen separadas de las reservas financieras. Úsalas para ocupación, check-ins, check-outs y fechas bloqueadas."
+              : "Saved calendar connections stay separate from financial bookings. Use them for occupancy, check-ins, check-outs, and blocked dates."}
           </p>
 
           {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
@@ -241,7 +283,7 @@ export function CalendarFeedsPanel({
                           {feed.propertyName}
                         </p>
                         <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                          {feed.listingName || "Primary listing"}
+                          {feed.listingName || (isSpanish ? "Listing principal" : "Primary listing")}
                         </p>
                       </div>
                     </div>
@@ -250,36 +292,36 @@ export function CalendarFeedsPanel({
                   <span
                     className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${getStatusTone(feed.lastSyncStatus)}`}
                   >
-                    {getStatusLabel(feed)}
+                    {getStatusLabel(feed, locale)}
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                      Source
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
-                      {getSourceLabel(feed.source)}
-                    </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Origen" : "Source"}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
+                        {getSourceLabel(feed.source, locale)}
+                      </p>
+                    </div>
+                    <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Eventos" : "Events"}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
+                        {feed.eventCount}
+                      </p>
+                    </div>
+                    <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Última sincronización" : "Last synced"}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
+                        {formatLastSynced(feed.lastSyncedAt, locale)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                      Events
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
-                      {feed.eventCount}
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                      Last synced
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
-                      {formatLastSynced(feed.lastSyncedAt)}
-                    </p>
-                  </div>
-                </div>
 
                 <p className="mt-4 truncate text-xs text-[var(--workspace-muted)]">
                   {maskFeedUrl(feed.feedUrl)}
@@ -299,7 +341,7 @@ export function CalendarFeedsPanel({
                     className="workspace-button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
-                    Refresh now
+                    {isSpanish ? "Refrescar ahora" : "Refresh now"}
                   </button>
                   <button
                     type="button"
@@ -308,7 +350,7 @@ export function CalendarFeedsPanel({
                     className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/16 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Disconnect
+                    {isSpanish ? "Desconectar" : "Disconnect"}
                   </button>
                 </div>
               </article>

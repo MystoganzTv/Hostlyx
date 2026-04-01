@@ -17,6 +17,7 @@ import { SubscriptionUpgradeCard } from "@/components/subscription-upgrade-card"
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 import { canAccessReports, getSubscriptionBadge } from "@/lib/subscription";
 
 export const runtime = "nodejs";
@@ -28,6 +29,8 @@ export default async function ReportsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -57,8 +60,12 @@ export default async function ReportsPage({
     return (
       <WorkspaceShell
         activePage="reports"
-        pageTitle="Reports"
-        pageSubtitle="Monthly reporting and channel mix are available on Pro and Portfolio."
+        pageTitle={isSpanish ? "Reportes" : "Reports"}
+        pageSubtitle={
+          isSpanish
+            ? "El reporte mensual y la mezcla por canales están disponibles en Pro y Portfolio."
+            : "Monthly reporting and channel mix are available on Pro and Portfolio."
+        }
         businessName={userSettings.businessName}
         userName={userName}
         userEmail={ownerEmail}
@@ -67,8 +74,12 @@ export default async function ReportsPage({
         subscriptionBadge={subscriptionBadge}
       >
         <SubscriptionUpgradeCard
-          title="Upgrade to unlock reports"
-          description="Reports are part of the Pro plan and above. Your imported data stays safe, and you can upgrade whenever you are ready."
+          title={isSpanish ? "Sube de plan para desbloquear reportes" : "Upgrade to unlock reports"}
+          description={
+            isSpanish
+              ? "Los reportes forman parte del plan Pro en adelante. Tus datos importados siguen seguros y puedes mejorar el plan cuando quieras."
+              : "Reports are part of the Pro plan and above. Your imported data stays safe, and you can upgrade whenever you are ready."
+          }
         />
       </WorkspaceShell>
     );
@@ -90,13 +101,18 @@ export default async function ReportsPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
     <WorkspaceShell
       activePage="reports"
-      pageTitle="Reports"
-      pageSubtitle="Monthly reporting, channel mix, and cost structure for the current business view."
+      pageTitle={isSpanish ? "Reportes" : "Reports"}
+      pageSubtitle={
+        isSpanish
+          ? "Reporte mensual, mezcla por canales y estructura de costes para la vista actual del negocio."
+          : "Monthly reporting, channel mix, and cost structure for the current business view."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -127,19 +143,23 @@ export default async function ReportsPage({
     >
       <div className="space-y-6">
         <SectionCard
-          title="Monthly Performance"
-          subtitle="Revenue, expenses, and profit grouped month by month."
+          title={isSpanish ? "Rendimiento mensual" : "Monthly Performance"}
+          subtitle={
+            isSpanish
+              ? "Ingresos, gastos y beneficio agrupados mes a mes."
+              : "Revenue, expenses, and profit grouped month by month."
+          }
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Month</th>
-                  <th className="pb-3 pr-4 font-medium">Bookings</th>
-                  <th className="pb-3 pr-4 font-medium">Revenue</th>
-                  <th className="pb-3 pr-4 font-medium">Expenses</th>
-                  <th className="pb-3 pr-4 font-medium">Profit</th>
-                  <th className="pb-3 font-medium">Margin</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Mes" : "Month"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Reservas" : "Bookings"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Ingresos" : "Revenue"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Gastos" : "Expenses"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Beneficio" : "Profit"}</th>
+                  <th className="pb-3 font-medium">{isSpanish ? "Margen" : "Margin"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,13 +172,13 @@ export default async function ReportsPage({
                       className="border-t border-[var(--workspace-border)] text-[var(--workspace-text)]"
                     >
                       <td className="py-4 pr-4 font-medium">{month.label}</td>
-                      <td className="py-4 pr-4">{formatNumber(month.bookings)}</td>
-                      <td className="py-4 pr-4">{formatCurrency(month.revenue, false, view.displayCurrencyCode)}</td>
-                      <td className="py-4 pr-4">{formatCurrency(month.expenses, false, view.displayCurrencyCode)}</td>
+                      <td className="py-4 pr-4">{formatNumber(month.bookings, locale)}</td>
+                      <td className="py-4 pr-4">{formatCurrency(month.revenue, false, view.displayCurrencyCode, locale)}</td>
+                      <td className="py-4 pr-4">{formatCurrency(month.expenses, false, view.displayCurrencyCode, locale)}</td>
                       <td className={`py-4 pr-4 ${month.profit >= 0 ? "text-emerald-300" : "text-rose-200"}`}>
-                        {formatCurrency(month.profit, false, view.displayCurrencyCode)}
+                        {formatCurrency(month.profit, false, view.displayCurrencyCode, locale)}
                       </td>
-                      <td className="py-4">{formatPercent(margin)}</td>
+                      <td className="py-4">{formatPercent(margin, locale)}</td>
                     </tr>
                   );
                 })}
@@ -169,8 +189,12 @@ export default async function ReportsPage({
 
         <div className="grid gap-6 xl:grid-cols-2">
           <SectionCard
-            title="Revenue by Channel"
-            subtitle="Which platforms are actually driving the business."
+            title={isSpanish ? "Ingresos por canal" : "Revenue by Channel"}
+            subtitle={
+              isSpanish
+                ? "Qué plataformas están moviendo realmente el negocio."
+                : "Which platforms are actually driving the business."
+            }
           >
             <div className="space-y-3">
               {view.revenueByChannel.map((channel) => (
@@ -179,11 +203,11 @@ export default async function ReportsPage({
                     <div>
                       <p className="font-semibold text-[var(--workspace-text)]">{channel.label}</p>
                       <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                        {formatNumber(channel.bookings)} bookings
+                        {formatNumber(channel.bookings, locale)} {isSpanish ? "reservas" : "bookings"}
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-[var(--workspace-text)]">
-                      {formatCurrency(channel.revenue, false, view.displayCurrencyCode)}
+                      {formatCurrency(channel.revenue, false, view.displayCurrencyCode, locale)}
                     </span>
                   </div>
                 </div>
@@ -192,8 +216,12 @@ export default async function ReportsPage({
           </SectionCard>
 
           <SectionCard
-            title="Cost Structure"
-            subtitle="The categories taking the largest share of expenses."
+            title={isSpanish ? "Estructura de costes" : "Cost Structure"}
+            subtitle={
+              isSpanish
+                ? "Las categorías que se están llevando la mayor parte de los gastos."
+                : "The categories taking the largest share of expenses."
+            }
           >
             <div className="space-y-3">
               {view.expensesByCategory.map((item) => {
@@ -203,15 +231,17 @@ export default async function ReportsPage({
                 return (
                   <div key={item.label} className="workspace-soft-card rounded-[22px] p-4">
                     <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-[var(--workspace-text)]">{item.label}</p>
-                        <p className="mt-1 text-sm text-[var(--workspace-muted)]">{formatPercent(share)} of total expenses</p>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--workspace-text)]">
-                        {formatCurrency(item.value, false, view.displayCurrencyCode)}
-                      </span>
+                    <div>
+                      <p className="font-semibold text-[var(--workspace-text)]">{item.label}</p>
+                      <p className="mt-1 text-sm text-[var(--workspace-muted)]">
+                        {formatPercent(share, locale)} {isSpanish ? "del gasto total" : "of total expenses"}
+                      </p>
                     </div>
+                    <span className="text-sm font-semibold text-[var(--workspace-text)]">
+                      {formatCurrency(item.value, false, view.displayCurrencyCode, locale)}
+                    </span>
                   </div>
+                </div>
                 );
               })}
             </div>

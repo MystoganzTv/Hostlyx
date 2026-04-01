@@ -18,6 +18,8 @@ import {
   subMonths,
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
+import { getDateFnsLocale } from "@/lib/i18n";
 
 const calendarMonthOptions = [
   { value: 0, label: "January", shortLabel: "Jan" },
@@ -76,6 +78,9 @@ export function WorkspaceDateField({
   className?: string;
   hideLabel?: boolean;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
+  const dateFnsLocale = getDateFnsLocale(locale);
   const normalizedDefaultValue = normalizeDateValue(defaultValue);
   const normalizedControlledValue = normalizeDateValue(value);
   const [internalValue, setInternalValue] = useState(normalizedDefaultValue);
@@ -86,6 +91,11 @@ export function WorkspaceDateField({
   const [isOpen, setIsOpen] = useState(false);
   const [activePicker, setActivePicker] = useState<"month" | "year" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const monthOptions = calendarMonthOptions.map((month) => ({
+    ...month,
+    label: format(new Date(2024, month.value, 1), "MMMM", { locale: dateFnsLocale }),
+    shortLabel: format(new Date(2024, month.value, 1), "MMM", { locale: dateFnsLocale }),
+  }));
 
   useEffect(() => {
     if (!isOpen) {
@@ -183,7 +193,11 @@ export function WorkspaceDateField({
         }`}
       >
         <span className={currentValue ? "text-[var(--workspace-text)]" : "text-[var(--workspace-muted)]"}>
-          {selectedDate ? format(selectedDate, "MMM d, yyyy") : placeholder}
+          {selectedDate
+            ? format(selectedDate, isSpanish ? "d MMM yyyy" : "MMM d, yyyy", {
+                locale: dateFnsLocale,
+              })
+            : placeholder}
         </span>
         <CalendarDays className="h-4 w-4 text-[var(--workspace-muted)]" />
       </button>
@@ -198,14 +212,14 @@ export function WorkspaceDateField({
                 setVisibleMonth((current) => subMonths(current, 1));
               }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white transition hover:bg-white/[0.08]"
-              aria-label="Previous month"
+              aria-label={isSpanish ? "Mes anterior" : "Previous month"}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                aria-label="Select month"
+                aria-label={isSpanish ? "Seleccionar mes" : "Select month"}
                 onClick={() => setActivePicker((current) => (current === "month" ? null : "month"))}
                 className={`rounded-2xl border px-3 py-2 text-sm font-semibold text-white outline-none transition ${
                   activePicker === "month"
@@ -213,11 +227,11 @@ export function WorkspaceDateField({
                     : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
                 }`}
               >
-                {format(visibleMonth, "MMMM")}
+                {format(visibleMonth, "MMMM", { locale: dateFnsLocale })}
               </button>
               <button
                 type="button"
-                aria-label="Select year"
+                aria-label={isSpanish ? "Seleccionar año" : "Select year"}
                 onClick={() => setActivePicker((current) => (current === "year" ? null : "year"))}
                 className={`rounded-2xl border px-3 py-2 text-sm font-semibold text-white outline-none transition ${
                   activePicker === "year"
@@ -235,7 +249,7 @@ export function WorkspaceDateField({
                 setVisibleMonth((current) => addMonths(current, 1));
               }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white transition hover:bg-white/[0.08]"
-              aria-label="Next month"
+              aria-label={isSpanish ? "Mes siguiente" : "Next month"}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -244,7 +258,7 @@ export function WorkspaceDateField({
           {activePicker === "month" ? (
             <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.025] p-3">
               <div className="grid grid-cols-3 gap-2">
-                {calendarMonthOptions.map((month) => {
+                {monthOptions.map((month) => {
                   const isActive = month.value === getMonth(visibleMonth);
 
                   return (
@@ -297,7 +311,9 @@ export function WorkspaceDateField({
           ) : (
             <>
               <div className="mt-4 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                {(isSpanish
+                  ? ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+                  : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]).map((day) => (
                   <span key={day}>{day}</span>
                 ))}
               </div>
@@ -335,14 +351,14 @@ export function WorkspaceDateField({
               onClick={clearDate}
               className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)] transition hover:text-white"
             >
-              Clear
+              {isSpanish ? "Limpiar" : "Clear"}
             </button>
             <button
               type="button"
               onClick={() => chooseDate(new Date())}
               className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-white/[0.08]"
             >
-              Today
+              {isSpanish ? "Hoy" : "Today"}
             </button>
           </div>
         </div>

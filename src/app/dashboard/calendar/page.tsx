@@ -24,7 +24,9 @@ import {
   getPropertyDefinitions,
   getUserSettings,
 } from "@/lib/db";
+import { getDateFnsLocale } from "@/lib/i18n";
 import { getCurrencyForCountry } from "@/lib/markets";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -149,6 +151,9 @@ export default async function CalendarPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
+  const dateFnsLocale = getDateFnsLocale(locale);
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -237,20 +242,32 @@ export default async function CalendarPage({
   const reservationCount = getCalendarReservationCount(countryAndChannelBookings, countryCalendarEvents);
   const rangeLabel =
     selectedCalendarYear === "all"
-        ? selectedCalendarMonth === "all"
-          ? hasScopedFilters
-            ? "Filtered timeline"
+      ? selectedCalendarMonth === "all"
+        ? hasScopedFilters
+          ? isSpanish
+            ? "Timeline filtrado"
+            : "Filtered timeline"
+          : isSpanish
+            ? "Timeline móvil"
             : "Rolling timeline"
-        : `Every ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM")}`
+        : isSpanish
+          ? `Cada ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM", { locale: dateFnsLocale })}`
+          : `Every ${format(new Date(2000, selectedCalendarMonth - 1, 1), "MMMM", { locale: dateFnsLocale })}`
       : selectedCalendarMonth === "all"
         ? String(selectedCalendarYear)
-        : format(new Date(selectedCalendarYear, selectedCalendarMonth - 1, 1), "MMMM yyyy");
+        : format(new Date(selectedCalendarYear, selectedCalendarMonth - 1, 1), "MMMM yyyy", {
+            locale: dateFnsLocale,
+          });
 
   return (
     <WorkspaceShell
       activePage="calendar"
-      pageTitle="Calendar"
-      pageSubtitle="See bookings, check-ins, check-outs, and closed days month by month, and connect iCal feeds per listing."
+      pageTitle={isSpanish ? "Calendario" : "Calendar"}
+      pageSubtitle={
+        isSpanish
+          ? "Ve reservas, check-ins, check-outs y días cerrados mes a mes, y conecta feeds iCal por listing."
+          : "See bookings, check-ins, check-outs, and closed days month by month, and connect iCal feeds per listing."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -284,20 +301,34 @@ export default async function CalendarPage({
           <CalendarFeedsPanel feeds={icalFeeds} />
           <div className="grid gap-4 md:grid-cols-4">
             <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                {isSpanish ? "Rango" : "Range"}
+              </p>
               <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
             </div>
             <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservations tracked</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(reservationCount)}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                {isSpanish ? "Reservas seguidas" : "Reservations tracked"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(reservationCount, locale)}
+              </p>
             </div>
             <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Check-ins</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryAndChannelBookings.length)}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                {isSpanish ? "Check-ins" : "Check-ins"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(countryAndChannelBookings.length, locale)}
+              </p>
             </div>
             <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Closed days</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryClosures.length)}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                {isSpanish ? "Días cerrados" : "Closed days"}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(countryClosures.length, locale)}
+              </p>
             </div>
           </div>
         </div>

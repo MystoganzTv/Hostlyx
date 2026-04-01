@@ -9,10 +9,13 @@ import { getBookings, getExpenses, getLatestImport, getUserSettings } from "@/li
 import { formatNumber } from "@/lib/format";
 import { getDefaultTaxRateByCountry } from "@/lib/tax";
 import { getMarketDefinition } from "@/lib/markets";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
 export default async function SettingsPage() {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -32,8 +35,12 @@ export default async function SettingsPage() {
   return (
     <WorkspaceShell
       activePage="settings"
-      pageTitle="Settings"
-      pageSubtitle="Set the defaults Hostlyx uses for reporting, markets, and tax estimation."
+      pageTitle={isSpanish ? "Ajustes" : "Settings"}
+      pageSubtitle={
+        isSpanish
+          ? "Define los valores por defecto que Hostlyx usa para reporting, mercados y estimación fiscal."
+          : "Set the defaults Hostlyx uses for reporting, markets, and tax estimation."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -42,8 +49,12 @@ export default async function SettingsPage() {
     >
       <div className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
         <SectionCard
-          title="Account Overview"
-          subtitle="This account is isolated from every other host workspace in the system."
+          title={isSpanish ? "Resumen de la cuenta" : "Account Overview"}
+          subtitle={
+            isSpanish
+              ? "Esta cuenta está aislada de cualquier otro workspace de host dentro del sistema."
+              : "This account is isolated from every other host workspace in the system."
+          }
         >
           <div className="space-y-4">
             <div className="workspace-soft-card rounded-[24px] p-4">
@@ -65,7 +76,9 @@ export default async function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[var(--workspace-text)]">{userSettings.businessName}</p>
-                  <p className="text-sm text-[var(--workspace-muted)]">Business name shown across the app</p>
+                  <p className="text-sm text-[var(--workspace-muted)]">
+                    {isSpanish ? "Nombre del negocio visible en toda la app" : "Business name shown across the app"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -80,7 +93,9 @@ export default async function SettingsPage() {
                     {primaryMarket.countryName} • {primaryMarket.currencyCode}
                   </p>
                   <p className="text-sm text-[var(--workspace-muted)]">
-                    Default market used when reports include several countries at once
+                    {isSpanish
+                      ? "Mercado por defecto cuando los informes incluyen varios países a la vez"
+                      : "Default market used when reports include several countries at once"}
                   </p>
                 </div>
               </div>
@@ -96,7 +111,13 @@ export default async function SettingsPage() {
                     {taxMarket.countryName} • {userSettings.taxRate}%
                   </p>
                   <p className="text-sm text-[var(--workspace-muted)]">
-                    {taxRateIsCustom ? "Custom tax default saved for Settings" : "Default estimate currently in use"}
+                    {taxRateIsCustom
+                      ? isSpanish
+                        ? "Tipo fiscal personalizado guardado en Ajustes"
+                        : "Custom tax default saved for Settings"
+                      : isSpanish
+                        ? "Estimación por defecto actualmente en uso"
+                        : "Default estimate currently in use"}
                   </p>
                 </div>
               </div>
@@ -109,10 +130,10 @@ export default async function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[var(--workspace-text)]">
-                    {formatNumber(bookings.length + expenses.length)} total saved records
+                    {formatNumber(bookings.length + expenses.length, locale)} {isSpanish ? "registros guardados" : "total saved records"}
                   </p>
                   <p className="text-sm text-[var(--workspace-muted)]">
-                    {formatNumber(bookings.length)} bookings and {formatNumber(expenses.length)} expenses in your workspace
+                    {formatNumber(bookings.length, locale)} {isSpanish ? "reservas" : "bookings"} {isSpanish ? "y" : "and"} {formatNumber(expenses.length, locale)} {isSpanish ? "gastos" : "expenses"} {isSpanish ? "en tu workspace" : "in your workspace"}
                   </p>
                 </div>
               </div>

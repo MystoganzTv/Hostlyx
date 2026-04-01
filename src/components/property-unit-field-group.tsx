@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 import type { PropertyDefinition } from "@/lib/types";
 import { WorkspaceSelect } from "@/components/workspace-select";
 
@@ -26,6 +27,8 @@ export function PropertyUnitFieldGroup({
   propertyInputName?: string;
   unitInputName?: string;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const [propertyName, setPropertyName] = useState(
     initialPropertyName || (properties.length === 1 ? properties[0].name : ""),
   );
@@ -39,10 +42,23 @@ export function PropertyUnitFieldGroup({
   const propertyOptions = properties.map((property) => ({
     value: property.name,
     label: property.name,
-    description: property.units.length > 0 ? `${property.units.length} saved listing${property.units.length === 1 ? "" : "s"}` : "Single-home property",
+    description:
+      property.units.length > 0
+        ? isSpanish
+          ? `${property.units.length} listing${property.units.length === 1 ? "" : "s"} guardado${property.units.length === 1 ? "" : "s"}`
+          : `${property.units.length} saved listing${property.units.length === 1 ? "" : "s"}`
+        : isSpanish
+          ? "Propiedad de vivienda única"
+          : "Single-home property",
   }));
   const unitOptions = [
-    { value: "", label: "Primary listing", description: "Use this when the whole property is just one listing." },
+    {
+      value: "",
+      label: isSpanish ? "Listing principal" : "Primary listing",
+      description: isSpanish
+        ? "Úsalo cuando toda la propiedad sea un solo listing."
+        : "Use this when the whole property is just one listing.",
+    },
     ...units.map((unit) => ({
       value: unit.name,
       label: unit.name,
@@ -53,7 +69,7 @@ export function PropertyUnitFieldGroup({
     <>
       <WorkspaceSelect
         className="sm:col-span-2"
-        label="Property"
+        label={isSpanish ? "Propiedad" : "Property"}
         name={propertyInputName}
         required
         disabled={properties.length === 0}
@@ -73,7 +89,15 @@ export function PropertyUnitFieldGroup({
           }
         }}
         options={propertyOptions}
-        placeholder={properties.length > 0 ? "Select a property" : "Create a property first"}
+        placeholder={
+          properties.length > 0
+            ? isSpanish
+              ? "Selecciona una propiedad"
+              : "Select a property"
+            : isSpanish
+              ? "Crea primero una propiedad"
+              : "Create a property first"
+        }
       />
 
       <WorkspaceSelect
@@ -83,15 +107,31 @@ export function PropertyUnitFieldGroup({
         value={unitName}
         onChange={setUnitName}
         options={unitOptions}
-        placeholder={units.length > 0 ? "Select a listing" : "Primary listing"}
+        placeholder={
+          units.length > 0
+            ? isSpanish
+              ? "Selecciona un listing"
+              : "Select a listing"
+            : isSpanish
+              ? "Listing principal"
+              : "Primary listing"
+        }
         helper={
           selectedProperty
             ? units.length > 0
-              ? "This property already has saved listings you can reuse."
-              : "This property has no extra listings yet. Keep `Primary listing` for the full-home flow."
+              ? isSpanish
+                ? "Esta propiedad ya tiene listings guardados que puedes reutilizar."
+                : "This property already has saved listings you can reuse."
+              : isSpanish
+                ? "Esta propiedad todavía no tiene listings extra. Mantén `Listing principal` para el flujo de vivienda completa."
+                : "This property has no extra listings yet. Keep `Primary listing` for the full-home flow."
             : properties.length > 0
-              ? "Listings are optional. Keep `Primary listing` for single-home properties."
-              : "Create your first property before adding bookings or expenses."
+              ? isSpanish
+                ? "Los listings son opcionales. Mantén `Listing principal` para propiedades de vivienda única."
+                : "Listings are optional. Keep `Primary listing` for single-home properties."
+              : isSpanish
+                ? "Crea tu primera propiedad antes de añadir reservas o gastos."
+                : "Create your first property before adding bookings or expenses."
         }
       />
     </>

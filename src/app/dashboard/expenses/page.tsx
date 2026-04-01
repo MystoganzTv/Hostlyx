@@ -20,6 +20,7 @@ import {
 } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,8 @@ export default async function ExpensesPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -68,6 +71,7 @@ export default async function ExpensesPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
   const filteredExpenses = filterExpensesForFilters({
     expenses,
@@ -81,8 +85,12 @@ export default async function ExpensesPage({
   return (
     <WorkspaceShell
       activePage="expenses"
-      pageTitle="Expenses"
-      pageSubtitle="Track operating costs, categories, and spend by property or listing."
+      pageTitle={isSpanish ? "Gastos" : "Expenses"}
+      pageSubtitle={
+        isSpanish
+          ? "Sigue costes operativos, categorías y gasto por propiedad o listing."
+          : "Track operating costs, categories, and spend by property or listing."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -106,7 +114,7 @@ export default async function ExpensesPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <SectionCard title="Expenses in view">
+          <SectionCard title={isSpanish ? "Gastos en vista" : "Expenses in view"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Wallet className="h-5 w-5" />
@@ -116,7 +124,7 @@ export default async function ExpensesPage({
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Expense rows">
+          <SectionCard title={isSpanish ? "Filas de gasto" : "Expense rows"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <ReceiptText className="h-5 w-5" />
@@ -126,16 +134,22 @@ export default async function ExpensesPage({
               </p>
             </div>
           </SectionCard>
-          <SectionCard title="Editing">
+          <SectionCard title={isSpanish ? "Edición" : "Editing"}>
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Reclassify categories, move expenses to the right property, and clean notes directly inside the app.
+              {isSpanish
+                ? "Reclasifica categorías, mueve gastos a la propiedad correcta y limpia notas directamente dentro de la app."
+                : "Reclassify categories, move expenses to the right property, and clean notes directly inside the app."}
             </p>
           </SectionCard>
         </div>
 
         <SectionCard
-          title="All Expenses"
-          subtitle="Use the filters above to focus by market and date range."
+          title={isSpanish ? "Todos los gastos" : "All Expenses"}
+          subtitle={
+            isSpanish
+              ? "Usa los filtros de arriba para enfocar por mercado y rango de fechas."
+              : "Use the filters above to focus by market and date range."
+          }
         >
           <ExpensesManager
             expenses={filteredExpenses}

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import type { AppLocale } from "@/lib/i18n";
 
 function navLinkClassName(active: boolean) {
   return active
@@ -11,17 +13,20 @@ export function MarketingHeader({
   activePage,
   signedIn,
   primaryHref,
+  locale,
 }: {
   activePage: "home" | "pricing";
   signedIn: boolean;
   primaryHref: string;
+  locale: AppLocale;
 }) {
+  const isSpanish = locale === "es";
   const navItems = [
-    { label: "Inicio", href: activePage === "home" ? "#hero" : "/#hero", active: activePage === "home" },
-    { label: "Problema", href: activePage === "home" ? "#problem" : "/#problem", active: false },
-    { label: "Solución", href: activePage === "home" ? "#solution" : "/#solution", active: false },
-    { label: "Funciones", href: activePage === "home" ? "#features" : "/#features", active: false },
-    { label: "Precios", href: activePage === "pricing" ? "/pricing" : "#pricing", active: activePage === "pricing" },
+    { label: isSpanish ? "Inicio" : "Home", href: activePage === "home" ? "#hero" : "/#hero", active: activePage === "home" },
+    { label: isSpanish ? "Problema" : "Problem", href: activePage === "home" ? "#problem" : "/#problem", active: false },
+    { label: isSpanish ? "Solución" : "Solution", href: activePage === "home" ? "#solution" : "/#solution", active: false },
+    { label: isSpanish ? "Funciones" : "Features", href: activePage === "home" ? "#features" : "/#features", active: false },
+    { label: isSpanish ? "Precios" : "Pricing", href: activePage === "pricing" ? "/pricing" : "#pricing", active: activePage === "pricing" },
   ];
 
   return (
@@ -40,17 +45,18 @@ export function MarketingHeader({
         </nav>
 
         <div className="hidden shrink-0 items-center gap-3 lg:flex">
+          <LanguageToggle compact />
           <Link
             href={signedIn ? primaryHref : "/login"}
             className="rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.04] hover:text-slate-100"
           >
-            {signedIn ? "Dashboard" : "Iniciar sesión"}
+            {signedIn ? "Dashboard" : isSpanish ? "Iniciar sesión" : "Sign in"}
           </Link>
           <Link
             href={primaryHref}
             className="brand-button inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold transition"
           >
-            {signedIn ? "Abrir app" : "Empieza gratis"}
+            {signedIn ? (isSpanish ? "Abrir app" : "Open app") : isSpanish ? "Empieza gratis" : "Start free"}
           </Link>
         </div>
       </div>

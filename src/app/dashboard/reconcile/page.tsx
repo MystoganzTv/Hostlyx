@@ -16,6 +16,7 @@ import {
   getUserSettings,
 } from "@/lib/db";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,8 @@ export default async function ReconcilePage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -66,13 +69,18 @@ export default async function ReconcilePage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
     <WorkspaceShell
       activePage="reconcile"
-      pageTitle="Reconcile"
-      pageSubtitle="Compare expected payout from bookings against what statements say actually landed."
+      pageTitle={isSpanish ? "Conciliar" : "Reconcile"}
+      pageSubtitle={
+        isSpanish
+          ? "Compara el payout esperado de las reservas con lo que los statements dicen que realmente cayó."
+          : "Compare expected payout from bookings against what statements say actually landed."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -103,13 +111,18 @@ export default async function ReconcilePage({
           />
         ) : (
           <SectionCard
-            title="No statement imported yet"
-            subtitle="Import a financial statement to compare booking expectations against real payout."
+            title={isSpanish ? "Todavía no hay statement importado" : "No statement imported yet"}
+            subtitle={
+              isSpanish
+                ? "Importa un statement financiero para comparar expectativas de reservas con payout real."
+                : "Import a financial statement to compare booking expectations against real payout."
+            }
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-                Reconcile becomes available once Hostlyx has at least one imported financial
-                statement that overlaps the selected reporting period.
+                {isSpanish
+                  ? "Reconcile estará disponible una vez que Hostlyx tenga al menos un statement financiero importado que se solape con el periodo seleccionado."
+                  : "Reconcile becomes available once Hostlyx has at least one imported financial statement that overlaps the selected reporting period."}
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <ReconcileStatementLauncher properties={properties} />
@@ -117,7 +130,7 @@ export default async function ReconcilePage({
                   href="/dashboard/imports"
                   className="workspace-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
                 >
-                  Go to Import Center
+                  {isSpanish ? "Ir al centro de importación" : "Go to Import Center"}
                 </Link>
               </div>
             </div>

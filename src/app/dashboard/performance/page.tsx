@@ -13,6 +13,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { PerformancePanel } from "@/components/performance-panel";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ export default async function PerformancePage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -62,13 +65,18 @@ export default async function PerformancePage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
     <WorkspaceShell
       activePage="performance"
-      pageTitle="Performance"
-      pageSubtitle="Read demand, pricing quality, and booking efficiency across the selected period."
+      pageTitle={isSpanish ? "Rendimiento" : "Performance"}
+      pageSubtitle={
+        isSpanish
+          ? "Lee demanda, calidad de precio y eficiencia de reservas en el periodo seleccionado."
+          : "Read demand, pricing quality, and booking efficiency across the selected period."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}

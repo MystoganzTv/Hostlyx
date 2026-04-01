@@ -2,19 +2,25 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { LanguageToggle } from "@/components/language-toggle";
 import { MarketingFooter } from "@/components/marketing-footer";
+import type { AppLocale } from "@/lib/i18n";
 
 export function LegalPageShell({
   eyebrow,
   title,
   description,
   children,
+  locale = "en",
 }: {
   eyebrow: string;
   title: string;
   description: string;
   children: ReactNode;
+  locale?: AppLocale;
 }) {
+  const isSpanish = locale === "es";
+
   return (
     <>
       <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-10 sm:px-6 xl:px-8">
@@ -27,8 +33,9 @@ export function LegalPageShell({
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Back to home
+                {isSpanish ? "Volver al inicio" : "Back to home"}
               </Link>
+              <LanguageToggle compact />
             </div>
 
             <div className="max-w-2xl">
@@ -50,7 +57,7 @@ export function LegalPageShell({
         </div>
       </main>
 
-      <MarketingFooter />
+      <MarketingFooter locale={locale} />
     </>
   );
 }

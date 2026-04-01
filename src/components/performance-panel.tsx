@@ -1,4 +1,5 @@
 import { BarChart3, CalendarDays, House, Percent, TrendingUp, Users } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 import { MetricCard } from "@/components/metric-card";
 import { SectionCard } from "@/components/section-card";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
@@ -21,6 +22,8 @@ export function PerformancePanel({
   currencyCode: CurrencyCode;
   rangeLabel: string;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const leadingChannel = topChannel(view);
   const strongestMonth = bestMonth(view);
 
@@ -28,35 +31,53 @@ export function PerformancePanel({
     <div className="space-y-6">
       <div className={`grid gap-4 ${view.mixedCurrencyMode ? "md:grid-cols-3 xl:grid-cols-4" : "md:grid-cols-2 xl:grid-cols-5"}`}>
         <MetricCard
-          label="Bookings"
+          label={isSpanish ? "Reservas" : "Bookings"}
           value={view.metrics.bookingsCount}
           format="number"
           currencyCode={currencyCode}
-          helper="Confirmed stays in the current filter window"
+          locale={locale}
+          helper={
+            isSpanish
+              ? "Estancias confirmadas dentro del filtro actual"
+              : "Confirmed stays in the current filter window"
+          }
           icon={<CalendarDays className="h-5 w-5" />}
         />
         <MetricCard
-          label="Guests"
+          label={isSpanish ? "Huéspedes" : "Guests"}
           value={view.metrics.guestsCount}
           format="number"
           currencyCode={currencyCode}
-          helper="Total guest count across saved bookings"
+          locale={locale}
+          helper={
+            isSpanish
+              ? "Total de huéspedes en las reservas guardadas"
+              : "Total guest count across saved bookings"
+          }
           icon={<Users className="h-5 w-5" />}
         />
         <MetricCard
-          label="Nights"
+          label={isSpanish ? "Noches" : "Nights"}
           value={view.metrics.nightsBooked}
           format="number"
           currencyCode={currencyCode}
-          helper="Booked nights captured in Hostlyx"
+          locale={locale}
+          helper={
+            isSpanish ? "Noches reservadas capturadas en Hostlyx" : "Booked nights captured in Hostlyx"
+          }
           icon={<House className="h-5 w-5" />}
         />
         <MetricCard
-          label="Occupancy"
+          label={isSpanish ? "Ocupación" : "Occupancy"}
           value={view.metrics.occupancyRate}
           format="percent"
           currencyCode={currencyCode}
-          helper="Booked nights versus the visible calendar window"
+          locale={locale}
+          helper={
+            isSpanish
+              ? "Noches reservadas frente a la ventana visible del calendario"
+              : "Booked nights versus the visible calendar window"
+          }
           icon={<Percent className="h-5 w-5" />}
         />
         {!view.mixedCurrencyMode ? (
@@ -65,7 +86,12 @@ export function PerformancePanel({
             value={view.metrics.adr}
             format="currency"
             currencyCode={currencyCode}
-            helper="Average rental revenue per booked night"
+            locale={locale}
+            helper={
+              isSpanish
+                ? "Ingreso medio por noche reservada"
+                : "Average rental revenue per booked night"
+            }
             icon={<BarChart3 className="h-5 w-5" />}
           />
         ) : null}
@@ -78,48 +104,67 @@ export function PerformancePanel({
             value={view.metrics.revPar}
             format="currency"
             currencyCode={currencyCode}
-            helper="Rental revenue spread across all visible nights"
+            locale={locale}
+            helper={
+              isSpanish
+                ? "Ingreso de alquiler repartido entre todas las noches visibles"
+                : "Rental revenue spread across all visible nights"
+            }
             icon={<TrendingUp className="h-5 w-5" />}
           />
           <MetricCard
-            label="Profit Margin"
+            label={isSpanish ? "Margen de beneficio" : "Profit Margin"}
             value={view.metrics.profitMargin}
             format="percent"
             currencyCode={currencyCode}
-            helper="Net profit versus gross revenue"
+            locale={locale}
+            helper={isSpanish ? "Beneficio neto frente a ingresos brutos" : "Net profit versus gross revenue"}
             icon={<Percent className="h-5 w-5" />}
           />
           <MetricCard
-            label="Revenue per Booking"
+            label={isSpanish ? "Ingreso por reserva" : "Revenue per Booking"}
             value={view.metrics.bookingsCount > 0 ? view.metrics.grossRevenue / view.metrics.bookingsCount : 0}
             format="currency"
             currencyCode={currencyCode}
-            helper="Average total revenue generated per stay"
+            locale={locale}
+            helper={
+              isSpanish
+                ? "Ingreso total medio generado por estancia"
+                : "Average total revenue generated per stay"
+            }
             icon={<BarChart3 className="h-5 w-5" />}
           />
         </div>
       ) : null}
 
       <SectionCard
-        title="Performance Read"
-        subtitle="Use this page for demand quality, rate quality, and overall booking efficiency."
+        title={isSpanish ? "Lectura de rendimiento" : "Performance Read"}
+        subtitle={
+          isSpanish
+            ? "Usa esta página para ver calidad de demanda, calidad de tarifa y eficiencia general de reservas."
+            : "Use this page for demand quality, rate quality, and overall booking efficiency."
+        }
       >
         <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="workspace-soft-card rounded-[22px] p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Reporting window
+              {isSpanish ? "Ventana de reporte" : "Reporting window"}
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
             <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
-              Performance is best read as a mix of volume, rate, occupancy, and consistency. This page keeps those signals together.
+              {isSpanish
+                ? "El rendimiento se lee mejor como mezcla de volumen, tarifa, ocupación y consistencia. Esta página mantiene juntas esas señales."
+                : "Performance is best read as a mix of volume, rate, occupancy, and consistency. This page keeps those signals together."}
             </p>
           </div>
           <div className="workspace-soft-card rounded-[22px] p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Reading tip
+              {isSpanish ? "Consejo de lectura" : "Reading tip"}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-              Start with bookings, guests, and nights for demand. Then read occupancy, ADR, and RevPAR to understand pricing quality. Use monthly and calendar views when you want the deeper story behind the numbers.
+              {isSpanish
+                ? "Empieza por reservas, huéspedes y noches para leer la demanda. Luego mira ocupación, ADR y RevPAR para entender la calidad del precio. Usa las vistas mensual y calendario cuando quieras una historia más profunda detrás de los números."
+                : "Start with bookings, guests, and nights for demand. Then read occupancy, ADR, and RevPAR to understand pricing quality. Use monthly and calendar views when you want the deeper story behind the numbers."}
             </p>
           </div>
         </div>
@@ -127,47 +172,65 @@ export function PerformancePanel({
 
       <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <SectionCard
-          title="Top Drivers"
-          subtitle="What is leading performance inside the current filters."
+          title={isSpanish ? "Impulsores principales" : "Top Drivers"}
+          subtitle={
+            isSpanish
+              ? "Qué está liderando el rendimiento dentro de los filtros actuales."
+              : "What is leading performance inside the current filters."
+          }
         >
           <div className="grid gap-4 md:grid-cols-2">
             <div className="workspace-soft-card rounded-[22px] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Strongest month
+                {isSpanish ? "Mes más fuerte" : "Strongest month"}
               </p>
               <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
-                {strongestMonth?.label ?? "No month yet"}
+                {strongestMonth?.label ?? (isSpanish ? "Todavía sin mes" : "No month yet")}
               </p>
               <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
                 {strongestMonth
-                  ? `${formatNumber(strongestMonth.bookings)} bookings, ${formatNumber(strongestMonth.guests)} guests, and ${formatNumber(strongestMonth.nights)} nights`
-                  : "Import or add some bookings to start reading month-level performance."}
+                  ? isSpanish
+                    ? `${formatNumber(strongestMonth.bookings, locale)} reservas, ${formatNumber(strongestMonth.guests, locale)} huéspedes y ${formatNumber(strongestMonth.nights, locale)} noches`
+                    : `${formatNumber(strongestMonth.bookings, locale)} bookings, ${formatNumber(strongestMonth.guests, locale)} guests, and ${formatNumber(strongestMonth.nights, locale)} nights`
+                  : isSpanish
+                    ? "Importa o añade algunas reservas para empezar a leer el rendimiento por mes."
+                    : "Import or add some bookings to start reading month-level performance."}
               </p>
             </div>
             <div className="workspace-soft-card rounded-[22px] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Leading channel
+                {isSpanish ? "Canal líder" : "Leading channel"}
               </p>
               <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
-                {leadingChannel?.label ?? "No channel yet"}
+                {leadingChannel?.label ?? (isSpanish ? "Todavía sin canal" : "No channel yet")}
               </p>
               <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
                 {leadingChannel
-                  ? `${formatNumber(leadingChannel.bookings)} bookings in the current view`
-                  : "Bookings will surface the strongest channel automatically."}
+                  ? isSpanish
+                    ? `${formatNumber(leadingChannel.bookings, locale)} reservas en la vista actual`
+                    : `${formatNumber(leadingChannel.bookings, locale)} bookings in the current view`
+                  : isSpanish
+                    ? "Las reservas mostrarán automáticamente el canal más fuerte."
+                    : "Bookings will surface the strongest channel automatically."}
               </p>
             </div>
           </div>
         </SectionCard>
 
         <SectionCard
-          title="Channel Mix"
-          subtitle="Revenue contribution by booking source."
+          title={isSpanish ? "Mezcla por canales" : "Channel Mix"}
+          subtitle={
+            isSpanish
+              ? "Contribución de ingresos por fuente de reserva."
+              : "Revenue contribution by booking source."
+          }
         >
           <div className="space-y-3">
             {view.revenueByChannel.length === 0 ? (
               <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                No channels yet. Add bookings or import a workbook to populate channel performance.
+                {isSpanish
+                  ? "Todavía no hay canales. Añade reservas o importa un archivo para poblar el rendimiento por canal."
+                  : "No channels yet. Add bookings or import a workbook to populate channel performance."}
               </div>
             ) : (
               view.revenueByChannel.slice(0, 5).map((channel) => {
@@ -180,22 +243,22 @@ export function PerformancePanel({
                       <div>
                         <p className="text-base font-semibold text-[var(--workspace-text)]">{channel.label}</p>
                         <p className="mt-1 text-sm text-[var(--workspace-muted)]">
-                          {formatNumber(channel.bookings)} bookings
+                          {formatNumber(channel.bookings, locale)} {isSpanish ? "reservas" : "bookings"}
                         </p>
                       </div>
                       {!view.mixedCurrencyMode ? (
                         <p className="text-sm font-semibold text-[var(--workspace-text)]">
-                          {formatCurrency(channel.revenue, false, currencyCode)}
+                          {formatCurrency(channel.revenue, false, currencyCode, locale)}
                         </p>
                       ) : (
                         <p className="text-sm font-semibold text-[var(--workspace-text)]">
-                          {formatNumber(channel.bookings)}
+                          {formatNumber(channel.bookings, locale)}
                         </p>
                       )}
                     </div>
                     {!view.mixedCurrencyMode ? (
                       <p className="mt-3 text-xs text-[var(--workspace-muted)]">
-                        {formatPercent(share)} of revenue in the selected view
+                        {formatPercent(share, locale)} {isSpanish ? "de los ingresos en la vista seleccionada" : "of revenue in the selected view"}
                       </p>
                     ) : null}
                   </article>

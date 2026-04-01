@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-badges";
+import { useLocale } from "@/components/locale-provider";
 import type {
   CurrencyCode,
   DashboardView,
@@ -20,7 +21,7 @@ import type {
   PropertyDefinition,
 } from "@/lib/types";
 import { getBookingStatusState } from "@/lib/booking-status";
-import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
+import { formatCurrency, formatDateLabel, formatNumber, formatPercent } from "@/lib/format";
 import { getMarketDefinition } from "@/lib/markets";
 import { ChartsPanel } from "@/components/charts-panel";
 import { TaxEstimationCard } from "@/components/dashboard/TaxEstimationCard";
@@ -70,36 +71,37 @@ function recordKey(
   return record.id ? `${record.source ?? "row"}-${record.id}` : `${fallback}-${index}`;
 }
 
-function profitState(netProfit: number) {
+function profitState(netProfit: number, locale: "en" | "es") {
+  const isSpanish = locale === "es";
   if (netProfit > 0) {
     return {
-      chip: "Profitable",
+      chip: isSpanish ? "Rentable" : "Profitable",
       chipClass: "bg-emerald-400/14 text-emerald-200",
       valueClass: "text-white",
-      helper: "Net profit after payout and expenses.",
+      helper: isSpanish ? "Beneficio neto después de payout y gastos." : "Net profit after payout and expenses.",
     };
   }
 
   if (netProfit < 0) {
     return {
-      chip: "Losing money",
+      chip: isSpanish ? "Perdiendo dinero" : "Losing money",
       chipClass: "bg-rose-400/14 text-rose-200",
       valueClass: "text-rose-200",
-      helper: "Expenses are heavier than payout in this view.",
+      helper: isSpanish ? "Los gastos pesan más que el payout en esta vista." : "Expenses are heavier than payout in this view.",
     };
   }
 
   return {
-    chip: "Break-even",
+    chip: isSpanish ? "Punto de equilibrio" : "Break-even",
     chipClass: "bg-slate-400/14 text-slate-200",
     valueClass: "text-white",
-    helper: "The business is neither ahead nor behind right now.",
+    helper: isSpanish ? "El negocio no está ni por delante ni por detrás ahora mismo." : "The business is neither ahead nor behind right now.",
   };
 }
 
-function getTimeContext(view: DashboardView) {
+function getTimeContext(view: DashboardView, locale: "en" | "es") {
   const { filters, rangeLabel } = view;
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
     month: "long",
     year: "numeric",
   });
@@ -135,11 +137,12 @@ function getTimeContext(view: DashboardView) {
   return rangeLabel;
 }
 
-function getTimeContextHint(view: DashboardView) {
+function getTimeContextHint(view: DashboardView, locale: "en" | "es") {
+  const isSpanish = locale === "es";
   const { filters, rangeLabel } = view;
 
   if (filters.rangePreset === "this-month") {
-    return "Current month";
+    return isSpanish ? "Mes actual" : "Current month";
   }
 
   if (filters.rangePreset === "this-year" || filters.rangePreset === "last-year") {
@@ -147,37 +150,34 @@ function getTimeContextHint(view: DashboardView) {
   }
 
   if (filters.rangePreset === "custom") {
-    return "Custom date range";
+    return isSpanish ? "Rango personalizado" : "Custom date range";
   }
 
   if (filters.rangePreset === "last-90-days") {
-    return "Rolling period";
+    return isSpanish ? "Periodo móvil" : "Rolling period";
   }
 
   if (filters.rangePreset === "all-time") {
-    return "Full imported history";
+    return isSpanish ? "Historial importado completo" : "Full imported history";
   }
 
   if (filters.year !== "all" && filters.month !== "all") {
-    return "Selected month";
+    return isSpanish ? "Mes seleccionado" : "Selected month";
   }
 
   if (filters.year !== "all") {
-    return "Selected year";
+    return isSpanish ? "Año seleccionado" : "Selected year";
   }
 
-  return "Current view";
-}
-
-function formatPercent(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
+  return isSpanish ? "Vista actual" : "Current view";
 }
 
 function formatWholePercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-function getPrimaryHeroInsight(view: DashboardView) {
+function getPrimaryHeroInsight(view: DashboardView, locale: "en" | "es") {
+  const isSpanish = locale === "es";
   const { totalRevenue, totalExpenses, profitAfterTax, estimatedTaxes, netProfit } = view.metrics;
 
   if (totalRevenue <= 0) {
@@ -187,45 +187,34 @@ function getPrimaryHeroInsight(view: DashboardView) {
   const expenseRatio = totalExpenses / totalRevenue;
 
   if (expenseRatio >= 0.5) {
-    return `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
+    return isSpanish
+      ? `Tus gastos están consumiendo ${formatWholePercent(expenseRatio)} de tus ingresos.`
+      : `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
   }
 
   if (netProfit > 0 && estimatedTaxes > 0) {
     const taxImpact = estimatedTaxes / netProfit;
 
-    if (taxImpact >= 0.2) {
-      return `Taxes are reducing your take-home by ${formatWholePercent(taxImpact)} of net profit.`;
-    }
+      if (taxImpact >= 0.2) {
+      return isSpanish
+        ? `Los impuestos están reduciendo tu take-home en ${formatWholePercent(taxImpact)} del beneficio neto.`
+        : `Taxes are reducing your take-home by ${formatWholePercent(taxImpact)} of net profit.`;
+      }
   }
 
   if (profitAfterTax >= 0) {
-    return `You are keeping ${formatWholePercent(profitAfterTax / totalRevenue)} of revenue after expenses and estimated taxes.`;
+    return isSpanish
+      ? `Te estás quedando con ${formatWholePercent(profitAfterTax / totalRevenue)} de los ingresos después de gastos e impuestos estimados.`
+      : `You are keeping ${formatWholePercent(profitAfterTax / totalRevenue)} of revenue after expenses and estimated taxes.`;
   }
 
-  return `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
+  return isSpanish
+    ? `Tus gastos están consumiendo ${formatWholePercent(expenseRatio)} de tus ingresos.`
+    : `Your expenses are consuming ${formatWholePercent(expenseRatio)} of your revenue.`;
 }
 
-function getRelativeChange(current: number, previous: number) {
-  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) {
-    return null;
-  }
-
-  return (current - previous) / Math.abs(previous);
-}
-
-function channelLabel(channel: "airbnb" | "booking" | "other") {
-  if (channel === "airbnb") {
-    return "Airbnb";
-  }
-
-  if (channel === "booking") {
-    return "Booking.com";
-  }
-
-  return "Other channels";
-}
-
-function buildDashboardInsights(view: DashboardView) {
+function buildDashboardInsights(view: DashboardView, locale: "en" | "es") {
+  const isSpanish = locale === "es";
   const insights: DashboardInsight[] = [];
   const { totalRevenue, totalExpenses, estimatedTaxes, netProfit, profitMargin, profitAfterTax } = view.metrics;
 
@@ -234,8 +223,10 @@ function buildDashboardInsights(view: DashboardView) {
 
     if (expenseRatio > 0.6) {
       insights.push({
-        title: "Expenses are high",
-        body: "They are consuming a large share of revenue in the selected period.",
+        title: isSpanish ? "Los gastos son altos" : "Expenses are high",
+        body: isSpanish
+          ? "Están consumiendo una gran parte de los ingresos en el periodo seleccionado."
+          : "They are consuming a large share of revenue in the selected period.",
         tone: "caution",
       });
     }
@@ -246,8 +237,10 @@ function buildDashboardInsights(view: DashboardView) {
 
     if (taxPressure > 0.2) {
       insights.push({
-        title: "Tax pressure is rising",
-        body: "Estimated taxes are materially reducing your take-home.",
+        title: isSpanish ? "La presión fiscal sube" : "Tax pressure is rising",
+        body: isSpanish
+          ? "Los impuestos estimados están reduciendo materialmente lo que te llevas."
+          : "Estimated taxes are materially reducing your take-home.",
         tone: "caution",
       });
     }
@@ -260,8 +253,10 @@ function buildDashboardInsights(view: DashboardView) {
 
     if (topChannel && topChannel.revenue / totalRevenue > 0.7) {
       insights.push({
-        title: "Revenue is concentrated",
-        body: "Most of your revenue is coming from one channel.",
+        title: isSpanish ? "Los ingresos están concentrados" : "Revenue is concentrated",
+        body: isSpanish
+          ? "La mayor parte de tus ingresos viene de un solo canal."
+          : "Most of your revenue is coming from one channel.",
         tone: "neutral",
       });
     }
@@ -269,16 +264,20 @@ function buildDashboardInsights(view: DashboardView) {
 
   if (totalRevenue > 0 && profitMargin < 0.2) {
     insights.push({
-      title: "Margin is under pressure",
-      body: "Your profit margin is thinner than expected in this period.",
+      title: isSpanish ? "El margen está bajo presión" : "Margin is under pressure",
+      body: isSpanish
+        ? "Tu margen de beneficio es más fino de lo esperado en este periodo."
+        : "Your profit margin is thinner than expected in this period.",
       tone: "caution",
     });
   }
 
   if (insights.length === 0 && profitAfterTax > 0) {
     insights.push({
-      title: "After-tax profit stayed positive",
-      body: "Your business remained profitable after tax in the selected period.",
+      title: isSpanish ? "El beneficio después de impuestos siguió positivo" : "After-tax profit stayed positive",
+      body: isSpanish
+        ? "Tu negocio siguió siendo rentable después de impuestos en el periodo seleccionado."
+        : "Your business remained profitable after tax in the selected period.",
       tone: "positive",
     });
   }
@@ -301,14 +300,16 @@ export function DashboardShell({
   subscriptionBadge,
   showUpgradeAction = false,
 }: DashboardShellProps) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isEntryOpen, setIsEntryOpen] = useState(false);
-  const profitMeta = profitState(view.metrics.netProfit);
-  const timeContext = getTimeContext(view);
-  const timeContextHint = getTimeContextHint(view);
+  const profitMeta = profitState(view.metrics.netProfit, locale);
+  const timeContext = getTimeContext(view, locale);
+  const timeContextHint = getTimeContextHint(view, locale);
   const afterTaxPositive = view.metrics.profitAfterTax >= 0;
-  const insights = view.mixedCurrencyMode ? [] : buildDashboardInsights(view);
-  const primaryHeroInsight = view.mixedCurrencyMode ? null : getPrimaryHeroInsight(view);
+  const insights = view.mixedCurrencyMode ? [] : buildDashboardInsights(view, locale);
+  const primaryHeroInsight = view.mixedCurrencyMode ? null : getPrimaryHeroInsight(view, locale);
   const expenseRatio =
     view.metrics.totalPayout > 0 ? view.metrics.totalExpenses / view.metrics.totalPayout : null;
   const hasHighExpenseRatio = expenseRatio !== null && expenseRatio > 0.6;
@@ -321,19 +322,31 @@ export function DashboardShell({
   const hasSignificantTaxImpact = taxImpactRatio !== null && taxImpactRatio > 0.25;
   const afterTaxChipLabel =
     view.metrics.profitAfterTax > 0
-      ? "Profitable After Tax"
+      ? isSpanish
+        ? "Rentable tras impuestos"
+        : "Profitable After Tax"
       : view.metrics.profitAfterTax < 0
-        ? "Below Break-Even"
-        : "Break-Even After Tax";
+        ? isSpanish
+          ? "Por debajo del equilibrio"
+          : "Below Break-Even"
+        : isSpanish
+          ? "Equilibrio tras impuestos"
+          : "Break-Even After Tax";
   const upgradeTone = subscriptionBadge?.tone;
   const highlightUpgrade =
     upgradeTone === "trial" || upgradeTone === "expired" || upgradeTone === "starter";
   const upgradeLabel =
     upgradeTone === "starter"
-      ? "Upgrade to Pro"
+      ? isSpanish
+        ? "Subir a Pro"
+        : "Upgrade to Pro"
       : upgradeTone === "trial" || upgradeTone === "expired"
-        ? "Choose a Plan"
-        : "Upgrade";
+        ? isSpanish
+          ? "Elegir un plan"
+          : "Choose a Plan"
+        : isSpanish
+          ? "Actualizar"
+          : "Upgrade";
 
   return (
     <>
@@ -370,14 +383,14 @@ export function DashboardShell({
               onClick={() => setIsUploadOpen(true)}
               className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
             >
-              Upload data
+              {isSpanish ? "Subir datos" : "Upload data"}
             </button>
             <button
               type="button"
               onClick={() => setIsEntryOpen(true)}
               className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
             >
-              Add entry
+              {isSpanish ? "Añadir entrada" : "Add entry"}
             </button>
           </>
         }
@@ -387,7 +400,7 @@ export function DashboardShell({
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--workspace-muted)]">
-                  Performance Overview
+                  {isSpanish ? "Resumen de rendimiento" : "Performance Overview"}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)] sm:text-[2rem]">
@@ -398,7 +411,9 @@ export function DashboardShell({
                   </span>
                 </div>
                 <p className="max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-                  A cleaner snapshot of the selected period, with after-tax profit front and center.
+                  {isSpanish
+                    ? "Una vista más limpia del periodo seleccionado, con el beneficio después de impuestos en primer plano."
+                    : "A cleaner snapshot of the selected period, with after-tax profit front and center."}
                 </p>
               </div>
 
@@ -418,8 +433,12 @@ export function DashboardShell({
 
             {view.mixedCurrencyMode ? (
               <SectionCard
-                title="Portfolio View"
-                subtitle="All markets is useful for portfolio volume, but Hostlyx will not fake a converted profit total across mixed currencies."
+                title={isSpanish ? "Vista portfolio" : "Portfolio View"}
+                subtitle={
+                  isSpanish
+                    ? "All markets sirve para ver volumen de cartera, pero Hostlyx no fingirá un beneficio total convertido entre monedas mixtas."
+                    : "All markets is useful for portfolio volume, but Hostlyx will not fake a converted profit total across mixed currencies."
+                }
               >
                 <div className="grid gap-4 xl:grid-cols-3">
                   {view.marketBreakdown.map((market) => {
@@ -433,23 +452,23 @@ export function DashboardShell({
                         </p>
                         <div className="mt-5 grid gap-4 sm:grid-cols-2">
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Revenue</p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Ingresos" : "Revenue"}</p>
                             <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
                               {formatCurrency(market.revenue, false, market.currencyCode)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Profit</p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Beneficio" : "Profit"}</p>
                             <p className={`mt-2 text-sm font-semibold ${market.profit >= 0 ? "text-emerald-300" : "text-rose-200"}`}>
                               {formatCurrency(market.profit, false, market.currencyCode)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Bookings</p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Reservas" : "Bookings"}</p>
                             <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(market.bookings)}</p>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Expenses</p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Gastos" : "Expenses"}</p>
                             <p className="mt-2 text-sm font-semibold text-[var(--workspace-text)]">
                               {formatCurrency(market.expenses, false, market.currencyCode)}
                             </p>
@@ -479,20 +498,22 @@ export function DashboardShell({
 
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--workspace-muted)]">
-                            You Keep
+                            {isSpanish ? "Te quedas" : "You Keep"}
                           </p>
                           <p
                             className={`mt-5 text-5xl font-semibold tracking-[-0.05em] sm:text-6xl ${afterTaxPositive ? "text-[var(--workspace-text)]" : "text-rose-100"}`}
                           >
                             {formatCurrency(view.metrics.profitAfterTax, false, currencyCode)}
                           </p>
-                          {primaryHeroInsight ? (
-                            <p className="mt-4 max-w-2xl text-[15px] font-medium leading-7 text-slate-200">
-                              {primaryHeroInsight}
-                            </p>
-                          ) : null}
+                            {primaryHeroInsight ? (
+                              <p className="mt-4 max-w-2xl text-[15px] font-medium leading-7 text-slate-200">
+                                {primaryHeroInsight}
+                              </p>
+                            ) : null}
                           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-                            After payout, operating expenses, and estimated taxes.
+                            {isSpanish
+                              ? "Después de payout, gastos operativos e impuestos estimados."
+                              : "After payout, operating expenses, and estimated taxes."}
                           </p>
                         </div>
                       </div>
@@ -500,12 +521,12 @@ export function DashboardShell({
                       <div className="grid gap-3">
                         <div className="workspace-soft-card rounded-[26px] p-5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                              Set Aside
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                              {isSpanish ? "Reserva fiscal" : "Set Aside"}
                             </p>
                             {hasSignificantTaxImpact ? (
                               <span className="rounded-full border border-amber-200/14 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100/90">
-                                Significant tax impact
+                                {isSpanish ? "Impacto fiscal alto" : "Significant tax impact"}
                               </span>
                             ) : null}
                           </div>
@@ -513,13 +534,15 @@ export function DashboardShell({
                             {formatCurrency(view.metrics.estimatedTaxes, false, currencyCode)}
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Reserved from net profit based on the current tax view and settings.
+                            {isSpanish
+                              ? "Reservado desde el beneficio neto según la vista fiscal actual y sus ajustes."
+                              : "Reserved from net profit based on the current tax view and settings."}
                           </p>
                         </div>
 
                         <div className="workspace-soft-card rounded-[26px] p-5">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            View Context
+                            {isSpanish ? "Contexto de la vista" : "View Context"}
                           </p>
                           <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
                             {timeContext}
@@ -533,27 +556,29 @@ export function DashboardShell({
                   </article>
 
                   <SectionCard
-                    title="Key Insights"
-                    subtitle="Three signals worth watching in the current view."
+                    title={isSpanish ? "Insights clave" : "Key Insights"}
+                    subtitle={isSpanish ? "Tres señales que merece la pena vigilar en la vista actual." : "Three signals worth watching in the current view."}
                   >
                     {!insightsEnabled ? (
                       <div className="workspace-soft-card rounded-[24px] p-5">
                         <p className="text-sm font-semibold text-[var(--workspace-text)]">
-                          Upgrade to Pro for key insights
+                          {isSpanish ? "Actualiza a Pro para ver insights clave" : "Upgrade to Pro for key insights"}
                         </p>
                         <p className="mt-2 text-sm leading-7 text-[var(--workspace-muted)]">
-                          Pro and Portfolio unlock concise signals on pressure, concentration, and margin quality.
+                          {isSpanish
+                            ? "Pro y Portfolio desbloquean señales concisas sobre presión, concentración y calidad del margen."
+                            : "Pro and Portfolio unlock concise signals on pressure, concentration, and margin quality."}
                         </p>
                         <Link
                           href="/pricing"
                           className="workspace-button-secondary mt-4 inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
                         >
-                          View plans
+                          {isSpanish ? "Ver planes" : "View plans"}
                         </Link>
                       </div>
                     ) : insights.length === 0 ? (
                       <div className="workspace-soft-card rounded-[24px] p-5 text-sm leading-7 text-[var(--workspace-muted)]">
-                        Not enough meaningful signals yet for this time range.
+                        {isSpanish ? "Todavía no hay suficientes señales significativas para este rango." : "Not enough meaningful signals yet for this time range."}
                       </div>
                     ) : (
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -599,13 +624,13 @@ export function DashboardShell({
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-                            Net Profit
+                            {isSpanish ? "Beneficio neto" : "Net Profit"}
                           </p>
                           <p className={`mt-4 text-3xl font-semibold tracking-[-0.04em] ${profitMeta.valueClass}`}>
                             {formatCurrency(view.metrics.netProfit, false, currencyCode)}
                           </p>
                           <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Based on payout, not gross revenue.
+                            {isSpanish ? "Basado en payout, no en ingresos brutos." : "Based on payout, not gross revenue."}
                           </p>
                         </div>
                         <div
@@ -624,13 +649,13 @@ export function DashboardShell({
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-                            Net Payout
+                            {isSpanish ? "Payout neto" : "Net Payout"}
                           </p>
                           <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
                             {formatCurrency(view.metrics.totalPayout, false, currencyCode)}
                           </p>
                           <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Actual cash received after platform fees.
+                            {isSpanish ? "Caja real recibida después de comisiones de plataforma." : "Actual cash received after platform fees."}
                           </p>
                         </div>
                         <div className="workspace-icon-chip rounded-[18px] p-3">
@@ -645,13 +670,15 @@ export function DashboardShell({
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
-                            Gross Revenue
+                            {isSpanish ? "Ingresos brutos" : "Gross Revenue"}
                           </p>
                           <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.totalRevenue, false, currencyCode)}
+                            {formatCurrency(view.metrics.totalRevenue, false, currencyCode, locale)}
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Total booking value before platform fees.
+                            {isSpanish
+                              ? "Valor total de las reservas antes de comisiones de plataforma."
+                              : "Total booking value before platform fees."}
                           </p>
                         </div>
                         <div className="workspace-icon-chip rounded-[18px] p-3">
@@ -671,23 +698,27 @@ export function DashboardShell({
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
-                              Total Expenses
+                              {isSpanish ? "Gastos totales" : "Total Expenses"}
                             </p>
                             {hasHighExpenseRatio ? (
                               <span className="rounded-full border border-amber-200/14 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100/90">
-                                High cost ratio
+                                {isSpanish ? "Ratio de costes alto" : "High cost ratio"}
                               </span>
                             ) : null}
                           </div>
                           <p className="mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.totalExpenses, false, currencyCode)}
+                            {formatCurrency(view.metrics.totalExpenses, false, currencyCode, locale)}
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Operating costs in the selected period.
+                            {isSpanish
+                              ? "Costes operativos en el periodo seleccionado."
+                              : "Operating costs in the selected period."}
                           </p>
                           {hasHighExpenseRatio && expenseRatio !== null ? (
                             <p className="mt-3 text-sm font-medium leading-6 text-amber-100/88">
-                              Consumes {formatWholePercent(expenseRatio)} of payout.
+                              {isSpanish
+                                ? `Consume ${formatWholePercent(expenseRatio)} del payout.`
+                                : `Consumes ${formatWholePercent(expenseRatio)} of payout.`}
                             </p>
                           ) : null}
                         </div>
@@ -711,15 +742,17 @@ export function DashboardShell({
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/85">
-                            Profit Margin
+                            {isSpanish ? "Margen de beneficio" : "Profit Margin"}
                           </p>
                           <p
                             className={`mt-3 text-[1.75rem] font-semibold tracking-[-0.04em] ${view.metrics.profitMargin >= 0 ? "text-[var(--workspace-text)]" : "text-rose-100"}`}
                           >
-                            {formatPercent(view.metrics.profitMargin)}
+                            {formatPercent(view.metrics.profitMargin, locale)}
                           </p>
                           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                            Net profit as a share of gross revenue.
+                            {isSpanish
+                              ? "Beneficio neto como parte de los ingresos brutos."
+                              : "Net profit as a share of gross revenue."}
                           </p>
                         </div>
                         <div className="workspace-icon-chip rounded-[18px] p-3">
@@ -743,9 +776,11 @@ export function DashboardShell({
                           <ReceiptText className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Estimated Taxes</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                            {isSpanish ? "Impuestos estimados" : "Estimated Taxes"}
+                          </p>
                           <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.estimatedTaxes, false, currencyCode)}
+                            {formatCurrency(view.metrics.estimatedTaxes, false, currencyCode, locale)}
                           </p>
                         </div>
                       </div>
@@ -757,9 +792,11 @@ export function DashboardShell({
                           <CalendarDays className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Bookings</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                            {isSpanish ? "Reservas" : "Bookings"}
+                          </p>
                           <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-                            {formatNumber(view.metrics.bookingsCount)}
+                            {formatNumber(view.metrics.bookingsCount, locale)}
                           </p>
                         </div>
                       </div>
@@ -773,7 +810,7 @@ export function DashboardShell({
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">ADR</p>
                           <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-                            {formatCurrency(view.metrics.adr, false, currencyCode)}
+                            {formatCurrency(view.metrics.adr, false, currencyCode, locale)}
                           </p>
                         </div>
                       </div>
@@ -785,9 +822,11 @@ export function DashboardShell({
                           <ArrowUpRight className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Occupancy</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                            {isSpanish ? "Ocupación" : "Occupancy"}
+                          </p>
                           <p className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-                            {formatPercent(view.metrics.occupancyRate)}
+                            {formatPercent(view.metrics.occupancyRate, locale)}
                           </p>
                         </div>
                       </div>
@@ -821,11 +860,20 @@ export function DashboardShell({
           />
 
           <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-            <SectionCard title="Recent Bookings" subtitle="Latest stays entering the business right now.">
+            <SectionCard
+              title={isSpanish ? "Reservas recientes" : "Recent Bookings"}
+              subtitle={
+                isSpanish
+                  ? "Las últimas estancias que están entrando ahora mismo en el negocio."
+                  : "Latest stays entering the business right now."
+              }
+            >
               <div className="space-y-3">
                 {view.recentBookings.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No bookings yet. Upload a workbook or add the first stay to start reading the business.
+                    {isSpanish
+                      ? "Todavía no hay reservas. Sube un archivo o añade la primera estancia para empezar a leer el negocio."
+                      : "No bookings yet. Upload a workbook or add the first stay to start reading the business."}
                   </div>
                 ) : (
                   view.recentBookings.map((booking, index) => {
@@ -849,7 +897,7 @@ export function DashboardShell({
                               </div>
                             </div>
                             <p className="text-sm text-[var(--workspace-muted)]">
-                              {formatDateLabel(booking.checkIn)} to {formatDateLabel(booking.checkout)}
+                              {formatDateLabel(booking.checkIn, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(booking.checkout, locale)}
                             </p>
                           </div>
 
@@ -859,17 +907,17 @@ export function DashboardShell({
                             </div>
                             <div className="grid gap-3 sm:grid-cols-3">
                               <div className="workspace-card rounded-[18px] px-3 py-3">
-                                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Guests</p>
-                                <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.guestCount)}</p>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Huéspedes" : "Guests"}</p>
+                                <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.guestCount, locale)}</p>
                               </div>
                               <div className="workspace-card rounded-[18px] px-3 py-3">
-                                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Nights</p>
-                                <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.nights)}</p>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Noches" : "Nights"}</p>
+                                <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">{formatNumber(booking.nights, locale)}</p>
                               </div>
                               <div className="workspace-card rounded-[18px] px-3 py-3">
                                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Payout</p>
                                 <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
-                                  {formatCurrency(booking.payout, false, currencyCode)}
+                                  {formatCurrency(booking.payout, false, currencyCode, locale)}
                                 </p>
                               </div>
                             </div>
@@ -882,11 +930,20 @@ export function DashboardShell({
               </div>
             </SectionCard>
 
-            <SectionCard title="Recent Expenses" subtitle="The latest places where money left the business.">
+            <SectionCard
+              title={isSpanish ? "Gastos recientes" : "Recent Expenses"}
+              subtitle={
+                isSpanish
+                  ? "Los últimos lugares donde salió dinero del negocio."
+                  : "The latest places where money left the business."
+              }
+            >
               <div className="space-y-3">
                 {view.recentExpenses.length === 0 ? (
                   <div className="workspace-soft-card rounded-[22px] p-5 text-sm text-[var(--workspace-muted)]">
-                    No expenses yet. Add costs to understand where money is going.
+                    {isSpanish
+                      ? "Todavía no hay gastos. Añade costes para entender a dónde se va el dinero."
+                      : "No expenses yet. Add costs to understand where money is going."}
                   </div>
                 ) : (
                   view.recentExpenses.map((expense, index) => (
@@ -901,11 +958,11 @@ export function DashboardShell({
                             {expense.category} • {expense.propertyName}
                             {expense.unitName ? ` • ${expense.unitName}` : ""}
                           </p>
-                          <p className="text-sm text-[var(--workspace-muted)]">{formatDateLabel(expense.date)}</p>
+                          <p className="text-sm text-[var(--workspace-muted)]">{formatDateLabel(expense.date, locale)}</p>
                           {expense.note ? <p className="text-sm text-[var(--workspace-muted)]">{expense.note}</p> : null}
                         </div>
                         <span className="text-sm font-semibold text-[var(--workspace-text)]">
-                          {formatCurrency(expense.amount, false, currencyCode)}
+                          {formatCurrency(expense.amount, false, currencyCode, locale)}
                         </span>
                       </div>
                     </div>
@@ -928,7 +985,7 @@ export function DashboardShell({
 
       <Modal
         open={isEntryOpen}
-        title="Add Booking or Expense"
+        title={isSpanish ? "Añadir reserva o gasto" : "Add Booking or Expense"}
         onClose={() => setIsEntryOpen(false)}
       >
         <ManualEntryPanel properties={properties} />

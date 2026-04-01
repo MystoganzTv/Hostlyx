@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Scale, TriangleAlert } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 import type { CurrencyCode, DashboardView } from "@/lib/types";
 import { formatCurrency, formatPercent } from "@/lib/format";
 
 type ReconcileData = NonNullable<DashboardView["reconcile"]>;
 
-function formatSignedCurrency(value: number, currencyCode: CurrencyCode) {
-  const absolute = formatCurrency(Math.abs(value), false, currencyCode);
+function formatSignedCurrency(value: number, currencyCode: CurrencyCode, locale: "en" | "es") {
+  const absolute = formatCurrency(Math.abs(value), false, currencyCode, locale);
   if (value > 0) {
     return `+${absolute}`;
   }
@@ -20,12 +21,12 @@ function formatSignedCurrency(value: number, currencyCode: CurrencyCode) {
   return absolute;
 }
 
-function formatSignedPercent(value: number | null) {
+function formatSignedPercent(value: number | null, locale: "en" | "es") {
   if (value === null || !Number.isFinite(value)) {
-    return "No comparison yet";
+    return locale === "es" ? "Todavía sin comparación" : "No comparison yet";
   }
 
-  const absolute = formatPercent(Math.abs(value));
+  const absolute = formatPercent(Math.abs(value), locale);
   if (value > 0) {
     return `+${absolute}`;
   }
@@ -56,15 +57,17 @@ export function ReconcileSummaryCard({
   reconcile: ReconcileData;
   currencyCode: CurrencyCode;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   return (
     <article className="workspace-soft-card rounded-[26px] border-[var(--workspace-accent)]/12 bg-[linear-gradient(180deg,rgba(125,211,197,0.06)_0%,rgba(10,20,34,0.92)_100%)] p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-            Reconcile
+            {isSpanish ? "Conciliar" : "Reconcile"}
           </p>
           <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-            Expected vs actual payout
+            {isSpanish ? "Payout esperado vs real" : "Expected vs actual payout"}
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
             {reconcile.message}
@@ -78,29 +81,29 @@ export function ReconcileSummaryCard({
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-            Expected payout
+            {isSpanish ? "Payout esperado" : "Expected payout"}
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-            {formatCurrency(reconcile.expectedPayout, false, currencyCode)}
+            {formatCurrency(reconcile.expectedPayout, false, currencyCode, locale)}
           </p>
         </div>
         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-            Actual payout
+            {isSpanish ? "Payout real" : "Actual payout"}
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-            {formatCurrency(reconcile.actualPayout, false, currencyCode)}
+            {formatCurrency(reconcile.actualPayout, false, currencyCode, locale)}
           </p>
         </div>
         <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-            Difference
+            {isSpanish ? "Diferencia" : "Difference"}
           </p>
           <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
-            {formatSignedCurrency(reconcile.difference, currencyCode)}
+            {formatSignedCurrency(reconcile.difference, currencyCode, locale)}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-            {formatSignedPercent(reconcile.mismatchRatio)}
+            {formatSignedPercent(reconcile.mismatchRatio, locale)}
           </p>
         </div>
       </div>
@@ -111,7 +114,7 @@ export function ReconcileSummaryCard({
           href="/dashboard/reconcile"
           className="workspace-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
         >
-          View details
+          {isSpanish ? "Ver detalles" : "View details"}
         </Link>
       </div>
     </article>
@@ -125,6 +128,8 @@ export function ReconcilePanel({
   reconcile: ReconcileData;
   currencyCode: CurrencyCode;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const reconciliationMax = Math.max(
     reconcile.grossRevenue,
     reconcile.totalFees,
@@ -140,14 +145,16 @@ export function ReconcilePanel({
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-              Reconcile
+              {isSpanish ? "Conciliar" : "Reconcile"}
             </p>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
               {reconcile.periodLabel}
             </span>
           </div>
           <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)] sm:text-2xl">
-            Reconcile booking expectations against actual statement payout.
+            {isSpanish
+              ? "Concilia expectativas de reservas contra el payout real del statement."
+              : "Reconcile booking expectations against actual statement payout."}
           </p>
           <p className="max-w-3xl text-sm leading-7 text-slate-200/92">
             {reconcile.message}
@@ -167,7 +174,9 @@ export function ReconcilePanel({
             <TriangleAlert className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-amber-50">Attention needed</p>
+            <p className="text-sm font-semibold text-amber-50">
+              {isSpanish ? "Atención necesaria" : "Attention needed"}
+            </p>
             <p className="mt-1 text-sm leading-6 text-amber-100/88">
               {reconcile.alertMessage}
             </p>
@@ -178,34 +187,34 @@ export function ReconcilePanel({
       <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="rounded-[28px] border border-[var(--workspace-border)] bg-[linear-gradient(180deg,rgba(125,211,197,0.08)_0%,rgba(255,255,255,0.02)_100%)] p-6">
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-            Actual payout
+            {isSpanish ? "Payout real" : "Actual payout"}
           </p>
           <p className="mt-4 text-center text-5xl font-semibold tracking-[-0.05em] text-[var(--workspace-text)] sm:text-6xl">
-            {formatCurrency(reconcile.actualPayout, false, currencyCode)}
+            {formatCurrency(reconcile.actualPayout, false, currencyCode, locale)}
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                Expected payout
+                {isSpanish ? "Payout esperado" : "Expected payout"}
               </p>
               <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--workspace-text)]">
-                {formatCurrency(reconcile.expectedPayout, false, currencyCode)}
+                {formatCurrency(reconcile.expectedPayout, false, currencyCode, locale)}
               </p>
             </div>
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                Difference
+                {isSpanish ? "Diferencia" : "Difference"}
               </p>
               <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
-                {formatSignedCurrency(reconcile.difference, currencyCode)}
+                {formatSignedCurrency(reconcile.difference, currencyCode, locale)}
               </p>
             </div>
             <div className="rounded-[20px] border border-white/7 bg-white/[0.02] px-4 py-4 text-center sm:col-span-2 xl:col-span-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                Mismatch
+                {isSpanish ? "Desajuste" : "Mismatch"}
               </p>
               <p className={`mt-2 text-2xl font-semibold tracking-[-0.04em] ${getDifferenceTone(reconcile.difference)}`}>
-                {formatSignedPercent(reconcile.mismatchRatio)}
+                {formatSignedPercent(reconcile.mismatchRatio, locale)}
               </p>
             </div>
           </div>
@@ -215,10 +224,10 @@ export function ReconcilePanel({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                Statement bridge
+                {isSpanish ? "Puente del statement" : "Statement bridge"}
               </p>
               <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                From booking value to cash actually received.
+                {isSpanish ? "Del valor de reserva al efectivo realmente recibido." : "From booking value to cash actually received."}
               </p>
             </div>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
@@ -266,7 +275,7 @@ export function ReconcilePanel({
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm font-medium text-[var(--workspace-text)]">{row.label}</p>
                   <p className={`text-sm font-semibold ${row.tone}`}>
-                    {formatCurrency(row.value, false, currencyCode)}
+                    {formatCurrency(row.value, false, currencyCode, locale)}
                   </p>
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.04]">
@@ -286,42 +295,54 @@ export function ReconcilePanel({
       <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.92fr)]">
         <div className="rounded-[28px] border border-[var(--workspace-border)] bg-white/[0.02] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-            Breakdown
+            {isSpanish ? "Desglose" : "Breakdown"}
           </p>
           <div className="mt-4 divide-y divide-white/6">
             {[
-              ["Gross revenue", reconcile.grossRevenue],
-              ["Platform fees", reconcile.totalFees],
-              ["Taxes", reconcile.totalTaxes],
-              ["Adjustments", reconcile.adjustments],
-              ["Expected payout", reconcile.expectedPayout],
-              ["Actual payout", reconcile.actualPayout],
+              [isSpanish ? "Ingresos brutos" : "Gross revenue", reconcile.grossRevenue],
+              [isSpanish ? "Comisiones de plataforma" : "Platform fees", reconcile.totalFees],
+              [isSpanish ? "Impuestos" : "Taxes", reconcile.totalTaxes],
+              [isSpanish ? "Ajustes" : "Adjustments", reconcile.adjustments],
+              [isSpanish ? "Payout esperado" : "Expected payout", reconcile.expectedPayout],
+              [isSpanish ? "Payout real" : "Actual payout", reconcile.actualPayout],
             ].map(([label, rawValue]) => {
               const value = Number(rawValue);
               const displayValue =
-                label === "Adjustments"
-                  ? formatSignedCurrency(-value, currencyCode)
-                  : formatCurrency(value, false, currencyCode);
+                label === (isSpanish ? "Ajustes" : "Adjustments")
+                  ? formatSignedCurrency(-value, currencyCode, locale)
+                  : formatCurrency(value, false, currencyCode, locale);
 
               return (
                 <div key={String(label)} className="flex items-center justify-between gap-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[var(--workspace-text)]">{label}</p>
                     <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">
-                      {label === "Gross revenue"
-                        ? "Before fees and retained taxes."
-                        : label === "Platform fees"
-                          ? "Taken by the platform before payout."
-                          : label === "Taxes"
-                            ? "Retained at source in the statement."
-                            : label === "Adjustments"
-                              ? "Other statement movements not explained by fees or taxes."
-                              : label === "Expected payout"
-                                ? "What booking data says should have landed."
-                                : "What the statement confirms actually landed."}
+                      {label === (isSpanish ? "Ingresos brutos" : "Gross revenue")
+                        ? isSpanish
+                          ? "Antes de comisiones e impuestos retenidos."
+                          : "Before fees and retained taxes."
+                        : label === (isSpanish ? "Comisiones de plataforma" : "Platform fees")
+                          ? isSpanish
+                            ? "Tomadas por la plataforma antes del payout."
+                            : "Taken by the platform before payout."
+                          : label === (isSpanish ? "Impuestos" : "Taxes")
+                            ? isSpanish
+                              ? "Retenidos en origen en el statement."
+                              : "Retained at source in the statement."
+                            : label === (isSpanish ? "Ajustes" : "Adjustments")
+                              ? isSpanish
+                                ? "Otros movimientos del statement no explicados por comisiones o impuestos."
+                                : "Other statement movements not explained by fees or taxes."
+                              : label === (isSpanish ? "Payout esperado" : "Expected payout")
+                                ? isSpanish
+                                  ? "Lo que los datos de reservas dicen que debería haber caído."
+                                  : "What booking data says should have landed."
+                                : isSpanish
+                                  ? "Lo que el statement confirma que realmente cayó."
+                                  : "What the statement confirms actually landed."}
                     </p>
                   </div>
-                  <p className={`text-sm font-semibold ${label === "Adjustments" ? getDifferenceTone(-value) : "text-[var(--workspace-text)]"}`}>
+                  <p className={`text-sm font-semibold ${label === (isSpanish ? "Ajustes" : "Adjustments") ? getDifferenceTone(-value) : "text-[var(--workspace-text)]"}`}>
                     {displayValue}
                   </p>
                 </div>
@@ -333,7 +354,7 @@ export function ReconcilePanel({
         <div className="space-y-4">
           <div className="rounded-[28px] border border-[var(--workspace-border)] bg-white/[0.02] p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Gap analysis
+              {isSpanish ? "Análisis de brecha" : "Gap analysis"}
             </p>
             <div className="mt-4 grid gap-3">
               {reconcile.insights.map((insight) => (
@@ -360,13 +381,15 @@ export function ReconcilePanel({
 
           <div className="rounded-[28px] border border-[var(--workspace-border)] bg-[linear-gradient(180deg,rgba(125,211,197,0.07)_0%,rgba(255,255,255,0.02)_100%)] p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-              Trust block
+              {isSpanish ? "Bloque de confianza" : "Trust block"}
             </p>
             <p className="mt-3 text-base font-semibold tracking-[-0.02em] text-[var(--workspace-text)]">
               {reconcile.trustLabel}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-              Hostlyx keeps bookings and financial statements separate so the payout comparison stays grounded in imported source documents.
+              {isSpanish
+                ? "Hostlyx mantiene separadas las reservas y los statements financieros para que la comparación de payout siga anclada en documentos fuente importados."
+                : "Hostlyx keeps bookings and financial statements separate so the payout comparison stays grounded in imported source documents."}
             </p>
           </div>
         </div>

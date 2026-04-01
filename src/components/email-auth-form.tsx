@@ -4,6 +4,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Lock, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { useLocale } from "@/components/locale-provider";
 
 type Mode = "sign-in" | "sign-up";
 type Stage = "form" | "verify";
@@ -13,6 +14,8 @@ function inputClassName() {
 }
 
 export function EmailAuthForm() {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<Mode>("sign-in");
@@ -48,13 +51,16 @@ export function EmailAuthForm() {
             };
 
             if (!registerResponse.ok) {
-              setError(registerPayload.error ?? "The account could not be created.");
+              setError(registerPayload.error ?? (isSpanish ? "No se pudo crear la cuenta." : "The account could not be created."));
               return;
             }
 
             setStage("verify");
             setMessage(
-              registerPayload.message ?? "We sent a verification code to your email.",
+              registerPayload.message ??
+                (isSpanish
+                  ? "Te enviamos un código de verificación a tu email."
+                  : "We sent a verification code to your email."),
             );
             return;
           }
@@ -74,11 +80,14 @@ export function EmailAuthForm() {
             };
 
             if (!verifyResponse.ok) {
-              setError(verifyPayload.error ?? "The verification code is not valid.");
+              setError(verifyPayload.error ?? (isSpanish ? "El código de verificación no es válido." : "The verification code is not valid."));
               return;
             }
 
-            setMessage(verifyPayload.message ?? "Email verified. Signing you in now.");
+            setMessage(
+              verifyPayload.message ??
+                (isSpanish ? "Email verificado. Iniciando sesión ahora." : "Email verified. Signing you in now."),
+            );
           }
 
           const result = await signIn("credentials", {
@@ -89,7 +98,7 @@ export function EmailAuthForm() {
           });
 
           if (!result || result.error) {
-            setError("Email or password is incorrect.");
+            setError(isSpanish ? "El email o la contraseña no son correctos." : "Email or password is incorrect.");
             setMessage(null);
             return;
           }
@@ -99,8 +108,12 @@ export function EmailAuthForm() {
         } catch {
           setError(
             mode === "sign-up"
-              ? "The account could not be created."
-              : "Email sign-in could not be completed.",
+              ? isSpanish
+                ? "No se pudo crear la cuenta."
+                : "The account could not be created."
+              : isSpanish
+                ? "No se pudo completar el acceso con email."
+                : "Email sign-in could not be completed.",
           );
         }
       })();
@@ -124,7 +137,7 @@ export function EmailAuthForm() {
               : "text-slate-500 hover:text-slate-900"
           }`}
         >
-          Sign in
+          {isSpanish ? "Entrar" : "Sign in"}
         </button>
         <button
           type="button"
@@ -140,7 +153,7 @@ export function EmailAuthForm() {
               : "text-slate-500 hover:text-slate-900"
           }`}
         >
-          Create account
+          {isSpanish ? "Crear cuenta" : "Create account"}
         </button>
       </div>
 
@@ -148,7 +161,7 @@ export function EmailAuthForm() {
         {mode === "sign-up" && stage === "form" ? (
           <div>
             <label className="block text-center text-sm font-semibold text-slate-700">
-              Full name
+              {isSpanish ? "Nombre completo" : "Full name"}
             </label>
             <div className="login-input-shell mt-3 flex items-center gap-3 rounded-[18px] px-4 py-4">
               <UserRound className="h-5 w-5 text-slate-400" />
@@ -156,7 +169,7 @@ export function EmailAuthForm() {
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 autoComplete="name"
-                placeholder="Your name"
+                placeholder={isSpanish ? "Tu nombre" : "Your name"}
                 className={inputClassName()}
                 required
               />
@@ -166,7 +179,7 @@ export function EmailAuthForm() {
 
         <div>
           <label className="block text-center text-sm font-semibold text-slate-700">
-            Email
+            {isSpanish ? "Email" : "Email"}
           </label>
           <div className="login-input-shell mt-3 flex items-center gap-3 rounded-[18px] px-4 py-4">
             <Mail className="h-5 w-5 text-slate-400" />
@@ -184,7 +197,7 @@ export function EmailAuthForm() {
 
         <div>
           <label className="block text-center text-sm font-semibold text-slate-700">
-            Password
+            {isSpanish ? "Contraseña" : "Password"}
           </label>
           <div className="login-input-shell mt-3 flex items-center gap-3 rounded-[18px] px-4 py-4">
             <Lock className="h-5 w-5 text-slate-400" />
@@ -193,7 +206,15 @@ export function EmailAuthForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
-              placeholder={mode === "sign-up" ? "At least 8 characters" : "Enter your password"}
+              placeholder={
+                mode === "sign-up"
+                  ? isSpanish
+                    ? "Mínimo 8 caracteres"
+                    : "At least 8 characters"
+                  : isSpanish
+                    ? "Escribe tu contraseña"
+                    : "Enter your password"
+              }
               className={inputClassName()}
               required
             />
@@ -203,7 +224,7 @@ export function EmailAuthForm() {
         {mode === "sign-up" && stage === "verify" ? (
           <div>
             <label className="block text-center text-sm font-semibold text-slate-700">
-              Verification code
+              {isSpanish ? "Código de verificación" : "Verification code"}
             </label>
             <div className="login-input-shell mt-3 flex items-center gap-3 rounded-[18px] px-4 py-4">
               <ShieldCheck className="h-5 w-5 text-slate-400" />
@@ -212,13 +233,14 @@ export function EmailAuthForm() {
                 onChange={(event) => setVerificationCode(event.target.value.replace(/[^\d]/g, "").slice(0, 6))}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="6-digit code"
+                placeholder={isSpanish ? "Código de 6 dígitos" : "6-digit code"}
                 className={inputClassName()}
                 required
               />
             </div>
             <p className="mt-3 text-center text-sm leading-6 text-slate-500">
-              We sent a 6-digit code to <span className="font-semibold text-slate-700">{email}</span>.
+              {isSpanish ? "Enviamos un código de 6 dígitos a " : "We sent a 6-digit code to "}
+              <span className="font-semibold text-slate-700">{email}</span>.
             </p>
             <button
               type="button"
@@ -226,11 +248,15 @@ export function EmailAuthForm() {
                 setStage("form");
                 setVerificationCode("");
                 setError(null);
-                setMessage("Request a new code by creating the account again.");
+                setMessage(
+                  isSpanish
+                    ? "Solicita un nuevo código creando la cuenta otra vez."
+                    : "Request a new code by creating the account again.",
+                );
               }}
               className="mt-3 w-full text-center text-sm font-semibold text-slate-500 transition hover:text-slate-900"
             >
-              Use a different email or resend code
+              {isSpanish ? "Usar otro email o reenviar código" : "Use a different email or resend code"}
             </button>
           </div>
         ) : null}
@@ -244,14 +270,26 @@ export function EmailAuthForm() {
           {isPending
             ? mode === "sign-up"
               ? stage === "verify"
-                ? "Verifying..."
-                : "Creating account..."
-              : "Signing in..."
+                ? isSpanish
+                  ? "Verificando..."
+                  : "Verifying..."
+                : isSpanish
+                  ? "Creando cuenta..."
+                  : "Creating account..."
+              : isSpanish
+                ? "Entrando..."
+                : "Signing in..."
             : mode === "sign-up"
               ? stage === "verify"
-                ? "Verify email"
-                : "Create account"
-              : "Sign in"}
+                ? isSpanish
+                  ? "Verificar email"
+                  : "Verify email"
+                : isSpanish
+                  ? "Crear cuenta"
+                  : "Create account"
+              : isSpanish
+                ? "Entrar"
+                : "Sign in"}
         </button>
       </form>
 

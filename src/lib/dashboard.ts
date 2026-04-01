@@ -11,6 +11,7 @@ import {
   subDays,
   subYears,
 } from "date-fns";
+import { getDateFnsLocale, type AppLocale } from "./i18n";
 import {
   calculateChannelData,
   calculateExpenseCategories,
@@ -83,14 +84,17 @@ function getRangeFromYearMonth(
   month: number | "all",
   bookings: BookingRecord[],
   expenses: ExpenseRecord[],
+  locale: AppLocale = "en",
 ) {
   const { earliestDate, latestDate } = getDateBounds(bookings, expenses);
+  const dateFnsLocale = getDateFnsLocale(locale);
+  const isSpanish = locale === "es";
 
   if (year === "all") {
     return {
       start: startOfMonth(earliestDate),
       end: endOfMonth(latestDate),
-      label: "All imported months",
+      label: isSpanish ? "Todos los meses importados" : "All imported months",
     };
   }
 
@@ -107,7 +111,7 @@ function getRangeFromYearMonth(
   return {
     start: startOfMonth(anchor),
     end: endOfMonth(anchor),
-    label: format(anchor, "MMMM yyyy"),
+    label: format(anchor, "MMMM yyyy", { locale: dateFnsLocale }),
   };
 }
 
@@ -115,15 +119,18 @@ function getRangeFromFilters(
   filters: DashboardFilters,
   bookings: BookingRecord[],
   expenses: ExpenseRecord[],
+  locale: AppLocale = "en",
 ) {
   const { earliestDate, latestDate } = getDateBounds(bookings, expenses);
   const today = new Date();
+  const dateFnsLocale = getDateFnsLocale(locale);
+  const isSpanish = locale === "es";
 
   if (filters.rangePreset === "this-year") {
     return {
       start: startOfYear(today),
       end: endOfDay(today),
-      label: "This year",
+      label: isSpanish ? "Este año" : "This year",
     };
   }
 
@@ -133,7 +140,7 @@ function getRangeFromFilters(
     return {
       start: startOfYear(lastYear),
       end: endOfYear(lastYear),
-      label: "Last year",
+      label: isSpanish ? "Año pasado" : "Last year",
     };
   }
 
@@ -141,7 +148,7 @@ function getRangeFromFilters(
     return {
       start: startOfMonth(today),
       end: endOfDay(today),
-      label: "This month",
+      label: isSpanish ? "Este mes" : "This month",
     };
   }
 
@@ -149,7 +156,7 @@ function getRangeFromFilters(
     return {
       start: startOfDay(subDays(today, 89)),
       end: endOfDay(today),
-      label: "Last 90 days",
+      label: isSpanish ? "Últimos 90 días" : "Last 90 days",
     };
   }
 
@@ -168,7 +175,9 @@ function getRangeFromFilters(
     return {
       start,
       end,
-      label: `${format(start, "MMM d, yyyy")} - ${format(end, "MMM d, yyyy")}`,
+      label: isSpanish
+        ? `${format(start, "d MMM yyyy", { locale: dateFnsLocale })} - ${format(end, "d MMM yyyy", { locale: dateFnsLocale })}`
+        : `${format(start, "MMM d, yyyy", { locale: dateFnsLocale })} - ${format(end, "MMM d, yyyy", { locale: dateFnsLocale })}`,
     };
   }
 
@@ -176,11 +185,11 @@ function getRangeFromFilters(
     return {
       start: startOfMonth(earliestDate),
       end: endOfMonth(latestDate),
-      label: "All time",
+      label: isSpanish ? "Todo el tiempo" : "All time",
     };
   }
 
-  return getRangeFromYearMonth(filters.year, filters.month, bookings, expenses);
+  return getRangeFromYearMonth(filters.year, filters.month, bookings, expenses, locale);
 }
 
 function matchesDateFilter(dateValue: string, range: { start: Date; end: Date }) {
@@ -211,13 +220,16 @@ function buildReconcileInsights({
   totalTaxes,
   adjustments,
   mismatchRatio,
+  locale,
 }: {
   expectedPayout: number;
   totalFees: number;
   totalTaxes: number;
   adjustments: number;
   mismatchRatio: number | null;
+  locale: AppLocale;
 }) {
+  const isSpanish = locale === "es";
   const insights: Array<{
     title: string;
     body: string;
@@ -226,46 +238,58 @@ function buildReconcileInsights({
 
   if (expectedPayout > 0 && totalFees > expectedPayout * 0.18) {
     insights.push({
-      title: "Platform fees are elevated",
-      body: "The statement shows a larger fee drag than the booking view would suggest.",
+      title: isSpanish ? "Las comisiones de plataforma están altas" : "Platform fees are elevated",
+      body: isSpanish
+        ? "El statement muestra un impacto por comisiones mayor de lo que sugiere la vista de reservas."
+        : "The statement shows a larger fee drag than the booking view would suggest.",
       tone: "caution",
     });
   }
 
   if (expectedPayout > 0 && totalTaxes > expectedPayout * 0.08) {
     insights.push({
-      title: "Taxes were retained at source",
-      body: "Part of the payout gap is being explained by taxes withheld before payout.",
+      title: isSpanish ? "Se retuvieron impuestos en origen" : "Taxes were retained at source",
+      body: isSpanish
+        ? "Parte de la brecha del payout se explica por impuestos retenidos antes del pago."
+        : "Part of the payout gap is being explained by taxes withheld before payout.",
       tone: "neutral",
     });
   }
 
   if (adjustments > Math.max(25, expectedPayout * 0.03)) {
     insights.push({
-      title: "Adjustments are reducing payout",
-      body: "The statement includes deductions beyond fees and taxes.",
+      title: isSpanish ? "Los ajustes están reduciendo el payout" : "Adjustments are reducing payout",
+      body: isSpanish
+        ? "El statement incluye deducciones más allá de comisiones e impuestos."
+        : "The statement includes deductions beyond fees and taxes.",
       tone: "caution",
     });
   } else if (adjustments < -Math.max(25, expectedPayout * 0.03)) {
     insights.push({
-      title: "Statement credits were detected",
-      body: "The statement includes positive adjustments lifting the payout above the simple model.",
+      title: isSpanish ? "Se detectaron créditos en el statement" : "Statement credits were detected",
+      body: isSpanish
+        ? "El statement incluye ajustes positivos que elevan el payout por encima del modelo simple."
+        : "The statement includes positive adjustments lifting the payout above the simple model.",
       tone: "positive",
     });
   }
 
   if (mismatchRatio !== null && mismatchRatio < -0.08) {
     insights.push({
-      title: "Possible missing bookings",
-      body: "Actual payout is materially below the booking-based expectation for this view.",
+      title: isSpanish ? "Posibles reservas faltantes" : "Possible missing bookings",
+      body: isSpanish
+        ? "El payout real está materialmente por debajo de la expectativa basada en reservas para esta vista."
+        : "Actual payout is materially below the booking-based expectation for this view.",
       tone: "caution",
     });
   }
 
   if (insights.length === 0) {
     insights.push({
-      title: "Payouts look aligned",
-      body: "The statement is broadly matching what Hostlyx expected from the booking data.",
+      title: isSpanish ? "Los payouts se ven alineados" : "Payouts look aligned",
+      body: isSpanish
+        ? "El statement coincide en líneas generales con lo que Hostlyx esperaba según los datos de reservas."
+        : "The statement is broadly matching what Hostlyx expected from the booking data.",
       tone: "positive",
     });
   }
@@ -276,23 +300,32 @@ function buildReconcileInsights({
 function buildReconcileMessage({
   difference,
   mismatchRatio,
+  locale,
 }: {
   difference: number;
   mismatchRatio: number | null;
+  locale: AppLocale;
 }) {
+  const isSpanish = locale === "es";
   if (mismatchRatio === null || Math.abs(difference) < 1) {
-    return "Your payouts match your data.";
+    return isSpanish ? "Tus payouts coinciden con tus datos." : "Your payouts match your data.";
   }
 
   if (Math.abs(mismatchRatio) <= 0.03) {
-    return "Your payouts are closely aligned with your data.";
+    return isSpanish
+      ? "Tus payouts están muy alineados con tus datos."
+      : "Your payouts are closely aligned with your data.";
   }
 
   if (difference < 0) {
-    return `You received ${formatWholePercent(mismatchRatio)} less than expected.`;
+    return isSpanish
+      ? `Recibiste ${formatWholePercent(mismatchRatio)} menos de lo esperado.`
+      : `You received ${formatWholePercent(mismatchRatio)} less than expected.`;
   }
 
-  return `You received ${formatWholePercent(mismatchRatio)} more than expected.`;
+  return isSpanish
+    ? `Recibiste ${formatWholePercent(mismatchRatio)} más de lo esperado.`
+    : `You received ${formatWholePercent(mismatchRatio)} more than expected.`;
 }
 
 function rangesOverlap(
@@ -452,6 +485,7 @@ export function buildDashboardView({
   fallbackCountryCode,
   taxCountryCode,
   taxRate,
+  locale = "en",
 }: {
   bookings: BookingRecord[];
   expenses: ExpenseRecord[];
@@ -461,7 +495,9 @@ export function buildDashboardView({
   fallbackCountryCode: CountryCode;
   taxCountryCode: CountryCode;
   taxRate: number;
+  locale?: AppLocale;
 }): DashboardView {
+  const isSpanish = locale === "es";
   const normalizedTaxCountryCode = normalizeCountryCode(taxCountryCode);
   const propertyCountryMap = createPropertyCountryMap(properties, fallbackCountryCode);
   const availableYears = Array.from(
@@ -508,6 +544,7 @@ export function buildDashboardView({
     filters,
     countryFilteredBookings,
     countryFilteredExpenses,
+    locale,
   );
   const dateFilteredBookings = countryFilteredBookings.filter((booking) =>
     matchesDateFilter(booking.checkIn, activeRange),
@@ -675,18 +712,28 @@ export function buildDashboardView({
             totals.totalRevenue - actualStatementFees - actualStatementTaxes - actualStatementPayout;
           const trustLabel =
             statementCount > 1
-              ? `Based on ${statementCount} imported ${
-                  latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
-                } statements`
-              : `Based on imported ${
-                  latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
-                } statement`;
+              ? isSpanish
+                ? `Basado en ${statementCount} statements importados de ${
+                    latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                  }`
+                : `Based on ${statementCount} imported ${
+                    latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                  } statements`
+              : isSpanish
+                ? `Basado en un statement importado de ${
+                    latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                  }`
+                : `Based on imported ${
+                    latestStatement.source === "airbnb" ? "Airbnb" : "Booking.com"
+                  } statement`;
 
           return {
             source: latestStatement.source,
             periodLabel:
               statementCount > 1
-                ? `${statementCount} statements in view`
+                ? isSpanish
+                  ? `${statementCount} statements en vista`
+                  : `${statementCount} statements in view`
                 : latestStatement.period.label,
             statementCount,
             expectedPayout: totals.totalPayout,
@@ -699,10 +746,12 @@ export function buildDashboardView({
             totalTaxes: actualStatementTaxes,
             currency: latestStatement.currency || displayCurrencyCode,
             trustLabel,
-            message: buildReconcileMessage({ difference, mismatchRatio }),
+            message: buildReconcileMessage({ difference, mismatchRatio, locale }),
             alertMessage:
               mismatchRatio !== null && Math.abs(mismatchRatio) > 0.08
-                ? "Your payouts differ significantly from your expected revenue."
+                ? isSpanish
+                  ? "Tus payouts difieren significativamente de tus ingresos esperados."
+                  : "Your payouts differ significantly from your expected revenue."
                 : null,
             insights: buildReconcileInsights({
               expectedPayout: totals.totalPayout,
@@ -710,6 +759,7 @@ export function buildDashboardView({
               totalTaxes: actualStatementTaxes,
               adjustments,
               mismatchRatio,
+              locale,
             }),
           };
         })()

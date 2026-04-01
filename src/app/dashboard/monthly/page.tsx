@@ -13,6 +13,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { MonthlySummaryPanel } from "@/components/monthly-summary-panel";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getReconcileSidebarBadge } from "@/lib/reconcile";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ export default async function MonthlyPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -62,13 +65,18 @@ export default async function MonthlyPage({
     fallbackCountryCode: userSettings.primaryCountryCode,
     taxCountryCode: userSettings.taxCountryCode,
     taxRate: userSettings.taxRate,
+    locale,
   });
 
   return (
     <WorkspaceShell
       activePage="monthly"
-      pageTitle="Monthly Performance"
-      pageSubtitle="Compare month-by-month results across the selected reporting window."
+      pageTitle={isSpanish ? "Rendimiento mensual" : "Monthly Performance"}
+      pageSubtitle={
+        isSpanish
+          ? "Compara resultados mes a mes dentro de la ventana de reporte seleccionada."
+          : "Compare month-by-month results across the selected reporting window."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}

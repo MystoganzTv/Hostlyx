@@ -12,10 +12,13 @@ import {
   getUserSettings,
 } from "@/lib/db";
 import { formatNumber } from "@/lib/format";
+import { getRequestLocale } from "@/lib/server-locale";
 
 export const runtime = "nodejs";
 
 export default async function ImportsPage() {
+  const locale = await getRequestLocale();
+  const isSpanish = locale === "es";
   const session = await getAuthSession();
   const ownerEmail = session?.user?.email?.toLowerCase();
 
@@ -47,8 +50,12 @@ export default async function ImportsPage() {
   return (
     <WorkspaceShell
       activePage="imports"
-      pageTitle="Import Center"
-      pageSubtitle="Bring your files into Hostlyx, review the data calmly, and update your financial view with confidence."
+      pageTitle={isSpanish ? "Centro de importación" : "Import Center"}
+      pageSubtitle={
+        isSpanish
+          ? "Trae tus archivos a Hostlyx, revisa los datos con calma y actualiza tu vista financiera con confianza."
+          : "Bring your files into Hostlyx, review the data calmly, and update your financial view with confidence."
+      }
       businessName={userSettings.businessName}
       userName={userName}
       userEmail={ownerEmail}
@@ -59,7 +66,7 @@ export default async function ImportsPage() {
         <ImportCenterLauncher properties={properties} />
 
         <div className="grid gap-4 md:grid-cols-3">
-          <SectionCard title="Imported files">
+          <SectionCard title={isSpanish ? "Archivos importados" : "Imported files"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <FileSpreadsheet className="h-5 w-5" />
@@ -70,7 +77,7 @@ export default async function ImportsPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Records now in Hostlyx">
+          <SectionCard title={isSpanish ? "Registros ahora en Hostlyx" : "Records now in Hostlyx"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
@@ -80,13 +87,13 @@ export default async function ImportsPage() {
                   {formatNumber(totalImportedBookings + totalImportedExpenses)}
                 </p>
                 <p className="mt-1 text-xs text-[var(--workspace-muted)]">
-                  {formatNumber(totalImportedBookings)} bookings and {formatNumber(totalImportedExpenses)} expenses
+                  {formatNumber(totalImportedBookings, locale)} {isSpanish ? "reservas" : "bookings"} {isSpanish ? "y" : "and"} {formatNumber(totalImportedExpenses, locale)} {isSpanish ? "gastos" : "expenses"}
                 </p>
               </div>
             </div>
           </SectionCard>
 
-          <SectionCard title="Properties touched">
+          <SectionCard title={isSpanish ? "Propiedades tocadas" : "Properties touched"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
@@ -98,20 +105,28 @@ export default async function ImportsPage() {
           </SectionCard>
         </div>
 
-        <SectionCard title="How to think about it">
+        <SectionCard title={isSpanish ? "Cómo pensarlo" : "How to think about it"}>
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              Use this page as your import control center. Review what landed, keep the audit trail clean, and treat the imported records as live app data once they are inside Hostlyx.
+              {isSpanish
+                ? "Usa esta página como tu centro de control de importaciones. Revisa qué cayó, mantén limpio el rastro de auditoría y trata los registros importados como datos vivos de la app una vez dentro de Hostlyx."
+                : "Use this page as your import control center. Review what landed, keep the audit trail clean, and treat the imported records as live app data once they are inside Hostlyx."}
             </p>
             <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              Each file below stays visible as import history so you can understand what changed, when it landed, and which records it created.
+              {isSpanish
+                ? "Cada archivo de abajo sigue visible como historial de importación para que entiendas qué cambió, cuándo cayó y qué registros creó."
+                : "Each file below stays visible as import history so you can understand what changed, when it landed, and which records it created."}
             </div>
           </div>
         </SectionCard>
 
         <SectionCard
-          title="Backup & Audit Trail"
-          subtitle="Each batch below shows which property it entered, when it landed, and how many live records it created inside Hostlyx."
+          title={isSpanish ? "Backup y rastro de auditoría" : "Backup & Audit Trail"}
+          subtitle={
+            isSpanish
+              ? "Cada batch de abajo muestra en qué propiedad entró, cuándo cayó y cuántos registros vivos creó dentro de Hostlyx."
+              : "Each batch below shows which property it entered, when it landed, and how many live records it created inside Hostlyx."
+          }
         >
           <ImportsManager importSummaries={importSummaries} />
         </SectionCard>

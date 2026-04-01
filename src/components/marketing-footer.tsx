@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import type { AppLocale } from "@/lib/i18n";
 
-const legalLinks = [
-  { href: "/terms", label: "Terms of Service" },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/refund", label: "Refund Policy" },
-  { href: "/contact", label: "Contact" },
-];
+export function MarketingFooter({ locale = "en" }: { locale?: AppLocale }) {
+  const isSpanish = locale === "es";
+  const legalLinks = [
+    { href: "/terms", label: isSpanish ? "Términos" : "Terms of Service" },
+    { href: "/privacy", label: isSpanish ? "Privacidad" : "Privacy Policy" },
+    { href: "/refund", label: isSpanish ? "Reembolsos" : "Refund Policy" },
+    { href: "/contact", label: isSpanish ? "Contacto" : "Contact" },
+  ];
 
-export function MarketingFooter() {
   return (
     <footer className="mx-auto mt-10 w-full max-w-7xl px-4 pb-10 sm:px-6 xl:px-8">
       <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(12,23,39,0.66)_0%,rgba(8,17,28,0.5)_100%)] px-5 py-8 shadow-[0_18px_42px_rgba(3,8,16,0.14)] sm:px-7">
@@ -16,14 +19,19 @@ export function MarketingFooter() {
           <div>
             <BrandLogo href="/" compact />
             <p className="mt-3 max-w-xl text-sm leading-7 text-slate-400">
-              Hostlyx convierte datos dispersos en claridad financiera real para hosts de alquiler vacacional.
+              {isSpanish
+                ? "Hostlyx convierte datos dispersos en claridad financiera real para hosts de alquiler vacacional."
+                : "Hostlyx turns scattered rental data into real financial clarity for short-term rental hosts."}
             </p>
           </div>
 
           <div className="space-y-3 lg:max-w-[520px] lg:text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Legal & Contact
-            </p>
+            <div className="flex flex-col gap-3 lg:items-end">
+              <LanguageToggle compact />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                {isSpanish ? "Legal y contacto" : "Legal & Contact"}
+              </p>
+            </div>
             <div className="flex flex-wrap gap-3 lg:justify-end">
               {legalLinks.map((link) => (
                 <Link
