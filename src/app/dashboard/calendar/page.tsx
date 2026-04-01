@@ -273,7 +273,6 @@ export default async function CalendarPage({
       userEmail={ownerEmail}
       currencyCode={currencyCode}
       latestImport={latestImport}
-      contentScrollable={false}
       actions={
         <div className="flex flex-wrap items-center justify-end gap-3">
           <FilterBar
@@ -292,57 +291,56 @@ export default async function CalendarPage({
         </div>
       }
     >
-      <div className="space-y-6 xl:grid xl:h-full xl:min-h-0 xl:grid-rows-[minmax(0,18rem)_minmax(0,1fr)] xl:gap-6 xl:space-y-0">
-        <div className="space-y-6 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
+      <div className="space-y-6">
+        <div className="workspace-card rounded-[30px] p-5 sm:p-6">
           <CalendarAutoSync
             enabled={icalFeeds.some((feed) => feed.isActive)}
             force={hasLegacySyncedEventDetails}
           />
-          <CalendarFeedsPanel feeds={icalFeeds} />
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {isSpanish ? "Rango" : "Range"}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
-            </div>
-            <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {isSpanish ? "Reservas seguidas" : "Reservations tracked"}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatNumber(reservationCount, locale)}
-              </p>
-            </div>
-            <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {isSpanish ? "Check-ins" : "Check-ins"}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatNumber(countryAndChannelBookings.length, locale)}
-              </p>
-            </div>
-            <div className="workspace-card rounded-[24px] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {isSpanish ? "Días cerrados" : "Closed days"}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatNumber(countryClosures.length, locale)}
-              </p>
+          <div className="space-y-6">
+            <CalendarFeedsPanel feeds={icalFeeds} embedded />
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                  {isSpanish ? "Rango" : "Range"}
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
+              </div>
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                  {isSpanish ? "Reservas seguidas" : "Reservations tracked"}
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                  {formatNumber(reservationCount, locale)}
+                </p>
+              </div>
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                  {isSpanish ? "Check-ins" : "Check-ins"}
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                  {formatNumber(countryAndChannelBookings.length, locale)}
+                </p>
+              </div>
+              <div className="workspace-soft-card rounded-[24px] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                  {isSpanish ? "Días cerrados" : "Closed days"}
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
+                  {formatNumber(countryClosures.length, locale)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
-          <CalendarPanel
-            key={calendarViewKey}
-            bookings={countryAndChannelBookings}
-            calendarEvents={countryCalendarEvents}
-            closures={countryClosures}
-            monthAnchors={monthAnchors}
-            currencyCode={currencyCode}
-          />
-        </div>
+        <CalendarPanel
+          key={calendarViewKey}
+          bookings={countryAndChannelBookings}
+          calendarEvents={countryCalendarEvents}
+          closures={countryClosures}
+          monthAnchors={monthAnchors}
+          currencyCode={currencyCode}
+        />
       </div>
     </WorkspaceShell>
   );

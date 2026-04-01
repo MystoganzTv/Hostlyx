@@ -85,8 +85,10 @@ function maskFeedUrl(feedUrl: string) {
 
 export function CalendarFeedsPanel({
   feeds,
+  embedded = false,
 }: {
   feeds: IcalFeedRecord[];
+  embedded?: boolean;
 }) {
   const { locale } = useLocale();
   const isSpanish = locale === "es";
@@ -193,7 +195,7 @@ export function CalendarFeedsPanel({
 
   return (
     <>
-      <div className="workspace-card rounded-[24px] p-5">
+      <div className={embedded ? "" : "workspace-card rounded-[24px] p-5"}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <div>
