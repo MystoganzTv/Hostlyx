@@ -14,6 +14,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
 import { getDashboardFilters } from "@/lib/dashboard";
+import { formatNumber } from "@/lib/format";
 import {
   getBookings,
   getCalendarEvents,
@@ -255,7 +256,7 @@ export default async function CalendarPage({
       userEmail={ownerEmail}
       currencyCode={currencyCode}
       latestImport={latestImport}
-      stickyHeader
+      contentScrollable={false}
       actions={
         <div className="flex flex-wrap items-center justify-end gap-3">
           <FilterBar
@@ -274,24 +275,43 @@ export default async function CalendarPage({
         </div>
       }
     >
-      <div className="space-y-6">
-        <CalendarAutoSync
-          enabled={icalFeeds.some((feed) => feed.isActive)}
-          force={hasLegacySyncedEventDetails}
-        />
-        <CalendarFeedsPanel feeds={icalFeeds} />
-        <CalendarPanel
-          key={calendarViewKey}
-          rangeLabel={rangeLabel}
-          reservationCount={reservationCount}
-          checkInCount={countryAndChannelBookings.length}
-          closedDaysCount={countryClosures.length}
-          bookings={countryAndChannelBookings}
-          calendarEvents={countryCalendarEvents}
-          closures={countryClosures}
-          monthAnchors={monthAnchors}
-          currencyCode={currencyCode}
-        />
+      <div className="space-y-6 xl:grid xl:h-full xl:min-h-0 xl:grid-rows-[minmax(0,18rem)_minmax(0,1fr)] xl:gap-6 xl:space-y-0">
+        <div className="space-y-6 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
+          <CalendarAutoSync
+            enabled={icalFeeds.some((feed) => feed.isActive)}
+            force={hasLegacySyncedEventDetails}
+          />
+          <CalendarFeedsPanel feeds={icalFeeds} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Range</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservations tracked</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(reservationCount)}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Check-ins</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryAndChannelBookings.length)}</p>
+            </div>
+            <div className="workspace-card rounded-[24px] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Closed days</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{formatNumber(countryClosures.length)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
+          <CalendarPanel
+            key={calendarViewKey}
+            bookings={countryAndChannelBookings}
+            calendarEvents={countryCalendarEvents}
+            closures={countryClosures}
+            monthAnchors={monthAnchors}
+            currencyCode={currencyCode}
+          />
+        </div>
       </div>
     </WorkspaceShell>
   );
