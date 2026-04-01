@@ -247,6 +247,22 @@ function buildTimelineItems(
   return [...bookingItems, ...calendarBookingItems];
 }
 
+function getScrollContainer(node: HTMLElement | null) {
+  let current = node?.parentElement ?? null;
+
+  while (current) {
+    const { overflowY } = window.getComputedStyle(current);
+
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
 function buildBlockedDateSet(
   anchorDate: Date,
   closures: CalendarClosureRecord[],
@@ -577,9 +593,26 @@ export function CalendarPanel({
     }
 
     const frameId = window.requestAnimationFrame(() => {
-      targetNode.scrollIntoView({
+      const scrollContainer = getScrollContainer(targetNode);
+
+      if (!scrollContainer) {
+        const targetTop = window.scrollY + targetNode.getBoundingClientRect().top - 16;
+
+        window.scrollTo({
+          top: Math.max(targetTop, 0),
+          behavior: "auto",
+        });
+        return;
+      }
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = targetNode.getBoundingClientRect();
+      const nextTop =
+        scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 16;
+
+      scrollContainer.scrollTo({
+        top: Math.max(nextTop, 0),
         behavior: "auto",
-        block: "start",
       });
     });
 
@@ -609,7 +642,7 @@ export function CalendarPanel({
           return (
             <div
               key={monthKey}
-              className="scroll-mt-24 xl:scroll-mt-[34rem]"
+              className="scroll-mt-6 xl:scroll-mt-6"
               ref={(node) => {
                 monthSectionRefs.current[monthKey] = node;
               }}
