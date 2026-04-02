@@ -16,7 +16,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-badges";
 import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
 import { getBookingStatusState } from "@/lib/booking-status";
@@ -261,6 +261,11 @@ function getScrollContainer(node: HTMLElement | null) {
   }
 
   return null;
+}
+
+function getWorkspaceScrollRegion() {
+  const region = document.querySelector('[data-workspace-scroll-region="true"]');
+  return region instanceof HTMLElement ? region : null;
 }
 
 function buildBlockedDateSet(
@@ -585,15 +590,19 @@ export function CalendarPanel({
     return monthAnchors[0] ? format(monthAnchors[0], "yyyy-MM") : "";
   }, [monthAnchors]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const targetNode = monthSectionRefs.current[initialMonthKey] ?? panelRef.current;
 
     if (!targetNode) {
       return;
     }
 
-    const frameId = window.requestAnimationFrame(() => {
-      const scrollContainer = getScrollContainer(targetNode);
+    let timeoutId = 0;
+    let firstFrameId = 0;
+    let secondFrameId = 0;
+
+    const scrollToMonth = () => {
+      const scrollContainer = getWorkspaceScrollRegion() ?? getScrollContainer(targetNode);
 
       if (!scrollContainer) {
         const targetTop = window.scrollY + targetNode.getBoundingClientRect().top - 16;
@@ -614,10 +623,17 @@ export function CalendarPanel({
         top: Math.max(nextTop, 0),
         behavior: "auto",
       });
+    };
+
+    firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(scrollToMonth);
     });
+    timeoutId = window.setTimeout(scrollToMonth, 140);
 
     return () => {
-      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(firstFrameId);
+      window.cancelAnimationFrame(secondFrameId);
+      window.clearTimeout(timeoutId);
     };
   }, [initialMonthKey, monthAnchorKey]);
 

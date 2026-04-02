@@ -287,7 +287,7 @@ export default async function CalendarPage({
             selectedChannel={filters.channel}
             selectedCountryCode={filters.countryCode}
           />
-          <CalendarIcalLauncher properties={properties} />
+          <CalendarIcalLauncher properties={properties} feeds={icalFeeds} />
         </div>
       }
     >

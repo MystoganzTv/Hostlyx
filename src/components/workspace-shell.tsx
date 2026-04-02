@@ -349,6 +349,7 @@ export function WorkspaceShell({
 
         <div className="min-w-0 flex-1 rounded-[36px] border border-[var(--workspace-border)] bg-[rgba(9,17,29,0.74)] shadow-[0_22px_54px_rgba(2,6,23,0.26)] xl:min-h-0 xl:overflow-hidden">
           <div
+            data-workspace-scroll-region={contentScrollable ? "true" : undefined}
             className={`min-h-full rounded-[36px] bg-[linear-gradient(180deg,rgba(11,22,38,0.9)_0%,rgba(8,17,29,0.97)_100%)] p-6 sm:p-7 xl:flex xl:h-full xl:flex-col xl:p-9 ${
               contentScrollable ? "xl:overflow-y-auto xl:overscroll-contain" : "xl:overflow-hidden"
             }`}
