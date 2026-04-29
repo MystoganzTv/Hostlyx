@@ -304,7 +304,7 @@ export function getDetectedSourceLabel(source: ImportDetectedSource) {
     case "generic":
       return "Generic Excel";
     case "financial_statement":
-      return "Financial statement";
+      return "Payout statement";
     default:
       return "Unknown format";
   }

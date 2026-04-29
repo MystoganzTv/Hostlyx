@@ -888,7 +888,7 @@ export function OnboardingFlow({
               Add spreadsheets only if they help right now.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-[var(--workspace-muted)]">
-              Use uploads for bookings, expenses, or financial statements if you want richer numbers
+              Use uploads for bookings, expenses, or payout statements if you want richer numbers
               immediately. If iCal will supply the calendar later, you can skip this step.
             </p>
           </div>

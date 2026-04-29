@@ -9,7 +9,7 @@ import type { PropertyDefinition } from "@/lib/types";
 
 export function ReconcileStatementLauncher({
   properties,
-  buttonLabel = "Import statement",
+  buttonLabel = "Import payout statement",
   buttonClassName,
 }: {
   properties: PropertyDefinition[];
@@ -19,13 +19,13 @@ export function ReconcileStatementLauncher({
   const { locale } = useLocale();
   const isSpanish = locale === "es";
   const [isOpen, setIsOpen] = useState(false);
-  const resolvedButtonLabel = buttonLabel === "Import statement"
+  const resolvedButtonLabel = buttonLabel === "Import payout statement"
     ? isSpanish
-      ? "Importar statement"
+      ? "Importar payout"
       : buttonLabel
-    : buttonLabel === "Financial statement"
+    : buttonLabel === "Payout statement"
       ? isSpanish
-        ? "Estado financiero"
+        ? "Estado de payout"
         : buttonLabel
       : buttonLabel;
 
@@ -51,11 +51,11 @@ export function ReconcileStatementLauncher({
       >
         <UploadPanel
           properties={properties}
-          title={isSpanish ? "Añade un estado financiero" : "Add a financial statement"}
+          title={isSpanish ? "Añade un estado de payout" : "Add a payout statement"}
           subtitle={
             isSpanish
-              ? "Sube un statement de payout de Airbnb o Booking.com para que Reconcile compare payout esperado contra payout real."
-              : "Upload an Airbnb or Booking.com payout statement so Reconcile can compare expected payout against actual payout."
+              ? "Sube un statement de payout de Airbnb o Booking.com. Hostlyx lo mantendrá separado de las reservas y lo usará en Payouts."
+              : "Upload an Airbnb or Booking.com payout statement. Hostlyx will keep it separate from bookings and use it in Payouts."
           }
           appearance="compact"
           onCancel={() => setIsOpen(false)}

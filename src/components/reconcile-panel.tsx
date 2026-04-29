@@ -64,10 +64,10 @@ export function ReconcileSummaryCard({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-            {isSpanish ? "Conciliar" : "Reconcile"}
+            {isSpanish ? "Liquidaciones" : "Payouts"}
           </p>
           <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-[var(--workspace-text)]">
-            {isSpanish ? "Payout esperado vs real" : "Expected vs actual payout"}
+            {isSpanish ? "Payout esperado vs statement" : "Expected vs statement payout"}
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
             {reconcile.message}
@@ -111,7 +111,7 @@ export function ReconcileSummaryCard({
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm leading-6 text-[var(--workspace-muted)]">{reconcile.trustLabel}</p>
         <Link
-          href="/dashboard/reconcile"
+          href="/dashboard/payouts"
           className="workspace-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-semibold transition"
         >
           {isSpanish ? "Ver detalles" : "View details"}
@@ -145,7 +145,7 @@ export function ReconcilePanel({
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--workspace-muted)]">
-              {isSpanish ? "Conciliar" : "Reconcile"}
+              {isSpanish ? "Liquidaciones" : "Payouts"}
             </p>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
               {reconcile.periodLabel}
@@ -153,8 +153,8 @@ export function ReconcilePanel({
           </div>
           <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--workspace-text)] sm:text-2xl">
             {isSpanish
-              ? "Concilia expectativas de reservas contra el payout real del statement."
-              : "Reconcile booking expectations against actual statement payout."}
+              ? "Contrasta el payout esperado de tus reservas contra lo que el statement del canal dice que salió."
+              : "Compare booking-based expected payout against what the channel statement says was paid out."}
           </p>
           <p className="max-w-3xl text-sm leading-7 text-slate-200/92">
             {reconcile.message}
@@ -224,10 +224,10 @@ export function ReconcilePanel({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                {isSpanish ? "Puente del statement" : "Statement bridge"}
+                {isSpanish ? "Puente del payout" : "Payout bridge"}
               </p>
               <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                {isSpanish ? "Del valor de reserva al efectivo realmente recibido." : "From booking value to cash actually received."}
+                {isSpanish ? "De la expectativa basada en reservas al payout reportado por el canal." : "From booking-based expectation to channel-reported payout."}
               </p>
             </div>
             <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[var(--workspace-muted)]">
@@ -386,11 +386,11 @@ export function ReconcilePanel({
             <p className="mt-3 text-base font-semibold tracking-[-0.02em] text-[var(--workspace-text)]">
               {reconcile.trustLabel}
             </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-              {isSpanish
-                ? "Hostlyx mantiene separadas las reservas y los statements financieros para que la comparación de payout siga anclada en documentos fuente importados."
-                : "Hostlyx keeps bookings and financial statements separate so the payout comparison stays grounded in imported source documents."}
-            </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
+            {isSpanish
+              ? "Hostlyx mantiene separadas las reservas y los statements de payout del canal para que esta comparación siga anclada en documentos fuente importados."
+              : "Hostlyx keeps bookings and channel payout statements separate so this comparison stays grounded in imported source documents."}
+          </p>
           </div>
         </div>
       </div>

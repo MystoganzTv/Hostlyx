@@ -72,8 +72,8 @@ export function ImportsManager({
               <th className="pb-3 pr-4 font-medium">File</th>
               <th className="pb-3 pr-4 font-medium">Property</th>
               <th className="pb-3 pr-4 font-medium">Imported</th>
-              <th className="pb-3 pr-4 font-medium">Bookings</th>
-              <th className="pb-3 pr-4 font-medium">Expenses</th>
+              <th className="pb-3 pr-4 font-medium">Layer</th>
+              <th className="pb-3 pr-4 font-medium">Impact</th>
               <th className="pb-3 font-medium">Action</th>
             </tr>
           </thead>
@@ -97,13 +97,13 @@ export function ImportsManager({
                 <td className="py-4 pr-4">{formatDateLabel(entry.importedAt.slice(0, 10))}</td>
                 <td className="py-4 pr-4">
                   {entry.importedSource === "financial_statement"
-                    ? "Statement"
-                    : formatNumber(entry.bookingsCount)}
+                    ? "Payout statement"
+                    : "Operational rows"}
                 </td>
                 <td className="py-4 pr-4">
                   {entry.importedSource === "financial_statement"
-                    ? "—"
-                    : formatNumber(entry.expensesCount)}
+                    ? "1 payout statement"
+                    : `${formatNumber(entry.bookingsCount)} bookings · ${formatNumber(entry.expensesCount)} expenses`}
                 </td>
                 <td className="py-4">
                   <button
@@ -136,7 +136,7 @@ export function ImportsManager({
             <div className="workspace-soft-card rounded-[22px] p-4 text-sm leading-6 text-[var(--workspace-muted)]">
               Deleting <span className="font-medium text-[var(--workspace-text)]">{importToDelete.fileName}</span> will remove the import from history and permanently delete{" "}
               {importToDelete.importedSource === "financial_statement"
-                ? "the financial statement saved by that batch."
+                ? "the payout statement saved by that batch."
                 : "the data that batch created inside Hostlyx."}
             </div>
 
@@ -153,7 +153,7 @@ export function ImportsManager({
                 </p>
                 <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                   {importToDelete.importedSource === "financial_statement"
-                    ? "1 statement"
+                    ? "1 payout statement"
                     : formatNumber(importToDelete.bookingsCount)}
                 </p>
               </div>

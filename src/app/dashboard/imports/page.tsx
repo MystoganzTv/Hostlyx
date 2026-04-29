@@ -46,6 +46,9 @@ export default async function ImportsPage() {
     (sum, entry) => sum + entry.expensesCount,
     0,
   );
+  const totalPayoutStatements = importSummaries.filter(
+    (entry) => entry.importedSource === "financial_statement",
+  ).length;
 
   return (
     <WorkspaceShell
@@ -77,7 +80,7 @@ export default async function ImportsPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title={isSpanish ? "Registros ahora en Hostlyx" : "Records now in Hostlyx"}>
+          <SectionCard title={isSpanish ? "Registros operativos" : "Operational records"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
@@ -93,13 +96,13 @@ export default async function ImportsPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title={isSpanish ? "Propiedades tocadas" : "Properties touched"}>
+          <SectionCard title={isSpanish ? "Statements de payout" : "Payout statements"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
                 <Layers3 className="h-5 w-5" />
               </div>
               <p className="text-2xl font-semibold text-[var(--workspace-text)]">
-                {formatNumber(new Set(importSummaries.map((entry) => entry.propertyName)).size)}
+                {formatNumber(totalPayoutStatements, locale)}
               </p>
             </div>
           </SectionCard>
@@ -114,8 +117,8 @@ export default async function ImportsPage() {
             </p>
             <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Cada archivo de abajo sigue visible como historial de importación para que entiendas qué cambió, cuándo cayó y qué registros creó."
-                : "Each file below stays visible as import history so you can understand what changed, when it landed, and which records it created."}
+                ? "Cada archivo de abajo sigue visible como historial de importación para que entiendas qué cambió, cuándo cayó y si creó reservas, gastos o un statement de payout."
+                : "Each file below stays visible as import history so you can understand what changed, when it landed, and whether it created bookings, expenses, or a payout statement."}
             </div>
           </div>
         </SectionCard>
@@ -124,8 +127,8 @@ export default async function ImportsPage() {
           title={isSpanish ? "Backup y rastro de auditoría" : "Backup & Audit Trail"}
           subtitle={
             isSpanish
-              ? "Cada batch de abajo muestra en qué propiedad entró, cuándo cayó y cuántos registros vivos creó dentro de Hostlyx."
-              : "Each batch below shows which property it entered, when it landed, and how many live records it created inside Hostlyx."
+              ? "Cada batch de abajo muestra en qué propiedad entró, cuándo cayó y qué tipo de capa de datos añadió dentro de Hostlyx."
+              : "Each batch below shows which property it entered, when it landed, and which data layer it added inside Hostlyx."
           }
         >
           <ImportsManager importSummaries={importSummaries} />

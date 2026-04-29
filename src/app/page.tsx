@@ -110,8 +110,8 @@ function getLandingCollections(isSpanish: boolean) {
         },
         {
           icon: ArrowDownUp,
-          title: "Flujo de caja",
-          description: "Entiende cuándo entra y sale tu dinero y qué terminas cobrando de verdad.",
+          title: "Flujo operativo",
+          description: "Entiende payouts operativos, gastos y el movimiento neto del negocio sin confundirlo con conciliación bancaria.",
         },
       ]
     : [
@@ -142,8 +142,8 @@ function getLandingCollections(isSpanish: boolean) {
         },
         {
           icon: ArrowDownUp,
-          title: "Cashflow",
-          description: "Understand when money comes in and out and what you actually end up collecting.",
+          title: "Operating flow",
+          description: "Understand operating payouts, expenses, and net business movement without confusing it with bank reconciliation.",
         },
       ];
 

@@ -11,6 +11,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   DatabaseZap,
+  Landmark,
   LayoutDashboard,
   LogOut,
   ReceiptText,
@@ -33,6 +34,7 @@ type ActivePage =
   | "monthly"
   | "bookings"
   | "expenses"
+  | "payouts"
   | "cashflow"
   | "reconcile"
   | "performance"
@@ -64,7 +66,8 @@ const baseNavItems: Array<{
   { id: "calendar", label: { en: "Calendar", es: "Calendario" }, href: "/dashboard/calendar", icon: CalendarDays },
   { id: "bookings", label: { en: "Bookings", es: "Reservas" }, href: "/dashboard/bookings", icon: BookOpenText },
   { id: "expenses", label: { en: "Expenses", es: "Gastos" }, href: "/dashboard/expenses", icon: ReceiptText },
-  { id: "cashflow", label: { en: "Cashflow", es: "Flujo de caja" }, href: "/dashboard/cashflow", icon: Wallet },
+  { id: "payouts", label: { en: "Payouts", es: "Liquidaciones" }, href: "/dashboard/payouts", icon: Landmark },
+  { id: "cashflow", label: { en: "Operating Flow", es: "Flujo operativo" }, href: "/dashboard/cashflow", icon: Wallet },
   { id: "reconcile", label: { en: "Reconcile", es: "Conciliar" }, href: "/dashboard/reconcile", icon: Scale },
   { id: "performance", label: { en: "Performance", es: "Rendimiento" }, href: "/dashboard/performance", icon: ChartNoAxesCombined },
   { id: "reports", label: { en: "Reports", es: "Informes" }, href: "/dashboard/reports", icon: FileText },
@@ -185,7 +188,7 @@ export function WorkspaceShell({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-white">{businessName}</p>
                     <p className="mt-1 text-xs text-[var(--workspace-sidebar-muted)]">
-                      {currencyCode} {isSpanish ? "workspace" : "workspace"}
+                      {currencyCode} {isSpanish ? "espacio de trabajo" : "workspace"}
                     </p>
                   </div>
                   {subscriptionBadge &&
@@ -249,7 +252,7 @@ export function WorkspaceShell({
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   {!isCollapsed ? <span className="min-w-0 truncate">{item.label[locale]}</span> : null}
-                  {!isCollapsed && item.id === "reconcile" && reconcileBadge ? (
+                  {!isCollapsed && item.id === "payouts" && reconcileBadge ? (
                     <span
                       className={`ml-auto shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
                         reconcileBadge.tone === "caution"

@@ -106,7 +106,7 @@ export function LatestImportDangerCard({
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Data created</p>
             <p className="mt-2 text-sm font-medium text-[var(--workspace-text)]">
               {isFinancialStatement
-                ? "1 financial statement"
+                ? "1 payout statement"
                 : `${formatNumber(latestImport.bookingsCount)} bookings · ${formatNumber(latestImport.expensesCount)} expenses`}
             </p>
           </div>
@@ -128,7 +128,7 @@ export function LatestImportDangerCard({
               <p>
                 This will remove <span className="font-semibold text-rose-900">{latestImport.fileName}</span> and delete{" "}
                 {isFinancialStatement
-                  ? "the financial statement saved from that import batch."
+                  ? "the payout statement saved from that import batch."
                   : "the bookings and expenses created by that import batch."}
               </p>
             </div>

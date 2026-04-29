@@ -119,7 +119,7 @@ export async function POST(request: Request) {
           error: preview.requiresManualMapping
             ? "We couldn’t fully recognize your file. Map your columns in a few seconds to continue."
             : preview.source === "financial_statement"
-            ? preview.blockMessage ?? "This financial statement still needs one more review before Hostlyx can import it."
+            ? preview.blockMessage ?? "This payout statement still needs one more review before Hostlyx can import it."
             : "This file needs attention before Hostlyx can import it.",
         },
         { status: 400 },
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json({
-        message: `Imported 1 financial statement into ${targetPropertyName}.`,
+        message: `Imported 1 payout statement into ${targetPropertyName}.`,
         committed: {
           source: preview.source,
           sourceLabel: preview.sourceLabel,

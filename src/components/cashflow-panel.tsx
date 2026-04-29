@@ -28,33 +28,33 @@ export function CashflowPanel({
     <div className="space-y-6">
       <div className={`grid gap-4 ${view.mixedCurrencyMode ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4"}`}>
         <MetricCard
-          label={isSpanish ? "Entradas" : "Cash In"}
+          label={isSpanish ? "Payout de entrada" : "Payout In"}
           value={view.metrics.netPayout}
           format="currency"
           currencyCode={currencyCode}
           locale={locale}
-          helper={isSpanish ? "Caja que entra al owner desde payouts" : "Owner cash coming in from payouts"}
+          helper={isSpanish ? "Entrada operativa esperada desde payouts de canal" : "Expected operating inflow from channel payouts"}
           icon={<ArrowDownRight className="h-5 w-5" />}
         />
         <MetricCard
-          label={isSpanish ? "Salidas" : "Cash Out"}
+          label={isSpanish ? "Gastos de salida" : "Expenses Out"}
           value={view.metrics.totalExpenses}
           format="currency"
           currencyCode={currencyCode}
           locale={locale}
-          helper={isSpanish ? "Gastos saliendo del negocio" : "Expenses leaving the business"}
+          helper={isSpanish ? "Gasto operativo saliendo del negocio" : "Operating spend leaving the business"}
           icon={<ArrowUpRight className="h-5 w-5" />}
         />
         <MetricCard
-          label={isSpanish ? "Flujo neto" : "Net Cashflow"}
+          label={isSpanish ? "Flujo operativo neto" : "Net Operating Flow"}
           value={view.metrics.netProfit}
           format="currency"
           currencyCode={currencyCode}
           locale={locale}
           helper={
             isSpanish
-              ? "Payout menos gastos en el rango seleccionado"
-              : "Payout minus expenses in the selected range"
+              ? "Payout de canal menos gastos en el rango seleccionado"
+              : "Channel payout minus expenses in the selected range"
           }
           icon={<Wallet className="h-5 w-5" />}
         />
@@ -67,8 +67,8 @@ export function CashflowPanel({
             locale={locale}
             helper={
               isSpanish
-                ? "Cuánto cubren los payouts la carga de gastos"
-                : "How much payouts cover expense load"
+            ? "Cuánto cubren los payouts operativos la carga de gastos"
+                : "How much operating payouts cover expense load"
             }
             icon={<Landmark className="h-5 w-5" />}
           />
@@ -76,11 +76,11 @@ export function CashflowPanel({
       </div>
 
       <SectionCard
-        title={isSpanish ? "Lectura de flujo de caja" : "Cashflow Reading"}
+        title={isSpanish ? "Lectura de flujo operativo" : "Operating Flow Reading"}
         subtitle={
           isSpanish
-            ? "Usa esta página para ver cómo se mueve el dinero en el negocio dentro de la ventana de reporte seleccionada."
-            : "Use this page to see how money moves through the business across the selected reporting window."
+            ? "Usa esta página para ver cómo se mueve el negocio a nivel operativo dentro de la ventana seleccionada."
+            : "Use this page to see how the business moves operationally across the selected reporting window."
         }
       >
         <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -91,8 +91,8 @@ export function CashflowPanel({
             <p className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">{rangeLabel}</p>
             <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Hostlyx trata el payout como entrada de caja y los gastos como salida de caja. Esto te da una lectura operativa más limpia que mirar solo los ingresos brutos."
-                : "Hostlyx treats payout as cash in and expenses as cash out. This gives you a cleaner operational read than gross revenue alone."}
+                ? "Hostlyx trata el payout del canal como entrada operativa y los gastos como salida operativa. Esto no sustituye una conciliación bancaria."
+                : "Hostlyx treats channel payout as operating inflow and expenses as operating outflow. This does not replace bank reconciliation."}
             </p>
           </div>
           <div className="workspace-soft-card rounded-[22px] p-5">
@@ -104,8 +104,8 @@ export function CashflowPanel({
             </p>
             <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Promedio mensual de flujo neto de caja entre los meses visibles ahora."
-                : "Average monthly net cashflow across the months currently in view."}
+                ? "Promedio mensual del flujo operativo neto entre los meses visibles ahora."
+                : "Average monthly net operating flow across the months currently in view."}
             </p>
           </div>
         </div>
@@ -113,11 +113,11 @@ export function CashflowPanel({
 
       {!view.mixedCurrencyMode ? (
         <SectionCard
-          title={isSpanish ? "Salud de caja" : "Cash Health"}
+          title={isSpanish ? "Salud operativa" : "Operating Health"}
           subtitle={
             isSpanish
-              ? "Formas rápidas de leer con qué comodidad se financió a sí mismo el periodo seleccionado."
-              : "Quick ways to read how comfortably the selected period funded itself."
+              ? "Formas rápidas de leer con qué comodidad operativa se sostuvo el periodo seleccionado."
+              : "Quick ways to read how comfortably the selected period sustained itself operationally."
           }
         >
           <div className="grid gap-4 md:grid-cols-3">
@@ -151,7 +151,7 @@ export function CashflowPanel({
 
       {view.mixedCurrencyMode ? (
         <SectionCard
-          title={isSpanish ? "Flujo de caja por mercado" : "Cashflow by Market"}
+          title={isSpanish ? "Flujo operativo por mercado" : "Operating Flow by Market"}
           subtitle={
             isSpanish
               ? "El modo de todos los mercados mantiene cada mercado en su moneda real en lugar de fingir un total convertido."
@@ -197,11 +197,11 @@ export function CashflowPanel({
         </SectionCard>
       ) : (
         <SectionCard
-          title={isSpanish ? "Flujo de caja mensual" : "Monthly Cashflow"}
+          title={isSpanish ? "Flujo operativo mensual" : "Monthly Operating Flow"}
           subtitle={
             isSpanish
-              ? "Sigue payout de entrada, gastos de salida y el flujo neto resultante mes a mes."
-              : "Track payout in, expenses out, and resulting net cashflow month by month."
+              ? "Sigue payout de entrada, gastos de salida y el flujo operativo neto resultante mes a mes."
+              : "Track payout in, expenses out, and resulting net operating flow month by month."
           }
         >
           <div className="space-y-3 md:hidden">
@@ -220,13 +220,13 @@ export function CashflowPanel({
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Entrada" : "Cash In"}</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Entrada" : "Payout In"}</p>
                     <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
                       {formatCurrency(month.payout, false, currencyCode, locale)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Salida" : "Cash Out"}</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Salida" : "Expenses Out"}</p>
                     <p className="mt-1 text-sm font-semibold text-[var(--workspace-text)]">
                       {formatCurrency(month.expenses, false, currencyCode, locale)}
                     </p>
@@ -247,8 +247,8 @@ export function CashflowPanel({
               <thead className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
                 <tr>
                   <th className="pb-3 pr-4 font-medium">{isSpanish ? "Mes" : "Month"}</th>
-                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Entrada" : "Cash In"}</th>
-                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Salida" : "Cash Out"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Entrada" : "Payout In"}</th>
+                  <th className="pb-3 pr-4 font-medium">{isSpanish ? "Salida" : "Expenses Out"}</th>
                   <th className="pb-3 pr-4 font-medium">{isSpanish ? "Neto" : "Net"}</th>
                   <th className="pb-3 pr-4 font-medium">{isSpanish ? "Reservas" : "Bookings"}</th>
                   <th className="pb-3 font-medium">{isSpanish ? "Noches" : "Nights"}</th>

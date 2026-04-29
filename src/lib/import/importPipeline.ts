@@ -671,8 +671,8 @@ export function buildImportPreview(
   if (source === "financial_statement") {
     const statement = extractFinancialStatement(workbook);
     const blockMessage = statement
-      ? "This looks like a financial statement. Hostlyx will save it for Reconcile instead of creating booking rows."
-      : "This looks like a financial statement, but Hostlyx still needs a readable payout total before it can save it to Reconcile.";
+      ? "This looks like a payout statement. Hostlyx will save it for Payouts instead of creating booking rows."
+      : "This looks like a payout statement, but Hostlyx still needs a readable payout total before it can save it to Payouts.";
 
     return {
       source,

@@ -174,8 +174,8 @@ export function BusinessSettingsPanel({
               </p>
               <p className="mt-2 text-xs leading-5 text-[var(--workspace-muted)]">
                 {isSpanish
-                  ? "Dashboard, informes, cashflow, monthly y performance usan esta como moneda fallback de visualización."
-                  : "Dashboard, reports, cashflow, monthly, and performance use this as the fallback display currency."}
+                  ? "Dashboard, informes, flujo operativo, monthly y performance usan esta como moneda fallback de visualización."
+                  : "Dashboard, reports, operating flow, monthly, and performance use this as the fallback display currency."}
               </p>
             </div>
 

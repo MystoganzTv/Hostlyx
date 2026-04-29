@@ -24,8 +24,8 @@ export function ImportCenterLauncher({
         title={isSpanish ? "Trae tus datos" : "Bring your data"}
         subtitle={
           isSpanish
-            ? "Importa reservas, gastos o estados financieros en un modal enfocado y deja esta página centrada en historial y control."
-            : "Import bookings, expenses, or financial statements in a focused modal, then keep this page centered on history and control."
+            ? "Importa reservas, gastos o statements de payout en un modal enfocado y deja esta página centrada en historial y control."
+            : "Import bookings, expenses, or payout statements in a focused modal, then keep this page centered on history and control."
         }
         action={
           <div className="flex flex-wrap items-center gap-3">
@@ -39,7 +39,7 @@ export function ImportCenterLauncher({
             </button>
             <ReconcileStatementLauncher
               properties={properties}
-              buttonLabel={isSpanish ? "Estado financiero" : "Financial statement"}
+              buttonLabel={isSpanish ? "Estado de payout" : "Payout statement"}
               buttonClassName="workspace-button-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
             />
           </div>
@@ -55,8 +55,8 @@ export function ImportCenterLauncher({
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Usa el flujo principal para reservas o gastos. Usa el camino de estado financiero cuando quieras que Reconcile compare payout esperado contra payout real."
-                : "Use the main import flow for bookings or expenses. Use the financial statement path when you want Reconcile to compare expected payout against actual payout."}
+                ? "Usa el flujo principal para reservas o gastos. Usa el camino de payout cuando quieras guardar statements de Airbnb o Booking.com. La conciliación bancaria vendrá aparte."
+                : "Use the main flow for bookings or expenses. Use the payout path when you want to save Airbnb or Booking.com statements. Bank reconciliation will live separately."}
             </p>
           </div>
 
@@ -69,7 +69,7 @@ export function ImportCenterLauncher({
                 isSpanish ? "Reservas Airbnb" : "Airbnb bookings",
                 isSpanish ? "Reservas Booking.com" : "Booking.com bookings",
                 "Hostlyx Excel",
-                isSpanish ? "Estados financieros" : "Financial statements",
+                isSpanish ? "Statements de payout" : "Payout statements",
               ].map((item) => (
                 <span
                   key={item}

@@ -266,7 +266,7 @@ function getImportedSourceLabel(source: ImportedFileSource) {
     case "hostlyx_excel":
       return "Generic Excel";
     case "financial_statement":
-      return "Financial statement";
+      return "Payout statement";
     default:
       return "Generic Excel";
   }

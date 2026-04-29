@@ -317,9 +317,9 @@ function getSourcePresentation(source: ImportPreviewPayload["source"]) {
     case "financial_statement":
       return {
         icon: CircleDollarSign,
-        badge: "Financial statement",
+        badge: "Payout statement",
         description:
-          "This file is for Reconcile. Hostlyx can save payout totals, fees, and taxes from it when the payout amount is readable.",
+          "This file is for Payouts. Hostlyx can save payout totals, fees, and taxes from it when the payout amount is readable.",
       };
     default:
       return {
@@ -639,7 +639,7 @@ export function UploadPanel({
         tone: "error",
         message:
           isBlockedFinancialStatement
-            ? preview.blockMessage ?? "This financial statement still needs a readable payout total."
+            ? preview.blockMessage ?? "This payout statement still needs a readable payout total."
             : preview.blockMessage ?? "This file is not the right format for booking imports.",
       });
       return;
@@ -1052,7 +1052,7 @@ export function UploadPanel({
               {(
                 committed.financialDocumentsImported
                   ? [
-                      ["Statements imported", committed.financialDocumentsImported, "text-[var(--workspace-text)]"],
+                      ["Payout statements imported", committed.financialDocumentsImported, "text-[var(--workspace-text)]"],
                       ["Bookings imported", committed.bookingsImported, "text-[var(--workspace-text)]"],
                       ["Rows skipped", committed.skippedRows, "text-[var(--workspace-muted)]"],
                     ]
@@ -1147,7 +1147,7 @@ export function UploadPanel({
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--workspace-border)] bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--workspace-muted)]">
                 <Sparkles className="h-4 w-4 text-[var(--workspace-accent)]" />
-                {isCompactAppearance ? "Reconcile" : "Import Center"}
+                {isCompactAppearance ? "Payouts" : "Import Center"}
               </div>
               <div>
                 <h2
@@ -1350,7 +1350,7 @@ export function UploadPanel({
                         {preview.blocksImport
                           ? preview.blockMessage
                           : preview.source === "financial_statement"
-                          ? "This file is a financial statement. Hostlyx will save payout totals for Reconcile, but it will not create booking rows from it."
+                          ? "This file is a payout statement. Hostlyx will save payout totals for Payouts, but it will not create booking rows from it."
                           : preview.requiresManualMapping
                           ? preview.manualMapping?.message
                           : getSourcePresentation(preview.source).description}
@@ -1372,7 +1372,7 @@ export function UploadPanel({
                       ) : isFinancialStatementReady ? (
                         <div className="mt-4 flex flex-wrap items-center gap-3">
                           <span className="rounded-full border border-[var(--workspace-accent)]/24 bg-[rgba(125,211,197,0.12)] px-3 py-1.5 text-xs font-medium text-[var(--workspace-accent)]">
-                            Financial statement ready
+                            Payout statement ready
                           </span>
                           <button
                             type="button"
@@ -1380,7 +1380,7 @@ export function UploadPanel({
                             disabled={phase === "importing" || phase === "previewing"}
                             className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {phase === "importing" ? "Saving statement..." : "Save financial statement"}
+                            {phase === "importing" ? "Saving payout statement..." : "Save payout statement"}
                           </button>
                         </div>
                       ) : needsFocusedMapping ? (
@@ -1414,10 +1414,10 @@ export function UploadPanel({
                   >
                     {preview.blocksImport
                       ? isBlockedFinancialStatement
-                        ? "Statement incomplete"
+                        ? "Payout statement incomplete"
                         : "Wrong file type"
                       : isFinancialStatementReady
-                      ? "Statement ready"
+                      ? "Payout statement ready"
                       : preview.source === "financial_statement"
                       ? "Needs payout total"
                       : preview.requiresManualMapping
@@ -1443,7 +1443,7 @@ export function UploadPanel({
                     }`}
                   >
                     {isBlockedFinancialStatement
-                      ? "Hostlyx recognized a financial statement, but the payout total is still missing or unreadable."
+                      ? "Hostlyx recognized a payout statement, but the payout total is still missing or unreadable."
                       : "This file is useful for invoices and VAT records, but it is not the right source for bookings."}
                   </p>
                   <p
@@ -1568,7 +1568,7 @@ export function UploadPanel({
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {[
-                      ["Statement source", preview.financialStatement.source === "airbnb" ? "Airbnb" : "Booking.com", "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
+                      ["Payout source", preview.financialStatement.source === "airbnb" ? "Airbnb" : "Booking.com", "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
                       ["Actual payout", formatCurrency(preview.financialStatement.totalPayout), "text-teal-100", "border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.08)]"],
                       ["Fees detected", formatCurrency(preview.financialStatement.totalFees), "text-amber-100", "border-amber-400/20 bg-amber-300/[0.08]"],
                       ["Taxes detected", formatCurrency(preview.financialStatement.totalTaxes), "text-[var(--workspace-text)]", "border-[var(--workspace-border)] bg-[var(--workspace-panel)]"],
@@ -1583,7 +1583,7 @@ export function UploadPanel({
                         <p className={`mt-3 text-3xl font-semibold ${tone}`}>
                           {value}
                         </p>
-                        {label === "Statement source" ? (
+                        {label === "Payout source" ? (
                           <p className="mt-2 text-xs leading-5 text-[var(--workspace-muted)]">
                             {preview.financialStatement?.period.label}
                           </p>
@@ -1595,13 +1595,13 @@ export function UploadPanel({
                   <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
                     <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Statement summary
+                        Payout summary
                       </p>
                       <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
                         {preview.financialStatement.period.label}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                        Hostlyx will save this document as a financial statement, separate from bookings, and use it for Reconcile.
+                        Hostlyx will save this document as a payout statement, separate from bookings, and use it in Payouts.
                       </p>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -1680,14 +1680,14 @@ export function UploadPanel({
                         Ready to continue
                       </p>
                       <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                        1 financial statement ready to import
+                        1 payout statement ready to import
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                        Nothing will be saved until you confirm this financial statement import.
+                        Nothing will be saved until you confirm this payout statement import.
                       </p>
 
                       <div className="mt-5 rounded-[18px] border border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.08)] px-4 py-4 text-sm text-[var(--workspace-text)]">
-                        This file will feed Reconcile so you can compare expected payout against what Airbnb or Booking.com actually paid out.
+                        This file will feed Payouts so you can compare expected payout against what Airbnb or Booking.com says it paid out.
                       </div>
 
                       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -1701,10 +1701,10 @@ export function UploadPanel({
                           {phase === "importing" ? (
                             <>
                               <LoaderCircle className="h-4 w-4 animate-spin" />
-                              Save financial statement
+                              Save payout statement
                             </>
                           ) : (
-                            "Save financial statement"
+                            "Save payout statement"
                           )}
                         </button>
                         <button

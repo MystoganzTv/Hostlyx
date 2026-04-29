@@ -71,11 +71,11 @@ export default async function CashflowPage({
   return (
     <WorkspaceShell
       activePage="cashflow"
-      pageTitle={isSpanish ? "Flujo de caja" : "Cashflow"}
+      pageTitle={isSpanish ? "Flujo operativo" : "Operating Flow"}
       pageSubtitle={
         isSpanish
-          ? "Ve entradas por payout, salidas por gastos y el movimiento neto en tu ventana de reporte."
-          : "See payout in, expenses out, and net movement across your reporting window."
+          ? "Ve payouts operativos de entrada, gastos de salida y el movimiento neto del negocio en tu ventana de reporte."
+          : "See operating payout in, expenses out, and net business movement across your reporting window."
       }
       businessName={userSettings.businessName}
       userName={userName}
