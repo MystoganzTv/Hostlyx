@@ -18,8 +18,10 @@ import {
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BookingChannelBadge, BookingStatusBadge } from "@/components/booking-badges";
+import { useLocale } from "@/components/locale-provider";
 import { formatCurrency, formatDateLabel, formatNumber } from "@/lib/format";
 import { getBookingStatusState } from "@/lib/booking-status";
+import { getDateFnsLocale } from "@/lib/i18n";
 import { Modal } from "@/components/modal";
 import type {
   BookingRecord,
@@ -28,7 +30,10 @@ import type {
   CurrencyCode,
 } from "@/lib/types";
 
-const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekdayLabels = {
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  es: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+};
 
 type CalendarTimelineItem = {
   id: string;
@@ -268,6 +273,17 @@ function getWorkspaceScrollRegion() {
   return region instanceof HTMLElement ? region : null;
 }
 
+function isScrollableElement(element: HTMLElement | null) {
+  if (!element) {
+    return false;
+  }
+
+  const styles = window.getComputedStyle(element);
+  const allowsScroll = styles.overflowY === "auto" || styles.overflowY === "scroll";
+
+  return allowsScroll && element.scrollHeight > element.clientHeight + 4;
+}
+
 function buildBlockedDateSet(
   anchorDate: Date,
   closures: CalendarClosureRecord[],
@@ -409,9 +425,12 @@ function MonthCalendar({
   onSelectBooking: (booking: BookingRecord) => void;
   onSelectCalendarEvent: (event: CalendarEventRecord) => void;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
+  const dateFnsLocale = getDateFnsLocale(locale);
   const days = buildCalendarDays(anchorDate);
   const weeks = chunkWeeks(days);
-  const monthLabel = format(anchorDate, abbreviatedTitle ? "MMMM" : "MMMM yyyy");
+  const monthLabel = format(anchorDate, abbreviatedTitle ? "MMMM" : "MMMM yyyy", { locale: dateFnsLocale });
   const monthKey = format(anchorDate, "yyyy-MM");
   const isPastMonth = endOfMonth(anchorDate) < startOfMonth(startOfDay(new Date()));
   const timelineItems = buildTimelineItems(bookings, calendarEvents).filter((item) => {
@@ -437,21 +456,22 @@ function MonthCalendar({
             {monthLabel}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-            {formatNumber(checkIns.length)} check-ins, {formatNumber(checkOuts.length)} check-outs,{" "}
-            {formatNumber(blockedDateSet.size)} closed days
+            {formatNumber(checkIns.length, locale)} {isSpanish ? "check-ins" : "check-ins"},{" "}
+            {formatNumber(checkOuts.length, locale)} {isSpanish ? "check-outs" : "check-outs"},{" "}
+            {formatNumber(blockedDateSet.size, locale)} {isSpanish ? "días cerrados" : "closed days"}
           </p>
         </div>
 
         {isPastMonth ? (
           <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-            Past month
+            {isSpanish ? "Mes pasado" : "Past month"}
           </span>
         ) : null}
       </div>
 
       <div className="space-y-3">
         <div className="grid grid-cols-7 gap-2">
-          {weekdayLabels.map((label) => (
+          {weekdayLabels[locale].map((label) => (
             <div
               key={`${monthKey}-${label}`}
               className={`px-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)] ${compact ? "pb-1" : "pb-2"}`}
@@ -530,7 +550,7 @@ function MonthCalendar({
                           gridRow: segment.track + 1,
                           height: `${barHeight}px`,
                         }}
-                        title={`${segment.item.label} · ${formatDateLabel(segment.item.startDate)} to ${formatDateLabel(segment.item.endDate)}`}
+                        title={`${segment.item.label} · ${formatDateLabel(segment.item.startDate, locale)} ${isSpanish ? "a" : "to"} ${formatDateLabel(segment.item.endDate, locale)}`}
                       >
                         {segment.startsThisWeek ? (
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white/85" />
@@ -572,6 +592,8 @@ export function CalendarPanel({
   monthAnchors: Date[];
   currencyCode: CurrencyCode;
 }) {
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEventRecord | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -602,14 +624,15 @@ export function CalendarPanel({
     let secondFrameId = 0;
 
     const scrollToMonth = () => {
-      const scrollContainer = getWorkspaceScrollRegion() ?? getScrollContainer(targetNode);
+      const workspaceRegion = getWorkspaceScrollRegion();
+      const scrollContainer = isScrollableElement(workspaceRegion)
+        ? workspaceRegion
+        : getScrollContainer(targetNode);
 
       if (!scrollContainer) {
-        const targetTop = window.scrollY + targetNode.getBoundingClientRect().top - 16;
-
-        window.scrollTo({
-          top: Math.max(targetTop, 0),
+        targetNode.scrollIntoView({
           behavior: "auto",
+          block: "start",
         });
         return;
       }
@@ -678,7 +701,7 @@ export function CalendarPanel({
 
       <Modal
         open={Boolean(selectedBooking)}
-        title={selectedBooking ? selectedBooking.guestName : "Booking details"}
+        title={selectedBooking ? selectedBooking.guestName : isSpanish ? "Detalles de la reserva" : "Booking details"}
         onClose={() => setSelectedBooking(null)}
       >
         {selectedBooking ? (
@@ -693,16 +716,16 @@ export function CalendarPanel({
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Stay summary</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Resumen de la estancia" : "Stay summary"}</p>
                 <h3 className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                   {selectedBooking.guestName}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  {formatDateLabel(selectedBooking.checkIn)} to {formatDateLabel(selectedBooking.checkout)}
+                  {formatDateLabel(selectedBooking.checkIn, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(selectedBooking.checkout, locale)}
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Property</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Propiedad" : "Property"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                       {selectedBooking.propertyName}
                     </p>
@@ -710,43 +733,43 @@ export function CalendarPanel({
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Listing</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {selectedBooking.unitName || "Primary listing"}
+                      {selectedBooking.unitName || (isSpanish ? "Listing principal" : "Primary listing")}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Guests</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Huéspedes" : "Guests"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {formatNumber(selectedBooking.guestCount)}
+                      {formatNumber(selectedBooking.guestCount, locale)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Nights</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Noches" : "Nights"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {formatNumber(selectedBooking.nights)}
+                      {formatNumber(selectedBooking.nights, locale)}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Booking details</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Detalles de la reserva" : "Booking details"}</p>
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Channel</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Canal" : "Channel"}</span>
                     <BookingChannelBadge channel={selectedBooking.channel} />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Booking ref</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Ref. reserva" : "Booking ref"}</span>
                     <span className="font-medium text-[var(--workspace-text)]">
-                      {selectedBooking.bookingNumber || "Not set"}
+                      {selectedBooking.bookingNumber || (isSpanish ? "Sin definir" : "Not set")}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Status</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Estado" : "Status"}</span>
                     <BookingStatusBadge status={getBookingStatusState(selectedBooking)} />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Rental period</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Periodo de alquiler" : "Rental period"}</span>
                     <span className="font-medium text-[var(--workspace-text)]">{selectedBooking.rentalPeriod}</span>
                   </div>
                 </div>
@@ -755,31 +778,31 @@ export function CalendarPanel({
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <div className="workspace-soft-card rounded-[22px] p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Gross revenue</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Ingresos brutos" : "Gross revenue"}</p>
                 <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
                   {formatCurrency(selectedBooking.totalRevenue, false, currencyCode)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Net payout</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Payout neto" : "Net payout"}</p>
                 <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
                   {formatCurrency(selectedBooking.payout, false, currencyCode)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Host fee</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Fee del anfitrión" : "Host fee"}</p>
                 <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
                   {formatCurrency(selectedBooking.hostFee, false, currencyCode)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Taxes</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Impuestos" : "Taxes"}</p>
                 <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
                   {formatCurrency(selectedBooking.taxAmount, false, currencyCode)}
                 </p>
               </div>
               <div className="workspace-soft-card rounded-[22px] p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Cleaning fee</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Tarifa de limpieza" : "Cleaning fee"}</p>
                 <p className="mt-2 text-xl font-semibold text-[var(--workspace-text)]">
                   {formatCurrency(selectedBooking.cleaningFee, false, currencyCode)}
                 </p>
@@ -791,14 +814,14 @@ export function CalendarPanel({
                 href={`/dashboard/bookings?booking=${encodeURIComponent(getBookingSelectionKey(selectedBooking))}`}
                 className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
-                Open bookings page
+                {isSpanish ? "Abrir página de reservas" : "Open bookings page"}
               </Link>
               <button
                 type="button"
                 onClick={() => setSelectedBooking(null)}
                 className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
-                Close details
+                {isSpanish ? "Cerrar detalles" : "Close details"}
               </button>
             </div>
           </div>
@@ -807,32 +830,34 @@ export function CalendarPanel({
 
       <Modal
         open={Boolean(selectedCalendarEvent)}
-        title={selectedCalendarEvent ? getCalendarEventDisplayName(selectedCalendarEvent) : "Synced calendar event"}
+        title={selectedCalendarEvent ? getCalendarEventDisplayName(selectedCalendarEvent) : isSpanish ? "Evento sincronizado" : "Synced calendar event"}
         onClose={() => setSelectedCalendarEvent(null)}
       >
         {selectedCalendarEvent ? (
           <div className="space-y-5">
             <div className="rounded-full border border-slate-300/18 bg-slate-400/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-100">
-              Synced iCal event
+              {isSpanish ? "Evento iCal sincronizado" : "Synced iCal event"}
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Stay window</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Ventana de estancia" : "Stay window"}</p>
                 <h3 className="mt-2 text-2xl font-semibold text-[var(--workspace-text)]">
                   {getCalendarEventStayTitle(selectedCalendarEvent)}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                  {formatDateLabel(selectedCalendarEvent.startDate)} to {formatDateLabel(selectedCalendarEvent.endDate)}
+                  {formatDateLabel(selectedCalendarEvent.startDate, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(selectedCalendarEvent.endDate, locale)}
                 </p>
                 {!extractGuestName(selectedCalendarEvent.description) && isGenericCalendarSummary(selectedCalendarEvent.summary) ? (
                   <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
-                    {getSourceGuestFallback(selectedCalendarEvent.source)} shown here because this iCal feed does not expose the guest name.
+                    {isSpanish
+                      ? `${getSourceGuestFallback(selectedCalendarEvent.source)} aparece aquí porque este feed iCal no expone el nombre del huésped.`
+                      : `${getSourceGuestFallback(selectedCalendarEvent.source)} shown here because this iCal feed does not expose the guest name.`}
                   </p>
                 ) : null}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Property</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Propiedad" : "Property"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                       {selectedCalendarEvent.propertyName}
                     </p>
@@ -840,49 +865,55 @@ export function CalendarPanel({
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Listing</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {selectedCalendarEvent.unitName || "Primary listing"}
+                      {selectedCalendarEvent.unitName || (isSpanish ? "Listing principal" : "Primary listing")}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservation code</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Código de reserva" : "Reservation code"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {extractReservationCode(selectedCalendarEvent.description) || "Not provided"}
+                      {extractReservationCode(selectedCalendarEvent.description) || (isSpanish ? "No disponible" : "Not provided")}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Phone last 4</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Últimos 4 del teléfono" : "Phone last 4"}</p>
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
-                      {extractPhoneLast4(selectedCalendarEvent.description) || "Not provided"}
+                      {extractPhoneLast4(selectedCalendarEvent.description) || (isSpanish ? "No disponible" : "Not provided")}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Sync details</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Detalles de sincronización" : "Sync details"}</p>
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Source</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Origen" : "Source"}</span>
                     <span className="font-medium capitalize text-[var(--workspace-text)]">
                       {selectedCalendarEvent.source}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Type</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Tipo" : "Type"}</span>
                     <span className="font-medium text-[var(--workspace-text)]">
-                      {selectedCalendarEvent.eventType === "blocked" ? "Blocked" : "Reservation"}
+                      {selectedCalendarEvent.eventType === "blocked"
+                        ? isSpanish
+                          ? "Bloqueado"
+                          : "Blocked"
+                        : isSpanish
+                          ? "Reserva"
+                          : "Reservation"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">Last synced</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Última sincronización" : "Last synced"}</span>
                     <span className="font-medium text-[var(--workspace-text)]">
-                      {formatDateLabel(selectedCalendarEvent.lastSyncedAt)}
+                      {formatDateLabel(selectedCalendarEvent.lastSyncedAt, locale)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--workspace-muted)]">External id</span>
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "ID externo" : "External id"}</span>
                     <span className="max-w-[230px] truncate font-medium text-[var(--workspace-text)]">
-                      {selectedCalendarEvent.externalEventId || "Not provided"}
+                      {selectedCalendarEvent.externalEventId || (isSpanish ? "No disponible" : "Not provided")}
                     </span>
                   </div>
                 </div>
@@ -891,21 +922,21 @@ export function CalendarPanel({
 
             {extractReservationUrl(selectedCalendarEvent.description) ? (
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Reservation link</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Enlace de reserva" : "Reservation link"}</p>
                 <a
                   href={extractReservationUrl(selectedCalendarEvent.description)}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-flex text-sm font-medium text-[var(--workspace-accent)] hover:underline"
                 >
-                  Open reservation in Airbnb
+                  {isSpanish ? "Abrir reserva en Airbnb" : "Open reservation in Airbnb"}
                 </a>
               </div>
             ) : null}
 
             {getCalendarEventNotes(selectedCalendarEvent.description).length > 0 ? (
               <div className="workspace-soft-card rounded-[24px] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">Imported notes</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Notas importadas" : "Imported notes"}</p>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--workspace-text)]">
                   {getCalendarEventNotes(selectedCalendarEvent.description).map((note) => (
                     <p key={note}>{note}</p>
@@ -920,7 +951,7 @@ export function CalendarPanel({
                 onClick={() => setSelectedCalendarEvent(null)}
                 className="workspace-button-primary rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
-                Close details
+                {isSpanish ? "Cerrar detalles" : "Close details"}
               </button>
             </div>
           </div>
