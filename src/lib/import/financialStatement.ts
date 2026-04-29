@@ -24,6 +24,8 @@ const airbnbFinancialColumns = {
     "hostfee",
     "servicefee",
     "airbnbservicefee",
+    "fastpayfee",
+    "westernunionfee",
     "comision",
     "tarifadeservicio",
   ],
@@ -37,11 +39,13 @@ const airbnbFinancialColumns = {
     "tasas",
     "occupancytax",
     "impuestossobrelasreservas",
+    "airbnbremittedtax",
+    "salestaxonservicefee",
   ],
   date: [
+    "date",
     "fechadelservicio",
     "servicedate",
-    "date",
     "invoicecreated",
     "issuedate",
     "payoutdate",
@@ -67,6 +71,21 @@ const bookingFinancialColumns = {
 } as const;
 
 const airbnbStatementHeaders = [
+  "date",
+  "arrivingbydate",
+  "type",
+  "details",
+  "referencecode",
+  "currency",
+  "amount",
+  "paidout",
+  "servicefee",
+  "fastpayfee",
+  "westernunionfee",
+  "grossearnings",
+  "airbnbremittedtax",
+  "salestaxonservicefee",
+  "earningsyear",
   "numerodefactura",
   "codigodeconfirmacion",
   "fechadelservicio",
@@ -94,6 +113,19 @@ const bookingStatementHeaders = [
   "amounttopayout",
 ];
 
+const airbnbStatementAnchorHeaders = [
+  "arrivingbydate",
+  "referencecode",
+  "paidout",
+  "servicefee",
+  "fastpayfee",
+  "westernunionfee",
+  "grossearnings",
+  "airbnbremittedtax",
+  "salestaxonservicefee",
+  "earningsyear",
+] as const;
+
 type FinancialStatementSource = "airbnb" | "booking";
 
 type ExtractedFinancialStatement = {
@@ -114,11 +146,34 @@ function scoreSheetHeaders(headers: string[], providerHeaders: string[]) {
   return headers.filter((header) => providerHeaders.includes(header)).length;
 }
 
+function headerMatchesAlias(header: string, alias: string) {
+  if (!header || !alias) {
+    return false;
+  }
+
+  if (header === alias) {
+    return true;
+  }
+
+  return alias.length >= 3 && header.includes(alias);
+}
+
+function findMatchingIndexes(headers: string[], aliases: readonly string[]) {
+  return headers.reduce<number[]>((matches, header, index) => {
+    if (aliases.some((alias) => headerMatchesAlias(header, alias))) {
+      matches.push(index);
+    }
+
+    return matches;
+  }, []);
+}
+
 function guessProvider(headers: string[]) {
   const airbnbScore = scoreSheetHeaders(headers, airbnbStatementHeaders);
   const bookingScore = scoreSheetHeaders(headers, bookingStatementHeaders);
+  const hasAirbnbAnchor = headers.some((header) => airbnbStatementAnchorHeaders.includes(header as (typeof airbnbStatementAnchorHeaders)[number]));
 
-  if (airbnbScore >= 3 || airbnbScore > bookingScore) {
+  if ((airbnbScore >= 3 && hasAirbnbAnchor) || (airbnbScore > bookingScore && hasAirbnbAnchor)) {
     return "airbnb" as const;
   }
 
@@ -206,10 +261,14 @@ export function extractFinancialStatement(
 
   const providerColumns =
     bestCandidate.source === "airbnb" ? airbnbFinancialColumns : bookingFinancialColumns;
-  const indexes = mapOptionalColumns(sheet.rows[bestCandidate.rowIndex] ?? [], providerColumns);
+  const headerRow = sheet.rows[bestCandidate.rowIndex] ?? [];
+  const indexes = mapOptionalColumns(headerRow, providerColumns);
+  const normalizedHeaders = headerRow.map((cell) => normalizeHeader(cell));
+  const feeIndexes = findMatchingIndexes(normalizedHeaders, providerColumns.fees);
+  const taxIndexes = findMatchingIndexes(normalizedHeaders, providerColumns.taxes);
   const dataRows = sheet.rows.slice(bestCandidate.rowIndex + 1).filter((row) => !rowIsEmpty(row));
   const datePreference = inferDatePreferenceFromSheet(
-    sheet.rows[bestCandidate.rowIndex] ?? [],
+    headerRow,
     dataRows,
     [indexes.date],
   );
@@ -229,21 +288,21 @@ export function extractFinancialStatement(
       }
     }
 
-    if (typeof indexes.fees === "number") {
-      const parsed = parseMoney(row[indexes.fees]);
+    feeIndexes.forEach((index) => {
+      const parsed = parseMoney(row[index]);
       if (!parsed.malformed) {
         totalFees += Math.abs(parsed.value);
         currency ||= parsed.currency;
       }
-    }
+    });
 
-    if (typeof indexes.taxes === "number") {
-      const parsed = parseMoney(row[indexes.taxes]);
+    taxIndexes.forEach((index) => {
+      const parsed = parseMoney(row[index]);
       if (!parsed.malformed) {
         totalTaxes += Math.abs(parsed.value);
         currency ||= parsed.currency;
       }
-    }
+    });
 
     if (typeof indexes.date === "number") {
       const parsedDate = parseImportDateDetailed(row[indexes.date], { datePreference });
