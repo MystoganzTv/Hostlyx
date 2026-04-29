@@ -25,6 +25,12 @@ type LocaleContextValue = {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
+function persistLocale(nextLocale: AppLocale) {
+  document.documentElement.lang = nextLocale;
+  window.localStorage.setItem(localeStorageKey, nextLocale);
+  document.cookie = localeCookieName + "=" + nextLocale + "; path=/; max-age=31536000; samesite=lax";
+}
+
 export function LocaleProvider({
   initialLocale,
   children,
@@ -36,9 +42,7 @@ export function LocaleProvider({
   const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
 
   useEffect(() => {
-    document.documentElement.lang = locale;
-    window.localStorage.setItem(localeStorageKey, locale);
-    document.cookie = `${localeCookieName}=${locale}; path=/; max-age=31536000; samesite=lax`;
+    persistLocale(locale);
   }, [locale]);
 
   const value = useMemo<LocaleContextValue>(
@@ -52,6 +56,7 @@ export function LocaleProvider({
           return;
         }
 
+        persistLocale(normalized);
         setLocaleState(normalized);
         startTransition(() => {
           router.refresh();

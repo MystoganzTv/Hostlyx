@@ -18,6 +18,7 @@ export function LanguageToggle({
   className?: string;
 }) {
   const { locale, setLocale } = useLocale();
+  const isSpanish = locale === "es";
 
   function renderOption(nextLocale: AppLocale, label: string) {
     const isActive = locale === nextLocale;
@@ -42,7 +43,7 @@ export function LanguageToggle({
       {!compact ? (
         <span className="inline-flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           <Languages className="h-3.5 w-3.5" />
-          Language
+          {isSpanish ? "Idioma" : "Language"}
         </span>
       ) : (
         <span className="inline-flex items-center px-2 text-slate-400">
