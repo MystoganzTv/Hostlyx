@@ -365,6 +365,34 @@ function getPreviewStatusLabel(status: PreviewRow["status"]) {
   }
 }
 
+function getDecisionPillClass(status: PreviewTableRow["decisionStatus"]) {
+  if (status === "auto-approved") {
+    return "border-teal-300/24 bg-teal-300/[0.08] text-teal-100";
+  }
+
+  if (status === "blocked") {
+    return "border-rose-300/24 bg-rose-300/[0.08] text-rose-100";
+  }
+
+  return "border-amber-300/24 bg-amber-300/[0.08] text-amber-100";
+}
+
+function getDecisionLabel(status: PreviewTableRow["decisionStatus"]) {
+  if (status === "auto-approved") {
+    return "Auto-approved";
+  }
+
+  if (status === "blocked") {
+    return "Blocked";
+  }
+
+  return "Needs review";
+}
+
+function formatDateRange(start: string, end: string) {
+  return `${formatCompactDate(start)} to ${formatCompactDate(end)}`;
+}
+
 function isCanceledBookingStatus(status: string) {
   const normalized = status.trim().toLowerCase();
   return normalized.includes("canceled") || normalized.includes("cancelled");
@@ -1850,114 +1878,153 @@ export function UploadPanel({
                     ) : null}
                   </div>
 
-                  <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+                  <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
                     <div className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Main preview
+                            Review queue
                           </p>
                           <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                            Booking rows before import
+                            Bookings before import
                           </p>
                         </div>
                         <p className="text-sm text-[var(--workspace-muted)]">
-                          Select a row to inspect the match and decide what to do.
+                          Pick a booking to inspect the match and confirm the final import.
                         </p>
                       </div>
 
-                      <div className="mt-5 overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                          <thead className="text-[11px] uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                            <tr>
-                              <th className="pb-3 pr-4 font-medium">Status</th>
-                              <th className="pb-3 pr-4 font-medium">Guest</th>
-                              <th className="pb-3 pr-4 font-medium">Property</th>
-                              <th className="pb-3 pr-4 font-medium">Check-in</th>
-                              <th className="pb-3 pr-4 font-medium">Check-out</th>
-                              <th className="pb-3 pr-4 font-medium">Channel</th>
-                              <th className="pb-3 pr-4 font-medium">Gross Revenue</th>
-                              <th className="pb-3 pr-4 font-medium">Payout</th>
-                              <th className="pb-3 font-medium">Match</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[var(--workspace-border)]/60 text-[var(--workspace-text)]">
-                            {preview.tableRows.map((row) => {
-                              const isSelected = selectedTableRow?.id === row.id;
-                              const isApproved = approvedRowIds.includes(row.id);
-                              return (
-                                <tr
-                                  key={row.id}
-                                  onClick={() => setSelectedTableRowId(row.id)}
-                                  className={`cursor-pointer transition ${
-                                    row.isDisabled
-                                      ? "opacity-65"
-                                      : isSelected
-                                        ? "bg-white/[0.05]"
-                                        : "hover:bg-white/[0.03]"
-                                  }`}
-                                >
-                                  <td className="py-4 pr-4">
-                                    <div className="flex items-center gap-3">
-                                      <button
-                                        type="button"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          toggleRowApproval(row.id);
-                                        }}
-                                        disabled={row.isDisabled}
-                                        className={`flex h-5 w-5 items-center justify-center rounded-md border transition ${
-                                          row.isDisabled
-                                            ? "cursor-not-allowed border-white/8 bg-white/[0.03]"
-                                            : isApproved
-                                              ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
-                                              : "border-white/12 bg-white/[0.02]"
-                                        }`}
-                                        aria-pressed={isApproved}
-                                      >
-                                        {isApproved ? (
-                                          <CheckCircle2 className="h-3.5 w-3.5 text-teal-100" />
-                                        ) : null}
-                                      </button>
-                                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
-                                        {getPreviewStatusLabel(row.status)}
-                                      </span>
-                                    </div>
-                                    {row.autoFixesApplied.length > 0 ? (
-                                      <p className="mt-2 text-[11px] text-teal-100/85">
-                                        {row.autoFixesApplied.length} auto-fix{row.autoFixesApplied.length === 1 ? "" : "es"}
-                                      </p>
-                                    ) : null}
-                                  </td>
-                                  <td className="py-4 pr-4 font-medium">{row.guestName}</td>
-                                  <td className="py-4 pr-4 text-[var(--workspace-muted)]">{row.propertyName}</td>
-                                  <td className="py-4 pr-4">{formatCompactDate(row.checkIn)}</td>
-                                  <td className="py-4 pr-4">{formatCompactDate(row.checkOut)}</td>
-                                  <td className="py-4 pr-4">{row.channel}</td>
-                                  <td className="py-4 pr-4">{formatCurrency(row.grossRevenue)}</td>
-                                  <td className="py-4 pr-4">{formatCurrency(row.payout)}</td>
-                                  <td className={`py-4 ${getMatchTone(row.matchType)}`}>{row.matchLabel}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <div className="rounded-full border border-teal-300/18 bg-teal-300/[0.08] px-3 py-2 text-sm text-teal-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} auto-approved
+                        </div>
+                        <div className="rounded-full border border-amber-300/18 bg-amber-300/[0.08] px-3 py-2 text-sm text-amber-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} need review
+                        </div>
+                        <div className="rounded-full border border-rose-300/18 bg-rose-300/[0.08] px-3 py-2 text-sm text-rose-100">
+                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} blocked
+                        </div>
+                      </div>
+
+                      <div className="mt-5 space-y-3">
+                        {preview.tableRows.map((row) => {
+                          const isSelected = selectedTableRow?.id === row.id;
+                          const isApproved = approvedRowIds.includes(row.id);
+                          return (
+                            <div
+                              key={row.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setSelectedTableRowId(row.id)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  setSelectedTableRowId(row.id);
+                                }
+                              }}
+                              className={`w-full rounded-[22px] border p-4 text-left transition ${
+                                row.isDisabled
+                                  ? "border-white/8 bg-white/[0.02] opacity-65"
+                                  : isSelected
+                                    ? "border-[var(--workspace-accent)]/28 bg-[rgba(125,211,197,0.08)]"
+                                    : "border-[var(--workspace-border)] bg-white/[0.03] hover:bg-white/[0.05]"
+                              }`}
+                            >
+                              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        toggleRowApproval(row.id);
+                                      }}
+                                      disabled={row.isDisabled}
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                                        row.isDisabled
+                                          ? "cursor-not-allowed border-white/8 bg-white/[0.03]"
+                                          : isApproved
+                                            ? "border-[var(--workspace-accent)] bg-[rgba(125,211,197,0.18)]"
+                                            : "border-white/12 bg-white/[0.02]"
+                                      }`}
+                                      aria-pressed={isApproved}
+                                    >
+                                      {isApproved ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-teal-100" />
+                                      ) : null}
+                                    </button>
+                                    <p className="truncate text-lg font-medium text-[var(--workspace-text)]">
+                                      {row.guestName}
+                                    </p>
+                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
+                                      {getPreviewStatusLabel(row.status)}
+                                    </span>
+                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getDecisionPillClass(row.decisionStatus)}`}>
+                                      {getDecisionLabel(row.decisionStatus)}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-3 flex flex-wrap gap-2 text-sm text-[var(--workspace-muted)]">
+                                    <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5">
+                                      {row.propertyName}
+                                    </span>
+                                    <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5">
+                                      {row.channel}
+                                    </span>
+                                    <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5">
+                                      {formatDateRange(row.checkIn, row.checkOut)}
+                                    </span>
+                                  </div>
+
+                                  <p className={`mt-3 text-sm font-medium ${getMatchTone(row.matchType)}`}>
+                                    {row.matchLabel}
+                                  </p>
+
+                                  {row.autoFixesApplied.length > 0 ? (
+                                    <p className="mt-2 text-xs text-teal-100/85">
+                                      {row.autoFixesApplied.length} auto-fix{row.autoFixesApplied.length === 1 ? "" : "es"} applied
+                                    </p>
+                                  ) : null}
+                                </div>
+
+                                <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:w-[240px]">
+                                  <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
+                                      Gross
+                                    </p>
+                                    <p className="mt-2 text-base font-medium text-[var(--workspace-text)]">
+                                      {formatCurrency(row.grossRevenue)}
+                                    </p>
+                                  </div>
+                                  <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
+                                      Payout
+                                    </p>
+                                    <p className="mt-2 text-base font-medium text-[var(--workspace-text)]">
+                                      {formatCurrency(row.payout)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <div
                       ref={reviewRef}
                       className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5"
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Detail panel
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        Booking detail
                       </p>
                       <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
                         {selectedTableRow ? selectedTableRow.guestName : "Choose a row"}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
                         {selectedTableRow
-                          ? "Review the imported booking, the closest synced event, and why Hostlyx matched or flagged it."
+                          ? "Review the imported booking, the closest synced event, and the final decision before saving it."
                           : "Select a row from the table to inspect the booking and decide whether to import, skip, or fix it."}
                       </p>
 
@@ -1965,111 +2032,106 @@ export function UploadPanel({
                         <div className="mt-5 space-y-4">
                           <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Booking being imported
+                              Overview
                             </p>
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <p className="text-xs text-[var(--workspace-muted)]">Guest</p>
-                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.guestName}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-[var(--workspace-muted)]">Property</p>
-                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.propertyName}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-[var(--workspace-muted)]">Dates</p>
-                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.checkIn)} to {formatCompactDate(selectedTableRow.checkOut)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-[var(--workspace-muted)]">Gross / payout</p>
-                                <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCurrency(selectedTableRow.grossRevenue)} · {formatCurrency(selectedTableRow.payout)}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Closest synced calendar event
-                            </p>
-                            {selectedTableRow.calendarMatch ? (
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <div>
-                                  <p className="text-xs text-[var(--workspace-muted)]">Source</p>
-                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.source}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-[var(--workspace-muted)]">Event type</p>
-                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.eventType}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-[var(--workspace-muted)]">Start date</p>
-                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.calendarMatch.startDate)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-[var(--workspace-muted)]">End date</p>
-                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{formatCompactDate(selectedTableRow.calendarMatch.endDate)}</p>
-                                </div>
-                                <div className="sm:col-span-2">
-                                  <p className="text-xs text-[var(--workspace-muted)]">Summary</p>
-                                  <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.summary || "No summary"}</p>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-3 rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4 text-sm text-[var(--workspace-muted)]">
-                                No synced calendar event was close enough to link this booking.
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Match result
-                            </p>
-                            <div className="mt-3 flex items-center gap-3">
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
                               <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(selectedTableRow.status)}`}>
                                 {getPreviewStatusLabel(selectedTableRow.status)}
+                              </span>
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getDecisionPillClass(selectedTableRow.decisionStatus)}`}>
+                                {getDecisionLabel(selectedTableRow.decisionStatus)}
                               </span>
                               <p className={`text-sm font-medium ${getMatchTone(selectedTableRow.matchType)}`}>
                                 {selectedTableRow.matchLabel}
                               </p>
                             </div>
-                            <div className="mt-4 rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
-                                Decision
-                              </p>
-                              <div className="mt-2 flex items-center gap-3">
-                                <span
-                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${
-                                    selectedTableRow.decisionStatus === "auto-approved"
-                                      ? "border-teal-300/24 bg-teal-300/[0.08] text-teal-100"
-                                      : selectedTableRow.decisionStatus === "blocked"
-                                        ? "border-rose-300/24 bg-rose-300/[0.08] text-rose-100"
-                                        : "border-amber-300/24 bg-amber-300/[0.08] text-amber-100"
-                                  }`}
-                                >
-                                  {selectedTableRow.decisionStatus === "auto-approved"
-                                    ? "Auto-approved"
-                                    : selectedTableRow.decisionStatus === "blocked"
-                                      ? "Blocked"
-                                      : "Needs review"}
-                                </span>
-                                <p className="text-sm text-[var(--workspace-text)]">
-                                  {selectedTableRow.decisionReason}
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
+                                  Imported booking
                                 </p>
+                                <div className="mt-3 space-y-3 text-sm">
+                                  <div>
+                                    <p className="text-[var(--workspace-muted)]">Guest</p>
+                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.guestName}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[var(--workspace-muted)]">Stay</p>
+                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">{formatDateRange(selectedTableRow.checkIn, selectedTableRow.checkOut)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[var(--workspace-muted)]">Property</p>
+                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.propertyName}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[var(--workspace-muted)]">Gross / payout</p>
+                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">
+                                      {formatCurrency(selectedTableRow.grossRevenue)} · {formatCurrency(selectedTableRow.payout)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
+                                  Synced calendar event
+                                </p>
+                                {selectedTableRow.calendarMatch ? (
+                                  <div className="mt-3 space-y-3 text-sm">
+                                    <div>
+                                      <p className="text-[var(--workspace-muted)]">Source</p>
+                                      <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.source}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[var(--workspace-muted)]">Dates</p>
+                                      <p className="mt-1 font-medium text-[var(--workspace-text)]">
+                                        {formatDateRange(
+                                          selectedTableRow.calendarMatch.startDate,
+                                          selectedTableRow.calendarMatch.endDate,
+                                        )}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[var(--workspace-muted)]">Type</p>
+                                      <p className="mt-1 font-medium capitalize text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.eventType}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[var(--workspace-muted)]">Summary</p>
+                                      <p className="mt-1 font-medium text-[var(--workspace-text)]">
+                                        {selectedTableRow.calendarMatch.summary || "No summary"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="mt-3 rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3 text-sm text-[var(--workspace-muted)]">
+                                    No synced calendar event was close enough to link this booking.
+                                  </div>
+                                )}
                               </div>
                             </div>
+                          </div>
+
+                          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
+                              Why Hostlyx decided this
+                            </p>
+                            <p className="mt-3 text-sm text-[var(--workspace-text)]">
+                              {selectedTableRow.decisionReason}
+                            </p>
                             <div className="mt-4 space-y-2">
                               {selectedTableRow.reasons.length > 0 ? (
                                 selectedTableRow.reasons.map((reason) => (
                                   <div
                                     key={`${selectedTableRow.id}-${reason}`}
-                                    className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-2 text-sm text-[var(--workspace-text)]"
+                                    className="flex items-start gap-3 rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3 text-sm text-[var(--workspace-text)]"
                                   >
-                                    {reason}
+                                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--workspace-accent)]" />
+                                    <span>{reason}</span>
                                   </div>
                                 ))
                               ) : (
-                                <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-2 text-sm text-[var(--workspace-muted)]">
+                                <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3 text-sm text-[var(--workspace-muted)]">
                                   No matching signals were found.
                                 </div>
                               )}
@@ -2085,9 +2147,10 @@ export function UploadPanel({
                                 {selectedTableRow.autoFixesApplied.map((fix) => (
                                   <div
                                     key={`${selectedTableRow.id}-${fix}`}
-                                    className="rounded-[14px] border border-[var(--workspace-accent)]/14 bg-[rgba(125,211,197,0.08)] px-3 py-2 text-sm text-teal-100"
+                                    className="flex items-start gap-3 rounded-[14px] border border-[var(--workspace-accent)]/14 bg-[rgba(125,211,197,0.08)] px-3 py-3 text-sm text-teal-100"
                                   >
-                                    {fix}
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <span>{fix}</span>
                                   </div>
                                 ))}
                               </div>
