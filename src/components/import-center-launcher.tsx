@@ -24,8 +24,8 @@ export function ImportCenterLauncher({
         title={isSpanish ? "Trae tus datos" : "Bring your data"}
         subtitle={
           isSpanish
-            ? "Importa reservas, gastos o statements de payout en un modal enfocado y deja esta página centrada en historial y control."
-            : "Import bookings, expenses, or payout statements in a focused modal, then keep this page centered on history and control."
+            ? "Si ya estás aquí, puedes importar desde este modal. Pero para CSVs de reservas o archivos de gastos, la entrada principal ahora vive en sus páginas respectivas."
+            : "If you are already here, you can still import from this modal. But for booking CSVs or expense files, the main entry point now lives on their respective pages."
         }
         action={
           <div className="flex flex-wrap items-center gap-3">
@@ -35,7 +35,7 @@ export function ImportCenterLauncher({
               className="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
             >
               <ArrowUpFromLine className="h-4 w-4" />
-              {isSpanish ? "Importar reservas o gastos" : "Import bookings or expenses"}
+              {isSpanish ? "Importar desde aquí" : "Import from here"}
             </button>
             <ReconcileStatementLauncher
               properties={properties}
@@ -51,12 +51,12 @@ export function ImportCenterLauncher({
               {isSpanish ? "Flujo enfocado" : "Focused flow"}
             </p>
             <p className="mt-3 text-base font-medium text-[var(--workspace-text)]">
-              {isSpanish ? "Sube, revisa y confirma dentro de un modal." : "Upload, review, and confirm inside a modal."}
+              {isSpanish ? "Este lugar ya es más back-office que punto de entrada principal." : "This area is now more back-office than primary entry point."}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Usa el flujo principal para reservas o gastos. Usa el camino de payout cuando quieras guardar statements de Airbnb o Booking.com. La conciliación bancaria vendrá aparte."
-                : "Use the main flow for bookings or expenses. Use the payout path when you want to save Airbnb or Booking.com statements. Bank reconciliation will live separately."}
+                ? "Usa Reservas para CSVs operativos, Gastos para costes y este centro para revisar historial, borrar imports por error o lanzar un import genérico si ya estabas trabajando aquí."
+                : "Use Bookings for operational CSVs, Expenses for cost files, and this center to review history, delete mistaken imports, or launch a generic import if you are already working here."}
             </p>
           </div>
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { BookOpenText, Home } from "lucide-react";
 import { BookingsManager } from "@/components/bookings-manager";
 import { FilterBar } from "@/components/filter-bar";
+import { OperationalImportLauncher } from "@/components/operational-import-launcher";
 import { SectionCard } from "@/components/section-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -101,7 +102,29 @@ export default async function BookingsPage({
       reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
     >
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <SectionCard
+            title={isSpanish ? "Entrada principal" : "Primary entry point"}
+            subtitle={
+              isSpanish
+                ? "Si tu archivo es mayormente de reservas, empieza aquí. Import Center se queda como historial y control."
+                : "If your file is mostly bookings, start here. Import Center stays as history and control."
+            }
+            className="max-w-xl"
+            action={
+              <OperationalImportLauncher
+                properties={properties}
+                context="bookings"
+                buttonClassName="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
+              />
+            }
+          >
+            <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+              {isSpanish
+                ? "Ideal para exports de Airbnb o Booking.com con huéspedes, fechas, nights y payout por estancia."
+                : "Best for Airbnb or Booking.com exports with guests, dates, nights, and payout per stay."}
+            </p>
+          </SectionCard>
           <FilterBar
             channels={view.availableChannels}
             countries={view.availableCountries}

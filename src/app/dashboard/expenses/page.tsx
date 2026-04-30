@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ReceiptText, Wallet } from "lucide-react";
 import { ExpensesManager } from "@/components/expenses-manager";
 import { FilterBar } from "@/components/filter-bar";
+import { OperationalImportLauncher } from "@/components/operational-import-launcher";
 import { SectionCard } from "@/components/section-card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { getAuthSession } from "@/lib/auth";
@@ -99,7 +100,29 @@ export default async function ExpensesPage({
       reconcileBadge={getReconcileSidebarBadge(view.reconcile, view.displayCurrencyCode)}
     >
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <SectionCard
+            title={isSpanish ? "Entrada principal" : "Primary entry point"}
+            subtitle={
+              isSpanish
+                ? "Si tu archivo es mayormente de gastos, empieza aquí. Import Center se queda como historial y control."
+                : "If your file is mostly expenses, start here. Import Center stays as history and control."
+            }
+            className="max-w-xl"
+            action={
+              <OperationalImportLauncher
+                properties={properties}
+                context="expenses"
+                buttonClassName="workspace-button-primary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
+              />
+            }
+          >
+            <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+              {isSpanish
+                ? "Ideal para hojas de coste, extractos operativos y archivos mixtos donde los gastos son la prioridad."
+                : "Best for cost sheets, operating extracts, and mixed workbooks where expenses are the priority."}
+            </p>
+          </SectionCard>
           <FilterBar
             channels={view.availableChannels}
             countries={view.availableCountries}

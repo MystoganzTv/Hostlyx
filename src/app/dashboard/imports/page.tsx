@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { FileSpreadsheet, Layers3 } from "lucide-react";
 import { ImportCenterLauncher } from "@/components/import-center-launcher";
 import { ImportsManager } from "@/components/imports-manager";
@@ -56,8 +57,8 @@ export default async function ImportsPage() {
       pageTitle={isSpanish ? "Centro de importación" : "Import Center"}
       pageSubtitle={
         isSpanish
-          ? "Trae tus archivos a Hostlyx, revisa los datos con calma y actualiza tu vista financiera con confianza."
-          : "Bring your files into Hostlyx, review the data calmly, and update your financial view with confidence."
+          ? "Usa Reservas o Gastos como punto de entrada principal. Esta página queda para historial, control y trazabilidad."
+          : "Use Bookings or Expenses as the main entry point. This page stays focused on history, control, and traceability."
       }
       businessName={userSettings.businessName}
       userName={userName}
@@ -112,13 +113,35 @@ export default async function ImportsPage() {
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <p className="text-sm leading-6 text-[var(--workspace-muted)]">
               {isSpanish
-                ? "Usa esta página como tu centro de control de importaciones. Revisa qué cayó, mantén limpio el rastro de auditoría y trata los registros importados como datos vivos de la app una vez dentro de Hostlyx."
-                : "Use this page as your import control center. Review what landed, keep the audit trail clean, and treat the imported records as live app data once they are inside Hostlyx."}
+                ? "Piensa en esta página como la capa de control. Las reservas viven mejor en Reservas, los gastos en Gastos y los payout statements en Liquidaciones. Aquí revisas qué cayó y cuándo."
+                : "Think of this page as the control layer. Bookings belong naturally in Bookings, expenses in Expenses, and payout statements in Payouts. This is where you review what landed and when."}
             </p>
             <div className="workspace-soft-card rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
-              {isSpanish
-                ? "Cada archivo de abajo sigue visible como historial de importación para que entiendas qué cambió, cuándo cayó y si creó reservas, gastos o un statement de payout."
-                : "Each file below stays visible as import history so you can understand what changed, when it landed, and whether it created bookings, expenses, or a payout statement."}
+              <p>
+                {isSpanish
+                  ? "Cada archivo de abajo sigue visible como historial de importación para que entiendas qué cambió, cuándo cayó y si creó reservas, gastos o un statement de payout."
+                  : "Each file below stays visible as import history so you can understand what changed, when it landed, and whether it created bookings, expenses, or a payout statement."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href="/dashboard/bookings"
+                  className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
+                >
+                  {isSpanish ? "Ir a Reservas" : "Go to Bookings"}
+                </Link>
+                <Link
+                  href="/dashboard/expenses"
+                  className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
+                >
+                  {isSpanish ? "Ir a Gastos" : "Go to Expenses"}
+                </Link>
+                <Link
+                  href="/dashboard/payouts"
+                  className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition"
+                >
+                  {isSpanish ? "Ir a Liquidaciones" : "Go to Payouts"}
+                </Link>
+              </div>
             </div>
           </div>
         </SectionCard>
