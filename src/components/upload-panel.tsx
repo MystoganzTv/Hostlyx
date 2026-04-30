@@ -365,6 +365,11 @@ function getPreviewStatusLabel(status: PreviewRow["status"]) {
   }
 }
 
+function isCanceledBookingStatus(status: string) {
+  const normalized = status.trim().toLowerCase();
+  return normalized.includes("canceled") || normalized.includes("cancelled");
+}
+
 export function UploadPanel({
   properties,
   title = "Bring your data",
@@ -456,6 +461,36 @@ export function UploadPanel({
       null
     );
   }, [preview?.tableRows, selectedTableRowId]);
+
+  const bookingRowsFound = useMemo(() => {
+    return preview?.tableRows.length ?? 0;
+  }, [preview?.tableRows]);
+
+  const autoApprovedBookingRows = useMemo(() => {
+    return preview?.tableRows.filter((row) => row.decisionStatus === "auto-approved" && !row.isDisabled).length ?? 0;
+  }, [preview?.tableRows]);
+
+  const needsReviewBookingRows = useMemo(() => {
+    return preview?.tableRows.filter((row) => row.decisionStatus === "needs-review").length ?? 0;
+  }, [preview?.tableRows]);
+
+  const blockedBookingRows = useMemo(() => {
+    return preview?.tableRows.filter((row) => row.decisionStatus === "blocked" || row.isDisabled).length ?? 0;
+  }, [preview?.tableRows]);
+
+  const canceledBookingRows = useMemo(() => {
+    return preview?.tableRows.filter((row) => isCanceledBookingStatus(row.booking.status)).length ?? 0;
+  }, [preview?.tableRows]);
+
+  const existingDuplicateRows = useMemo(() => {
+    return preview?.duplicates.filter((duplicate) => duplicate.matchScope === "existing").length ?? 0;
+  }, [preview?.duplicates]);
+
+  const fileDuplicateRows = useMemo(() => {
+    return preview?.duplicates.filter((duplicate) => duplicate.matchScope === "file").length ?? 0;
+  }, [preview?.duplicates]);
+
+  const hasBookingPreview = bookingRowsFound > 0;
 
   const needsFocusedMapping = useMemo(() => {
     if (!preview?.manualMapping) {
@@ -1730,12 +1765,14 @@ export function UploadPanel({
                           {preview.sourceLabel} · {preview.fileName}
                         </p>
                         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--workspace-muted)]">
-                          We checked your file against synced calendar data to catch duplicates and conflicts before import.
+                          {hasBookingPreview
+                            ? `This file contains ${preview.totalRowsRead} booking rows. ${autoApprovedBookingRows} are ready now, while the rest are classified as matched, canceled, duplicated, blocked, or still need review before import.`
+                            : "We checked your file against synced calendar data to catch duplicates and conflicts before import."}
                         </p>
                       </div>
                       <div className="rounded-[18px] border border-[var(--workspace-border)] bg-white/[0.03] px-4 py-4 text-right">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                          Total rows found
+                          {hasBookingPreview ? "Rows in file" : "Total rows found"}
                         </p>
                         <p className="mt-2 text-3xl font-semibold text-[var(--workspace-text)]">
                           {preview.totalRowsRead}
@@ -1744,14 +1781,25 @@ export function UploadPanel({
                     </div>
 
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-                      {[
-                        ["New bookings", String(preview.newRows), "border-white/10 bg-white/[0.02] text-[var(--workspace-text)]"],
-                        ["Matched to calendar", String(preview.matchedRows), "border-teal-400/18 bg-teal-300/[0.08] text-teal-100"],
-                        ["Duplicates", String(preview.duplicateRows), "border-amber-400/18 bg-amber-300/[0.08] text-amber-100"],
-                        ["Conflicts", String(preview.conflictRows), "border-rose-400/18 bg-rose-300/[0.08] text-rose-100"],
-                        ["Warnings", String(preview.warningRows + preview.errorRows), "border-yellow-300/18 bg-yellow-300/[0.08] text-yellow-100"],
-                        ["Auto-fixed", String(preview.autoFixedRows), "border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.08)] text-teal-100"],
-                      ].map(([label, value, classes]) => (
+                      {(
+                        hasBookingPreview
+                          ? [
+                              ["Ready now", String(autoApprovedBookingRows), "border-emerald-400/18 bg-emerald-300/[0.08] text-emerald-100"],
+                              ["Need review", String(needsReviewBookingRows), "border-yellow-300/18 bg-yellow-300/[0.08] text-yellow-100"],
+                              ["Blocked", String(blockedBookingRows), "border-rose-400/18 bg-rose-300/[0.08] text-rose-100"],
+                              ["Canceled in file", String(canceledBookingRows), "border-white/10 bg-white/[0.02] text-[var(--workspace-text)]"],
+                              ["Matched to calendar", String(preview.matchedRows), "border-teal-400/18 bg-teal-300/[0.08] text-teal-100"],
+                              ["Already in workspace", String(existingDuplicateRows), "border-amber-400/18 bg-amber-300/[0.08] text-amber-100"],
+                            ]
+                          : [
+                              ["New bookings", String(preview.newRows), "border-white/10 bg-white/[0.02] text-[var(--workspace-text)]"],
+                              ["Matched to calendar", String(preview.matchedRows), "border-teal-400/18 bg-teal-300/[0.08] text-teal-100"],
+                              ["Duplicates", String(preview.duplicateRows), "border-amber-400/18 bg-amber-300/[0.08] text-amber-100"],
+                              ["Conflicts", String(preview.conflictRows), "border-rose-400/18 bg-rose-300/[0.08] text-rose-100"],
+                              ["Warnings", String(preview.warningRows + preview.errorRows), "border-yellow-300/18 bg-yellow-300/[0.08] text-yellow-100"],
+                              ["Auto-fixed", String(preview.autoFixedRows), "border-[var(--workspace-accent)]/18 bg-[rgba(125,211,197,0.08)] text-teal-100"],
+                            ]
+                      ).map(([label, value, classes]) => (
                         <div key={String(label)} className={`rounded-[20px] border px-4 py-4 ${classes}`}>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
                             {label}
@@ -1760,6 +1808,28 @@ export function UploadPanel({
                         </div>
                       ))}
                     </div>
+
+                    {hasBookingPreview ? (
+                      <div className="mt-5 rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4 text-sm leading-6 text-[var(--workspace-muted)]">
+                        <p>
+                          Hostlyx read <span className="font-medium text-[var(--workspace-text)]">{preview.totalRowsRead}</span> rows from this file.
+                          Only <span className="font-medium text-[var(--workspace-text)]"> {autoApprovedBookingRows}</span> are immediately ready to import.
+                          <span className="font-medium text-[var(--workspace-text)]"> {blockedBookingRows}</span> are blocked, including
+                          <span className="font-medium text-[var(--workspace-text)]"> {existingDuplicateRows}</span> already in your workspace
+                          {fileDuplicateRows > 0 ? (
+                            <>
+                              {" "}and <span className="font-medium text-[var(--workspace-text)]">{fileDuplicateRows}</span> duplicated inside the uploaded file
+                            </>
+                          ) : null}
+                          .
+                        </p>
+                        {canceledBookingRows > 0 ? (
+                          <p className="mt-2">
+                            <span className="font-medium text-[var(--workspace-text)]">{canceledBookingRows}</span> rows are canceled reservations in the source file, so they still count as file history even if they are not the main operational stays you expect to import.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {preview.autoFixSummary.length > 0 ? (
                       <details className="mt-5 rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.02] px-4 py-4">
