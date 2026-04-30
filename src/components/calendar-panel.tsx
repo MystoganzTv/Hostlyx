@@ -42,8 +42,14 @@ type CalendarTimelineItem = {
   label: string;
   channel: string;
   variant: "financial_booking" | "calendar_booking" | "blocked_conflict";
+  sourceStatus: "manual" | "imported" | "synced" | "merged";
   booking?: BookingRecord;
   calendarEvent?: CalendarEventRecord;
+};
+
+type TimelineBuildResult = {
+  items: CalendarTimelineItem[];
+  linkedCalendarEventByBookingKey: Map<string, CalendarEventRecord>;
 };
 
 function buildCalendarDays(anchor: Date) {
@@ -95,6 +101,36 @@ function getBookingTone(channel: string, variant: CalendarTimelineItem["variant"
   return "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(31,41,55,0.88)_100%)] text-white";
 }
 
+function normalizeMatchToken(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeChannelToken(value: string) {
+  const normalized = normalizeMatchToken(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.includes("airbnb")) {
+    return "airbnb";
+  }
+
+  if (normalized.includes("booking")) {
+    return "booking";
+  }
+
+  if (normalized.includes("vrbo")) {
+    return "vrbo";
+  }
+
+  if (normalized.includes("direct")) {
+    return "direct";
+  }
+
+  return normalized;
+}
+
 function getGuestLabel(booking: BookingRecord) {
   const primary = booking.guestName.trim().split(/\s+/)[0] || "Guest";
   const extraGuests = Math.max(0, booking.guestCount - 1);
@@ -112,6 +148,29 @@ function getGuestBreakdownLabel(booking: BookingRecord) {
   }
 
   return `A ${adults} · C ${children} · I ${infants}`;
+}
+
+function isSameProperty(booking: BookingRecord, event: CalendarEventRecord) {
+  if (booking.propertyId && event.propertyId) {
+    return booking.propertyId === event.propertyId;
+  }
+
+  return normalizeMatchToken(booking.propertyName) === normalizeMatchToken(event.propertyName);
+}
+
+function isSameListing(booking: BookingRecord, event: CalendarEventRecord) {
+  const bookingListing = normalizeMatchToken(booking.unitName);
+  const eventListing = normalizeMatchToken(event.unitName);
+
+  if (bookingListing && eventListing) {
+    return bookingListing === eventListing;
+  }
+
+  return true;
+}
+
+function isSameStayWindow(booking: BookingRecord, event: CalendarEventRecord) {
+  return booking.checkIn === event.startDate && booking.checkout === event.endDate;
 }
 
 function extractReservationUrl(description: string) {
@@ -134,6 +193,22 @@ function extractReservationCode(description: string) {
     const match = reservationUrl.match(/\/details\/([^/?#]+)/i);
     return match?.[1]?.trim() ?? "";
   }
+}
+
+function getCalendarEventReferenceTokens(event: CalendarEventRecord) {
+  const tokens = new Set<string>();
+  const reservationCode = normalizeMatchToken(extractReservationCode(event.description));
+  const externalEventId = normalizeMatchToken(event.externalEventId);
+
+  if (reservationCode) {
+    tokens.add(reservationCode);
+  }
+
+  if (externalEventId) {
+    tokens.add(externalEventId);
+  }
+
+  return tokens;
 }
 
 function extractPhoneLast4(description: string) {
@@ -211,6 +286,104 @@ function getCalendarEventStayTitle(event: CalendarEventRecord) {
   return event.eventType === "blocked" ? "Blocked dates" : "Reserved";
 }
 
+function getTimelineSourceLabel(item: CalendarTimelineItem, locale: "en" | "es") {
+  const isSpanish = locale === "es";
+
+  switch (item.sourceStatus) {
+    case "manual":
+      return isSpanish ? "manual" : "manual";
+    case "imported":
+      return isSpanish ? "importada" : "imported";
+    case "merged":
+      return item.booking?.source === "manual"
+        ? isSpanish
+          ? "sync + manual"
+          : "sync + manual"
+        : isSpanish
+          ? "sync + import"
+          : "sync + import";
+    case "synced":
+    default:
+      return isSpanish ? "sync" : "synced";
+  }
+}
+
+function getBookingSourceStatus(booking: BookingRecord, linkedCalendarEvent?: CalendarEventRecord | null) {
+  if (linkedCalendarEvent) {
+    return "merged" as const;
+  }
+
+  return booking.source === "manual" ? ("manual" as const) : ("imported" as const);
+}
+
+function findLinkedCalendarEventForBooking(
+  booking: BookingRecord,
+  calendarEvents: CalendarEventRecord[],
+  usedCalendarEventIds: Set<number>,
+) {
+  const bookingReference = normalizeMatchToken(booking.bookingNumber);
+  const bookingChannel = normalizeChannelToken(booking.channel);
+
+  const candidates = calendarEvents
+    .filter((event) => event.eventType === "booking")
+    .filter((event) => {
+      const eventId = Number(event.id ?? 0);
+
+      if (eventId > 0 && usedCalendarEventIds.has(eventId)) {
+        return false;
+      }
+
+      return true;
+    })
+    .map((event) => {
+      let score = 0;
+
+      if (booking.matchedCalendarEventId && event.id === booking.matchedCalendarEventId) {
+        score += 1000;
+      }
+
+      if (booking.id && event.linkedBookingId && booking.id === event.linkedBookingId) {
+        score += 950;
+      }
+
+      const referenceTokens = getCalendarEventReferenceTokens(event);
+      if (bookingReference && referenceTokens.has(bookingReference)) {
+        score += 800;
+      }
+
+      if (!isSameProperty(booking, event)) {
+        return { event, score: -1 };
+      }
+
+      score += 120;
+
+      if (!isSameListing(booking, event)) {
+        return { event, score: -1 };
+      }
+
+      score += 90;
+
+      if (!isSameStayWindow(booking, event)) {
+        return { event, score: -1 };
+      }
+
+      score += 260;
+
+      const eventChannel = normalizeChannelToken(event.source);
+      if (bookingChannel && eventChannel && bookingChannel === eventChannel) {
+        score += 70;
+      } else if (bookingChannel && eventChannel && bookingChannel !== eventChannel) {
+        return { event, score: -1 };
+      }
+
+      return { event, score };
+    })
+    .filter((candidate) => candidate.score >= 450)
+    .sort((left, right) => right.score - left.score);
+
+  return candidates[0]?.event ?? null;
+}
+
 function getCalendarEventNotes(description: string) {
   return description
     .split("\n")
@@ -226,42 +399,61 @@ function getCalendarEventNotes(description: string) {
 function buildTimelineItems(
   bookings: BookingRecord[],
   calendarEvents: CalendarEventRecord[],
-) {
-  const linkedCalendarEventIds = new Set(
-    bookings
-      .map((booking) => booking.matchedCalendarEventId)
-      .filter((value): value is number => typeof value === "number" && value > 0),
-  );
+) : TimelineBuildResult {
+  const usedCalendarEventIds = new Set<number>();
+  const linkedCalendarEventByBookingKey = new Map<string, CalendarEventRecord>();
 
-  const bookingItems: CalendarTimelineItem[] = bookings.map((booking) => ({
-    id: `booking-${booking.id ?? booking.bookingNumber}-${booking.checkIn}`,
-    startDate: booking.checkIn,
-    endDate: booking.checkout,
-    label: getGuestLabel(booking),
-    channel: booking.channel,
-    variant:
-      booking.matchStatus === "conflict_blocked_calendar" ? "blocked_conflict" : "financial_booking",
-    booking,
-  }));
+  const bookingItems: CalendarTimelineItem[] = bookings.map((booking) => {
+    const linkedCalendarEvent = findLinkedCalendarEventForBooking(booking, calendarEvents, usedCalendarEventIds);
+
+    if (linkedCalendarEvent?.id) {
+      usedCalendarEventIds.add(linkedCalendarEvent.id);
+      linkedCalendarEventByBookingKey.set(getBookingSelectionKey(booking), linkedCalendarEvent);
+    }
+
+    return {
+      id: `booking-${booking.id ?? booking.bookingNumber}-${booking.checkIn}`,
+      startDate: booking.checkIn,
+      endDate: booking.checkout,
+      label: getGuestLabel(booking),
+      channel: booking.channel,
+      variant:
+        booking.matchStatus === "conflict_blocked_calendar" ? "blocked_conflict" : "financial_booking",
+      sourceStatus: getBookingSourceStatus(booking, linkedCalendarEvent),
+      booking,
+      calendarEvent: linkedCalendarEvent ?? undefined,
+    };
+  });
 
   const calendarBookingItems: CalendarTimelineItem[] = calendarEvents
-    .filter(
-      (event) =>
-        event.eventType === "booking" &&
-        !event.linkedBookingId &&
-        !linkedCalendarEventIds.has(Number(event.id ?? 0)),
-    )
+    .filter((event) => {
+      if (event.eventType !== "booking") {
+        return false;
+      }
+
+      const eventId = Number(event.id ?? 0);
+
+      if (eventId > 0 && usedCalendarEventIds.has(eventId)) {
+        return false;
+      }
+
+      return !event.linkedBookingId;
+    })
     .map((event) => ({
       id: `calendar-${event.id ?? event.externalEventId}-${event.startDate}`,
       startDate: event.startDate,
       endDate: event.endDate,
       label: getCalendarEventDisplayName(event),
       channel: event.source,
-      variant: "calendar_booking",
+      variant: "calendar_booking" as const,
+      sourceStatus: "synced" as const,
       calendarEvent: event,
     }));
 
-  return [...bookingItems, ...calendarBookingItems];
+  return {
+    items: [...bookingItems, ...calendarBookingItems],
+    linkedCalendarEventByBookingKey,
+  };
 }
 
 function getScrollContainer(node: HTMLElement | null) {
@@ -342,15 +534,6 @@ function getBookingSelectionKey(booking: BookingRecord) {
   ].join("__");
 }
 
-function intersectsMonth(booking: BookingRecord, anchorDate: Date) {
-  const monthStart = startOfMonth(anchorDate);
-  const monthEnd = endOfMonth(anchorDate);
-  const stayStart = parseISO(booking.checkIn);
-  const stayEnd = parseISO(booking.checkout);
-
-  return stayStart <= monthEnd && stayEnd > monthStart;
-}
-
 function buildTrimmedWeekBookingSegments(
   weekDays: Date[],
   items: CalendarTimelineItem[],
@@ -420,18 +603,18 @@ function buildTrimmedWeekBookingSegments(
 
 function MonthCalendar({
   anchorDate,
-  bookings,
   calendarEvents,
   closures,
+  timelineItems,
   compact = false,
   abbreviatedTitle = false,
   onSelectBooking,
   onSelectCalendarEvent,
 }: {
   anchorDate: Date;
-  bookings: BookingRecord[];
   calendarEvents: CalendarEventRecord[];
   closures: CalendarClosureRecord[];
+  timelineItems: CalendarTimelineItem[];
   compact?: boolean;
   abbreviatedTitle?: boolean;
   onSelectBooking: (booking: BookingRecord) => void;
@@ -445,15 +628,15 @@ function MonthCalendar({
   const monthLabel = format(anchorDate, abbreviatedTitle ? "MMMM" : "MMMM yyyy", { locale: dateFnsLocale });
   const monthKey = format(anchorDate, "yyyy-MM");
   const isPastMonth = endOfMonth(anchorDate) < startOfMonth(startOfDay(new Date()));
-  const timelineItems = buildTimelineItems(bookings, calendarEvents).filter((item) => {
+  const monthTimelineItems = timelineItems.filter((item) => {
     const stayStart = parseISO(item.startDate);
     const stayEnd = parseISO(item.endDate);
     const monthStart = startOfMonth(anchorDate);
     const monthEnd = endOfMonth(anchorDate);
     return stayStart <= monthEnd && stayEnd > monthStart;
   });
-  const checkIns = timelineItems.filter((item) => item.startDate.startsWith(monthKey));
-  const checkOuts = timelineItems.filter((item) => item.endDate.startsWith(monthKey));
+  const checkIns = monthTimelineItems.filter((item) => item.startDate.startsWith(monthKey));
+  const checkOuts = monthTimelineItems.filter((item) => item.endDate.startsWith(monthKey));
   const blockedDateSet = buildBlockedDateSet(anchorDate, closures, calendarEvents);
 
   return (
@@ -495,7 +678,7 @@ function MonthCalendar({
 
         <div className="space-y-2.5">
           {weeks.map((weekDays) => {
-            const { segments, maxTracks } = buildTrimmedWeekBookingSegments(weekDays, timelineItems, anchorDate);
+            const { segments, maxTracks } = buildTrimmedWeekBookingSegments(weekDays, monthTimelineItems, anchorDate);
             const rowHeight = compact ? Math.max(88, 38 + maxTracks * 26) : Math.max(124, 48 + maxTracks * 32);
             const barHeight = compact ? 22 : 28;
             const overlayTop = compact ? 34 : 40;
@@ -572,7 +755,7 @@ function MonthCalendar({
                         </span>
                         {!compact && segment.span > 2 ? (
                           <span className="ml-auto shrink-0 text-[11px] text-white/70">
-                            {segment.item.booking ? segment.item.channel : "synced"}
+                            {getTimelineSourceLabel(segment.item, locale)}
                           </span>
                         ) : null}
                         {segment.endsThisWeek ? (
@@ -623,6 +806,9 @@ export function CalendarPanel({
 
     return monthAnchors[0] ? format(monthAnchors[0], "yyyy-MM") : "";
   }, [monthAnchors]);
+  const timelineBuildResult = useMemo(() => buildTimelineItems(bookings, calendarEvents), [bookings, calendarEvents]);
+  const linkedCalendarEvent =
+    selectedBooking ? timelineBuildResult.linkedCalendarEventByBookingKey.get(getBookingSelectionKey(selectedBooking)) ?? null : null;
 
   useLayoutEffect(() => {
     const targetNode = monthSectionRefs.current[initialMonthKey] ?? panelRef.current;
@@ -677,7 +863,6 @@ export function CalendarPanel({
       <div className="workspace-card rounded-[30px] p-6 sm:p-7">
         {monthAnchors.map((anchorDate) => {
           const monthKey = format(anchorDate, "yyyy-MM");
-          const monthBookings = bookings.filter((booking) => intersectsMonth(booking, anchorDate));
           const monthCalendarEvents = calendarEvents.filter((event) => {
             const eventStart = parseISO(event.startDate);
             const eventEnd = parseISO(event.endDate);
@@ -700,9 +885,13 @@ export function CalendarPanel({
             >
               <MonthCalendar
                 anchorDate={anchorDate}
-                bookings={monthBookings}
                 calendarEvents={monthCalendarEvents}
                 closures={monthClosures}
+                timelineItems={timelineBuildResult.items.filter((item) => {
+                  const stayStart = parseISO(item.startDate);
+                  const stayEnd = parseISO(item.endDate);
+                  return stayStart <= endOfMonth(anchorDate) && stayEnd > startOfMonth(anchorDate);
+                })}
                 onSelectBooking={setSelectedBooking}
                 onSelectCalendarEvent={setSelectedCalendarEvent}
               />
@@ -718,13 +907,48 @@ export function CalendarPanel({
       >
         {selectedBooking ? (
           <div className="space-y-5">
-            {(() => {
-              const bookingStatus = getBookingStatusState(selectedBooking);
+            <div className="flex flex-wrap items-center gap-2">
+              {(() => {
+                const bookingStatus = getBookingStatusState(selectedBooking);
 
-              return (
-                <BookingStatusBadge status={bookingStatus} className="px-3 py-1.5 text-[11px]" />
-              );
-            })()}
+                return (
+                  <BookingStatusBadge status={bookingStatus} className="px-3 py-1.5 text-[11px]" />
+                );
+              })()}
+              <div
+                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                  linkedCalendarEvent
+                    ? "border border-emerald-300/18 bg-emerald-400/10 text-emerald-100"
+                    : selectedBooking.source === "manual"
+                      ? "border border-amber-300/18 bg-amber-400/10 text-amber-100"
+                      : "border border-sky-300/18 bg-sky-400/10 text-sky-100"
+                }`}
+              >
+                {linkedCalendarEvent
+                  ? selectedBooking.source === "manual"
+                    ? isSpanish
+                      ? "Sincronizada + manual"
+                      : "Synced + manual"
+                    : isSpanish
+                      ? "Sincronizada + importada"
+                      : "Synced + imported"
+                  : selectedBooking.source === "manual"
+                    ? isSpanish
+                      ? "Reserva manual"
+                      : "Manual booking"
+                    : isSpanish
+                      ? "Reserva importada"
+                      : "Imported booking"}
+              </div>
+            </div>
+
+            {linkedCalendarEvent ? (
+              <p className="text-sm leading-6 text-[var(--workspace-muted)]">
+                {isSpanish
+                  ? "Hostlyx ocultó el duplicado del iCal y usa esta reserva como ficha principal porque contiene más detalle, como nombre del huésped, contacto y datos financieros."
+                  : "Hostlyx hid the duplicate iCal event and uses this booking as the primary record because it carries richer detail, like guest name, contact, and financial data."}
+              </p>
+            ) : null}
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <div className="workspace-soft-card rounded-[24px] p-5">
@@ -788,6 +1012,26 @@ export function CalendarPanel({
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Detalles de la reserva" : "Booking details"}</p>
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--workspace-muted)]">{isSpanish ? "Origen de datos" : "Data source"}</span>
+                    <span className="font-medium text-[var(--workspace-text)]">
+                      {linkedCalendarEvent
+                        ? selectedBooking.source === "manual"
+                          ? isSpanish
+                            ? "iCal + manual"
+                            : "iCal + manual"
+                          : isSpanish
+                            ? "iCal + importación"
+                            : "iCal + import"
+                        : selectedBooking.source === "manual"
+                          ? isSpanish
+                            ? "Manual"
+                            : "Manual"
+                          : isSpanish
+                            ? "Importación"
+                            : "Import"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-[var(--workspace-muted)]">{isSpanish ? "Canal" : "Channel"}</span>
                     <BookingChannelBadge channel={selectedBooking.channel} />
                   </div>
@@ -805,9 +1049,82 @@ export function CalendarPanel({
                     <span className="text-[var(--workspace-muted)]">{isSpanish ? "Periodo de alquiler" : "Rental period"}</span>
                     <span className="font-medium text-[var(--workspace-text)]">{selectedBooking.rentalPeriod}</span>
                   </div>
+                  {linkedCalendarEvent ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[var(--workspace-muted)]">{isSpanish ? "iCal sincronizado" : "Synced iCal"}</span>
+                      <span className="font-medium text-[var(--workspace-text)]">
+                        {linkedCalendarEvent.source}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
+
+            {linkedCalendarEvent ? (
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+                <div className="workspace-soft-card rounded-[24px] p-5">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                    {isSpanish ? "Datos enriquecidos desde iCal" : "Enriched from iCal"}
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Última sincronización" : "Last synced"}
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                        {formatDateLabel(linkedCalendarEvent.lastSyncedAt, locale)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Código de reserva" : "Reservation code"}
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                        {extractReservationCode(linkedCalendarEvent.description) || (isSpanish ? "No disponible" : "Not provided")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Últimos 4 del teléfono" : "Phone last 4"}
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                        {extractPhoneLast4(linkedCalendarEvent.description) || (isSpanish ? "No disponible" : "Not provided")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "ID externo" : "External id"}
+                      </p>
+                      <p className="mt-1 truncate text-sm font-medium text-[var(--workspace-text)]">
+                        {linkedCalendarEvent.externalEventId || (isSpanish ? "No disponible" : "Not provided")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {extractReservationUrl(linkedCalendarEvent.description) ? (
+                  <div className="workspace-soft-card rounded-[24px] p-5">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                      {isSpanish ? "Reserva sincronizada" : "Synced reservation"}
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--workspace-muted)]">
+                      {isSpanish
+                        ? "El calendario sincronizado sigue conectado a esta estancia, pero la vista principal usa la reserva con más datos para evitar duplicados."
+                        : "The synced calendar stay remains linked to this booking, but the main view uses the richer booking record to avoid duplicates."}
+                    </p>
+                    <a
+                      href={extractReservationUrl(linkedCalendarEvent.description)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex text-sm font-medium text-[var(--workspace-accent)] hover:underline"
+                    >
+                      {isSpanish ? "Abrir reserva en Airbnb" : "Open reservation in Airbnb"}
+                    </a>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <div className="workspace-soft-card rounded-[22px] p-4">
