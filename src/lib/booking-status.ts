@@ -21,6 +21,18 @@ export function getBookingStatusState(
     return { label: "Canceled", tone: "danger" };
   }
 
+  if (rawStatus.includes("currently hosting") || rawStatus.includes("hosting")) {
+    return { label: "Hosting", tone: "active" };
+  }
+
+  if (rawStatus.includes("past guest")) {
+    return { label: "Completed", tone: "success" };
+  }
+
+  if (rawStatus.includes("trip change")) {
+    return { label: "Pending change", tone: "warning" };
+  }
+
   if (rawStatus.includes("no show") || rawStatus.includes("noshow")) {
     return { label: "No-show", tone: "warning" };
   }

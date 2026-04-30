@@ -16,6 +16,18 @@ function inputClassName() {
   return "input-surface w-full rounded-2xl px-4 py-3 text-sm";
 }
 
+function getGuestBreakdownLabel(booking: BookingRecord) {
+  const adults = Math.max(0, booking.adultsCount ?? 0);
+  const children = Math.max(0, booking.childrenCount ?? 0);
+  const infants = Math.max(0, booking.infantsCount ?? 0);
+
+  if (adults + children + infants <= 0) {
+    return "";
+  }
+
+  return `A ${adults} · C ${children} · I ${infants}`;
+}
+
 function getBookingSelectionKey(booking: BookingRecord) {
   if (booking.id) {
     return `id-${booking.id}`;
@@ -234,7 +246,9 @@ export function BookingsManager({
                   <td className="py-4 pr-4">
                     <div>
                       <p className="font-medium text-[var(--workspace-text)]">{booking.guestName}</p>
-                      <p className="mt-1 text-xs text-slate-400">{booking.rentalPeriod}</p>
+                      {booking.guestContact ? (
+                        <p className="mt-1 text-xs text-slate-400">{booking.guestContact}</p>
+                      ) : null}
                       <div className="mt-2">
                         <BookingStatusBadge status={bookingStatus} />
                       </div>
@@ -244,9 +258,24 @@ export function BookingsManager({
                     {formatDateLabel(booking.checkIn, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(booking.checkout, locale)}
                   </td>
                   <td className="py-4 pr-4 text-xs text-slate-300">
-                    {booking.bookingNumber || (isSpanish ? "Sin definir" : "Not set")}
+                    <div>
+                      <p>{booking.bookingNumber || (isSpanish ? "Sin definir" : "Not set")}</p>
+                      {booking.bookedAt ? (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {isSpanish ? "Reservada " : "Booked "}
+                          {formatDateLabel(booking.bookedAt, locale)}
+                        </p>
+                      ) : null}
+                    </div>
                   </td>
-                  <td className="py-4 pr-4">{formatNumber(booking.guestCount, locale)}</td>
+                  <td className="py-4 pr-4">
+                    <div>
+                      <p>{formatNumber(booking.guestCount, locale)}</p>
+                      {getGuestBreakdownLabel(booking) ? (
+                        <p className="mt-1 text-[11px] text-slate-500">{getGuestBreakdownLabel(booking)}</p>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="py-4 pr-4">
                     <BookingChannelBadge channel={booking.channel} />
                   </td>
@@ -282,7 +311,15 @@ export function BookingsManager({
 
       <Modal
         open={Boolean(editingBooking)}
-        title={editingBooking ? `Edit ${editingBooking.guestName}` : "Edit booking"}
+        title={
+          editingBooking
+            ? isSpanish
+              ? `Editar ${editingBooking.guestName}`
+              : `Edit ${editingBooking.guestName}`
+            : isSpanish
+              ? "Editar reserva"
+              : "Edit booking"
+        }
         onClose={() => setEditingBooking(null)}
       >
         {editingBooking ? (
@@ -292,50 +329,82 @@ export function BookingsManager({
               initialPropertyName={editingBooking.propertyName}
               initialUnitName={editingBooking.unitName}
             />
-            <WorkspaceDateField name="checkIn" label="Check-in" defaultValue={editingBooking.checkIn} required />
-            <WorkspaceDateField name="checkout" label="Checkout" defaultValue={editingBooking.checkout} required />
+            <WorkspaceDateField
+              name="checkIn"
+              label={isSpanish ? "Check-in" : "Check-in"}
+              defaultValue={editingBooking.checkIn}
+              required
+            />
+            <WorkspaceDateField
+              name="checkout"
+              label={isSpanish ? "Check-out" : "Checkout"}
+              defaultValue={editingBooking.checkout}
+              required
+            />
             <label className="space-y-2 sm:col-span-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Guest name</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Nombre del huésped" : "Guest name"}
+              </span>
               <input className={inputClassName()} name="guestName" defaultValue={editingBooking.guestName} required />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Booking number</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Número de reserva" : "Booking number"}
+              </span>
               <input className={inputClassName()} name="bookingNumber" defaultValue={editingBooking.bookingNumber} />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Overbooking status</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Estado de overbooking" : "Overbooking status"}
+              </span>
               <input className={inputClassName()} name="overbookingStatus" defaultValue={editingBooking.overbookingStatus} />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Guests</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Huéspedes" : "Guests"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="1" name="guestCount" defaultValue={editingBooking.guestCount} required />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Channel</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Canal" : "Channel"}
+              </span>
               <input className={inputClassName()} name="channel" defaultValue={editingBooking.channel} required />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Price per night</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Precio por noche" : "Price per night"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="pricePerNight" defaultValue={editingBooking.pricePerNight} required />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Extra fee</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Cargo extra" : "Extra fee"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="extraFee" defaultValue={editingBooking.extraFee} />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Discount</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Descuento" : "Discount"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="discount" defaultValue={editingBooking.discount} />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Cleaning fee</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Tarifa de limpieza" : "Cleaning fee"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="cleaningFee" defaultValue={editingBooking.cleaningFee} />
             </label>
             <label className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Taxes</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Impuestos" : "Taxes"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="taxAmount" defaultValue={editingBooking.taxAmount} />
             </label>
             <label className="space-y-2 sm:col-span-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Host fee</span>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {isSpanish ? "Fee del anfitrión" : "Host fee"}
+              </span>
               <input className={inputClassName()} type="number" min="0" step="0.01" name="hostFee" defaultValue={editingBooking.hostFee} />
             </label>
             <div className="sm:col-span-2">
@@ -344,7 +413,13 @@ export function BookingsManager({
                 disabled={isPending}
                 className="workspace-button-primary inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? "Saving booking..." : "Save booking"}
+                {isPending
+                  ? isSpanish
+                    ? "Guardando reserva..."
+                    : "Saving booking..."
+                  : isSpanish
+                    ? "Guardar reserva"
+                    : "Save booking"}
               </button>
             </div>
           </form>
@@ -353,28 +428,45 @@ export function BookingsManager({
 
       <Modal
         open={Boolean(bookingToDelete)}
-        title={bookingToDelete ? `Delete ${bookingToDelete.guestName}?` : "Delete booking"}
+        title={
+          bookingToDelete
+            ? isSpanish
+              ? `¿Eliminar ${bookingToDelete.guestName}?`
+              : `Delete ${bookingToDelete.guestName}?`
+            : isSpanish
+              ? "Eliminar reserva"
+              : "Delete booking"
+        }
         onClose={() => setBookingToDelete(null)}
       >
         {bookingToDelete ? (
           <div className="space-y-5">
             <div className="rounded-[22px] border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700">
-              This will remove the booking for <span className="font-semibold text-rose-900">{bookingToDelete.guestName}</span> from your workspace.
-              The action cannot be undone from the app.
+              {isSpanish ? (
+                <>
+                  Esto eliminará la reserva de <span className="font-semibold text-rose-900">{bookingToDelete.guestName}</span> de tu espacio de trabajo.
+                  No podrás deshacer la acción desde la app.
+                </>
+              ) : (
+                <>
+                  This will remove the booking for <span className="font-semibold text-rose-900">{bookingToDelete.guestName}</span> from your workspace.
+                  The action cannot be undone from the app.
+                </>
+              )}
             </div>
 
             <div className="workspace-soft-card grid gap-3 rounded-[22px] p-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Property</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{isSpanish ? "Propiedad" : "Property"}</p>
                 <p className="mt-1 text-sm text-[var(--workspace-text)]">
                   {bookingToDelete.propertyName}
                   {bookingToDelete.unitName ? ` • ${bookingToDelete.unitName}` : ""}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Stay</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{isSpanish ? "Estancia" : "Stay"}</p>
                 <p className="mt-1 text-sm text-[var(--workspace-text)]">
-                  {formatDateLabel(bookingToDelete.checkIn)} to {formatDateLabel(bookingToDelete.checkout)}
+                  {formatDateLabel(bookingToDelete.checkIn, locale)} {isSpanish ? "a" : "to"} {formatDateLabel(bookingToDelete.checkout, locale)}
                 </p>
               </div>
             </div>
@@ -385,7 +477,7 @@ export function BookingsManager({
                 onClick={() => setBookingToDelete(null)}
                 className="workspace-button-secondary rounded-2xl px-4 py-3 text-sm font-semibold transition"
               >
-                Cancel
+                {isSpanish ? "Cancelar" : "Cancel"}
               </button>
               <button
                 type="button"
@@ -393,7 +485,13 @@ export function BookingsManager({
                 disabled={isPending}
                 className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? "Deleting booking..." : "Delete booking"}
+                {isPending
+                  ? isSpanish
+                    ? "Eliminando reserva..."
+                    : "Deleting booking..."
+                  : isSpanish
+                    ? "Eliminar reserva"
+                    : "Delete booking"}
               </button>
             </div>
           </div>

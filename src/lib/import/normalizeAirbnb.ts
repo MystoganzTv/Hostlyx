@@ -29,6 +29,11 @@ import type {
 
 type AirbnbColumnKey = keyof typeof airbnbBookingColumns;
 
+function parseGuestCount(value: unknown) {
+  const numeric = Number(String(value ?? "").replace(/[^\d]/g, ""));
+  return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+}
+
 export function normalizeAirbnb(workbook: ParsedImportWorkbook): ImportNormalizationResult {
   let selectedSheet = workbook.sheets[0];
   let selectedHeaderRowIndex = -1;
@@ -90,10 +95,17 @@ export function normalizeAirbnb(workbook: ParsedImportWorkbook): ImportNormaliza
       const cleaningMoney = parseMoney(getCell(row, selectedIndexes.cleaningFee));
       const taxMoney = parseMoney(getCell(row, selectedIndexes.taxAmount));
       const explicitNights = parseNights(getCell(row, selectedIndexes.nights));
+      const adultsCount = parseGuestCount(getCell(row, selectedIndexes.adultsCount));
+      const childrenCount = parseGuestCount(getCell(row, selectedIndexes.childrenCount));
+      const infantsCount = parseGuestCount(getCell(row, selectedIndexes.infantsCount));
+      const explicitGuests = parseGuestCount(getCell(row, selectedIndexes.guests));
       const checkInMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkIn), {
         datePreference,
       });
       let checkOutMeta = parseImportDateDetailed(getCell(row, selectedIndexes.checkOut), {
+        datePreference,
+      });
+      const bookedAtMeta = parseImportDateDetailed(getCell(row, selectedIndexes.bookedAt), {
         datePreference,
       });
 
@@ -136,16 +148,33 @@ export function normalizeAirbnb(workbook: ParsedImportWorkbook): ImportNormaliza
         autoFixesApplied.push("Standardized check-out date");
       }
 
+      if (shouldNoteDateStandardization(getCell(row, selectedIndexes.bookedAt), bookedAtMeta.value, bookedAtMeta)) {
+        autoFixesApplied.push("Standardized booking date");
+      }
+
+      const guestCount =
+        explicitGuests > 0
+          ? explicitGuests
+          : adultsCount + childrenCount + infantsCount;
+      if (!explicitGuests && guestCount > 0) {
+        autoFixesApplied.push("Calculated guest count from adults, children, and infants");
+      }
+
       const booking: NormalizedImportBooking = {
         source: "airbnb",
         propertyName: String(getCell(row, selectedIndexes.propertyName) ?? "").trim(),
         bookingReference: String(getCell(row, selectedIndexes.bookingReference) ?? "").trim(),
         guestName: String(getCell(row, selectedIndexes.guestName) ?? "").trim(),
+        guestContact: String(getCell(row, selectedIndexes.guestContact) ?? "").trim(),
+        bookedAt: bookedAtMeta.value,
+        adultsCount,
+        childrenCount,
+        infantsCount,
         channel: normalizeChannelLabel("Airbnb"),
         checkIn: checkInMeta.value,
         checkOut: checkOutMeta.value,
         nights,
-        guests: Number(String(getCell(row, selectedIndexes.guests) ?? "").replace(/[^\d]/g, "")) || 0,
+        guests: guestCount,
         grossRevenue: inferredGrossRevenue,
         platformFee: Math.max(0, Math.abs(feeMoney.value)),
         cleaningFee: Math.max(0, cleaningMoney.value),

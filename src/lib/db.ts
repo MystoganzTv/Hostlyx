@@ -295,6 +295,11 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       checkout TEXT NOT NULL,
       guest_name TEXT NOT NULL,
       guest_count INTEGER NOT NULL,
+      guest_contact TEXT NOT NULL DEFAULT '',
+      booked_at TEXT NOT NULL DEFAULT '',
+      adults_count INTEGER NOT NULL DEFAULT 0,
+      children_count INTEGER NOT NULL DEFAULT 0,
+      infants_count INTEGER NOT NULL DEFAULT 0,
       channel TEXT NOT NULL,
       rental_period TEXT NOT NULL,
       price_per_night REAL NOT NULL,
@@ -547,6 +552,26 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "bookings", "overbooking_status")) {
     db.exec("ALTER TABLE bookings ADD COLUMN overbooking_status TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "bookings", "guest_contact")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN guest_contact TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "bookings", "booked_at")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN booked_at TEXT NOT NULL DEFAULT '';");
+  }
+
+  if (!hasColumn(db, "bookings", "adults_count")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN adults_count INTEGER NOT NULL DEFAULT 0;");
+  }
+
+  if (!hasColumn(db, "bookings", "children_count")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN children_count INTEGER NOT NULL DEFAULT 0;");
+  }
+
+  if (!hasColumn(db, "bookings", "infants_count")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN infants_count INTEGER NOT NULL DEFAULT 0;");
   }
 
   if (!hasColumn(db, "bookings", "tax_amount")) {
@@ -899,6 +924,11 @@ async function initializePostgresSchema() {
           checkout TEXT NOT NULL,
           guest_name TEXT NOT NULL,
           guest_count INTEGER NOT NULL,
+          guest_contact TEXT NOT NULL DEFAULT '',
+          booked_at TEXT NOT NULL DEFAULT '',
+          adults_count INTEGER NOT NULL DEFAULT 0,
+          children_count INTEGER NOT NULL DEFAULT 0,
+          infants_count INTEGER NOT NULL DEFAULT 0,
           channel TEXT NOT NULL,
           rental_period TEXT NOT NULL,
           price_per_night DOUBLE PRECISION NOT NULL,
@@ -1170,6 +1200,26 @@ async function initializePostgresSchema() {
       await pool.query(`
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS overbooking_status TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS guest_contact TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS booked_at TEXT NOT NULL DEFAULT ''
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS adults_count INTEGER NOT NULL DEFAULT 0
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS children_count INTEGER NOT NULL DEFAULT 0
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS infants_count INTEGER NOT NULL DEFAULT 0
       `);
       await pool.query(`
         ALTER TABLE bookings
@@ -1449,6 +1499,11 @@ function mapBookingRecord(row: Record<string, unknown>): BookingRecord {
     checkout: normalizedCheckOut,
     guestName: String(getRowValue(row, "guestName", "guestname")),
     guestCount: Number(getRowValue(row, "guestCount", "guestcount")),
+    guestContact: String(getRowValue(row, "guestContact", "guestcontact") ?? ""),
+    bookedAt: String(getRowValue(row, "bookedAt", "bookedat") ?? ""),
+    adultsCount: Number(getRowValue(row, "adultsCount", "adultscount") ?? 0),
+    childrenCount: Number(getRowValue(row, "childrenCount", "childrencount") ?? 0),
+    infantsCount: Number(getRowValue(row, "infantsCount", "infantscount") ?? 0),
     channel: String(getRowValue(row, "channel")),
     rentalPeriod: normalizedNights > 0 ? `${normalizedNights} nights` : String(getRowValue(row, "rentalPeriod", "rentalperiod")),
     pricePerNight: normalizedPricePerNight,
@@ -1677,6 +1732,11 @@ function cloneBookingRecord(booking: StoredBooking): BookingRecord {
     checkout: booking.checkout,
     guestName: booking.guestName,
     guestCount: booking.guestCount,
+    guestContact: booking.guestContact,
+    bookedAt: booking.bookedAt,
+    adultsCount: booking.adultsCount,
+    childrenCount: booking.childrenCount,
+    infantsCount: booking.infantsCount,
     channel: booking.channel,
     rentalPeriod: booking.rentalPeriod,
     pricePerNight: booking.pricePerNight,
@@ -2349,11 +2409,11 @@ export async function appendImportData({
           `
           INSERT INTO bookings (
               owner_email, import_id, source, property_id, property_name, unit_name, check_in, checkout, guest_name, guest_count,
-              imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
+              guest_contact, booked_at, adults_count, children_count, infants_count, imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
               cleaning_fee, tax_amount, total_revenue, host_fee, payout, nights, booking_number, overbooking_status,
               match_status, matched_calendar_event_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
             RETURNING id
           `,
           [
@@ -2367,6 +2427,11 @@ export async function appendImportData({
             booking.checkout,
             booking.guestName,
             booking.guestCount,
+            booking.guestContact ?? "",
+            booking.bookedAt ?? "",
+            booking.adultsCount ?? 0,
+            booking.childrenCount ?? 0,
+            booking.infantsCount ?? 0,
             booking.importedSource ?? importedSource,
             booking.channel,
             booking.rentalPeriod,
@@ -2540,6 +2605,11 @@ export async function appendImportData({
         source,
         importedSource: booking.importedSource ?? importedSource,
         propertyId: booking.propertyId ?? null,
+        guestContact: booking.guestContact ?? "",
+        bookedAt: booking.bookedAt ?? "",
+        adultsCount: booking.adultsCount ?? 0,
+        childrenCount: booking.childrenCount ?? 0,
+        infantsCount: booking.infantsCount ?? 0,
         matchStatus: booking.matchStatus ?? "unmatched",
         matchedCalendarEventId: booking.matchedCalendarEventId ?? null,
       });
@@ -2718,11 +2788,11 @@ export async function appendImportData({
     const insertBooking = db.prepare(`
       INSERT INTO bookings (
         owner_email, import_id, source, property_id, property_name, unit_name, check_in, checkout, guest_name, guest_count,
-        imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
+        guest_contact, booked_at, adults_count, children_count, infants_count, imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
         cleaning_fee, tax_amount, total_revenue, host_fee, payout, nights, booking_number, overbooking_status,
         match_status, matched_calendar_event_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertExpense = db.prepare(`
@@ -2750,6 +2820,11 @@ export async function appendImportData({
         booking.checkout,
         booking.guestName,
         booking.guestCount,
+        booking.guestContact ?? "",
+        booking.bookedAt ?? "",
+        booking.adultsCount ?? 0,
+        booking.childrenCount ?? 0,
+        booking.infantsCount ?? 0,
         booking.importedSource ?? importedSource,
         booking.channel,
         booking.rentalPeriod,
@@ -3477,6 +3552,11 @@ export async function getBookings(ownerEmail: string): Promise<BookingRecord[]> 
           checkout,
           guest_name AS guestName,
           guest_count AS guestCount,
+          guest_contact AS guestContact,
+          booked_at AS bookedAt,
+          adults_count AS adultsCount,
+          children_count AS childrenCount,
+          infants_count AS infantsCount,
           channel,
           rental_period AS rentalPeriod,
           price_per_night AS pricePerNight,
@@ -3528,6 +3608,11 @@ export async function getBookings(ownerEmail: string): Promise<BookingRecord[]> 
           checkout,
           guest_name AS guestName,
           guest_count AS guestCount,
+          guest_contact AS guestContact,
+          booked_at AS bookedAt,
+          adults_count AS adultsCount,
+          children_count AS childrenCount,
+          infants_count AS infantsCount,
           channel,
           rental_period AS rentalPeriod,
           price_per_night AS pricePerNight,
@@ -5224,6 +5309,11 @@ export async function insertManualBooking({
       source: "manual",
       importedSource: booking.importedSource ?? "generic_excel",
       propertyId: booking.propertyId ?? null,
+      guestContact: booking.guestContact ?? "",
+      bookedAt: booking.bookedAt ?? "",
+      adultsCount: booking.adultsCount ?? 0,
+      childrenCount: booking.childrenCount ?? 0,
+      infantsCount: booking.infantsCount ?? 0,
       matchStatus: booking.matchStatus ?? "unmatched",
       matchedCalendarEventId: booking.matchedCalendarEventId ?? null,
     });

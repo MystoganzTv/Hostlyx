@@ -41,6 +41,11 @@ export type BookingRecord = {
   checkout: string;
   guestName: string;
   guestCount: number;
+  guestContact?: string;
+  bookedAt?: string;
+  adultsCount?: number;
+  childrenCount?: number;
+  infantsCount?: number;
   channel: string;
   rentalPeriod: string;
   pricePerNight: number;

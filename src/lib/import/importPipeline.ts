@@ -1053,6 +1053,11 @@ export function mapPreviewToHostlyxRecords(
         checkout: row.booking.checkOut,
         guestName: row.booking.guestName || "Guest",
         guestCount: row.booking.guests,
+        guestContact: row.booking.guestContact ?? "",
+        bookedAt: row.booking.bookedAt ?? "",
+        adultsCount: row.booking.adultsCount ?? 0,
+        childrenCount: row.booking.childrenCount ?? 0,
+        infantsCount: row.booking.infantsCount ?? 0,
         channel: row.booking.channel,
         rentalPeriod: `${row.booking.nights} nights`,
         pricePerNight:

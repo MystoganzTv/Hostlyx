@@ -102,6 +102,18 @@ function getGuestLabel(booking: BookingRecord) {
   return extraGuests > 0 ? `${primary} + ${extraGuests}` : primary;
 }
 
+function getGuestBreakdownLabel(booking: BookingRecord) {
+  const adults = Math.max(0, booking.adultsCount ?? 0);
+  const children = Math.max(0, booking.childrenCount ?? 0);
+  const infants = Math.max(0, booking.infantsCount ?? 0);
+
+  if (adults + children + infants <= 0) {
+    return "";
+  }
+
+  return `A ${adults} · C ${children} · I ${infants}`;
+}
+
 function extractReservationUrl(description: string) {
   const match = description.match(/Reservation URL:\s*(https?:\/\/\S+)/i);
   return match?.[1]?.trim() ?? "";
@@ -741,6 +753,11 @@ export function CalendarPanel({
                     <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
                       {formatNumber(selectedBooking.guestCount, locale)}
                     </p>
+                    {getGuestBreakdownLabel(selectedBooking) ? (
+                      <p className="mt-1 text-xs text-[var(--workspace-muted)]">
+                        {getGuestBreakdownLabel(selectedBooking)}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Noches" : "Nights"}</p>
@@ -748,6 +765,22 @@ export function CalendarPanel({
                       {formatNumber(selectedBooking.nights, locale)}
                     </p>
                   </div>
+                  {selectedBooking.guestContact ? (
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Contacto" : "Contact"}</p>
+                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                        {selectedBooking.guestContact}
+                      </p>
+                    </div>
+                  ) : null}
+                  {selectedBooking.bookedAt ? (
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--workspace-muted)]">{isSpanish ? "Fecha de reserva" : "Booked on"}</p>
+                      <p className="mt-1 text-sm font-medium text-[var(--workspace-text)]">
+                        {formatDateLabel(selectedBooking.bookedAt, locale)}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

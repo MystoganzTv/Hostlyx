@@ -64,6 +64,11 @@ export type NormalizedImportBooking = {
   unitName?: string;
   bookingReference: string;
   guestName: string;
+  guestContact?: string;
+  bookedAt?: string;
+  adultsCount?: number;
+  childrenCount?: number;
+  infantsCount?: number;
   channel: string;
   checkIn: string;
   checkOut: string;
