@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { PropertyDefinition } from "@/lib/types";
 import type { ImportEditableBooking, ImportRowResolution } from "@/lib/import/types";
+import { useLocale } from "@/components/locale-provider";
 import { Modal } from "@/components/modal";
 import { WorkspaceSelect } from "@/components/workspace-select";
 
@@ -251,7 +252,7 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatCompactDate(value: string) {
+function formatCompactDate(value: string, locale = "en-US") {
   if (!value) {
     return "—";
   }
@@ -261,7 +262,7 @@ function formatCompactDate(value: string) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -350,18 +351,18 @@ function getPreviewStatusPill(status: PreviewRow["status"]) {
   return "border-white/10 bg-white/[0.04] text-[var(--workspace-text)]";
 }
 
-function getPreviewStatusLabel(status: PreviewRow["status"]) {
+function getPreviewStatusLabel(status: PreviewRow["status"], isSpanish: boolean) {
   switch (status) {
     case "matched":
-      return "Matched";
+      return isSpanish ? "Lista" : "Ready";
     case "duplicate":
-      return "Duplicate";
+      return isSpanish ? "Ya existe" : "Already there";
     case "conflict":
-      return "Conflict";
+      return isSpanish ? "Conflicto" : "Conflict";
     case "warning":
-      return "Warning";
+      return isSpanish ? "Revisar" : "Check needed";
     default:
-      return "New";
+      return isSpanish ? "Nueva" : "New";
   }
 }
 
@@ -377,20 +378,40 @@ function getDecisionPillClass(status: PreviewTableRow["decisionStatus"]) {
   return "border-amber-300/24 bg-amber-300/[0.08] text-amber-100";
 }
 
-function getDecisionLabel(status: PreviewTableRow["decisionStatus"]) {
+function getDecisionLabel(status: PreviewTableRow["decisionStatus"], isSpanish: boolean) {
   if (status === "auto-approved") {
-    return "Auto-approved";
+    return isSpanish ? "Lista para importar" : "Ready to import";
   }
 
   if (status === "blocked") {
-    return "Blocked";
+    return isSpanish ? "Bloqueada" : "Blocked";
   }
 
-  return "Needs review";
+  return isSpanish ? "Chequeo rápido" : "Quick check";
 }
 
-function formatDateRange(start: string, end: string) {
-  return `${formatCompactDate(start)} to ${formatCompactDate(end)}`;
+function formatDateRange(start: string, end: string, isSpanish: boolean) {
+  const locale = isSpanish ? "es-ES" : "en-US";
+  return `${formatCompactDate(start, locale)} ${isSpanish ? "a" : "to"} ${formatCompactDate(end, locale)}`;
+}
+
+function getMatchHeadline(
+  matchType: PreviewCalendarMatch["matchType"] | null,
+  isSpanish: boolean,
+) {
+  if (matchType === "exact" || matchType === "probable") {
+    return isSpanish ? "Parece enlazada con tu calendario" : "Looks linked to your calendar";
+  }
+
+  if (matchType === "weak") {
+    return isSpanish ? "Posible coincidencia de calendario" : "Possible calendar match";
+  }
+
+  if (matchType === "conflict") {
+    return isSpanish ? "Hay una señal en conflicto" : "There is a conflicting signal";
+  }
+
+  return isSpanish ? "Sin enlace claro en calendario" : "No clear calendar link";
 }
 
 function isCanceledBookingStatus(status: string) {
@@ -416,6 +437,8 @@ export function UploadPanel({
   onCancel?: () => void;
 }) {
   const router = useRouter();
+  const { locale } = useLocale();
+  const isSpanish = locale === "es";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const toastRef = useRef<HTMLDivElement | null>(null);
@@ -1883,26 +1906,28 @@ export function UploadPanel({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                            Review queue
+                            {isSpanish ? "Cola de revisión" : "Review queue"}
                           </p>
                           <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                            Bookings before import
+                            {isSpanish ? "Reservas antes de importar" : "Bookings before import"}
                           </p>
                         </div>
                         <p className="text-sm text-[var(--workspace-muted)]">
-                          Pick a booking to inspect the match and confirm the final import.
+                          {isSpanish
+                            ? "Elige una reserva para revisar el cruce y confirmar la importación final."
+                            : "Pick a booking to review the match and confirm the final import."}
                         </p>
                       </div>
 
                       <div className="mt-5 flex flex-wrap gap-2">
                         <div className="rounded-full border border-teal-300/18 bg-teal-300/[0.08] px-3 py-2 text-sm text-teal-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} auto-approved
+                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} {isSpanish ? "listas" : "ready"}
                         </div>
                         <div className="rounded-full border border-amber-300/18 bg-amber-300/[0.08] px-3 py-2 text-sm text-amber-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} need review
+                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} {isSpanish ? "por revisar" : "quick checks"}
                         </div>
                         <div className="rounded-full border border-rose-300/18 bg-rose-300/[0.08] px-3 py-2 text-sm text-rose-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} blocked
+                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} {isSpanish ? "bloqueadas" : "blocked"}
                         </div>
                       </div>
 
@@ -1957,10 +1982,10 @@ export function UploadPanel({
                                       {row.guestName}
                                     </p>
                                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(row.status)}`}>
-                                      {getPreviewStatusLabel(row.status)}
+                                      {getPreviewStatusLabel(row.status, isSpanish)}
                                     </span>
                                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getDecisionPillClass(row.decisionStatus)}`}>
-                                      {getDecisionLabel(row.decisionStatus)}
+                                      {getDecisionLabel(row.decisionStatus, isSpanish)}
                                     </span>
                                   </div>
 
@@ -1972,17 +1997,22 @@ export function UploadPanel({
                                       {row.channel}
                                     </span>
                                     <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5">
-                                      {formatDateRange(row.checkIn, row.checkOut)}
+                                      {formatDateRange(row.checkIn, row.checkOut, isSpanish)}
                                     </span>
                                   </div>
 
                                   <p className={`mt-3 text-sm font-medium ${getMatchTone(row.matchType)}`}>
+                                    {getMatchHeadline(row.matchType, isSpanish)}
+                                  </p>
+                                  <p className="mt-1 text-xs text-[var(--workspace-muted)]">
                                     {row.matchLabel}
                                   </p>
 
                                   {row.autoFixesApplied.length > 0 ? (
                                     <p className="mt-2 text-xs text-teal-100/85">
-                                      {row.autoFixesApplied.length} auto-fix{row.autoFixesApplied.length === 1 ? "" : "es"} applied
+                                      {isSpanish
+                                        ? `${row.autoFixesApplied.length} ajuste${row.autoFixesApplied.length === 1 ? "" : "s"} automático${row.autoFixesApplied.length === 1 ? "" : "s"} aplicado${row.autoFixesApplied.length === 1 ? "" : "s"}`
+                                        : `${row.autoFixesApplied.length} auto-fix${row.autoFixesApplied.length === 1 ? "" : "es"} applied`}
                                     </p>
                                   ) : null}
                                 </div>
@@ -1990,7 +2020,7 @@ export function UploadPanel({
                                 <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:w-[240px]">
                                   <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
                                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
-                                      Gross
+                                      {isSpanish ? "Bruto" : "Gross"}
                                     </p>
                                     <p className="mt-2 text-base font-medium text-[var(--workspace-text)]">
                                       {formatCurrency(row.grossRevenue)}
@@ -2016,56 +2046,63 @@ export function UploadPanel({
                       ref={reviewRef}
                       className="rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] p-5"
                       >
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
-                        Booking detail
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-muted)]">
+                        {isSpanish ? "Detalle de la reserva" : "Booking detail"}
                       </p>
                       <p className="mt-2 text-lg font-medium text-[var(--workspace-text)]">
-                        {selectedTableRow ? selectedTableRow.guestName : "Choose a row"}
+                        {selectedTableRow ? selectedTableRow.guestName : isSpanish ? "Elige una fila" : "Choose a row"}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
                         {selectedTableRow
-                          ? "Review the imported booking, the closest synced event, and the final decision before saving it."
-                          : "Select a row from the table to inspect the booking and decide whether to import, skip, or fix it."}
+                          ? isSpanish
+                            ? "Revisa la reserva importada, el evento sincronizado más cercano y la decisión final antes de guardarla."
+                            : "Review the imported booking, the closest synced event, and the final decision before saving it."
+                          : isSpanish
+                            ? "Selecciona una fila para revisar la reserva y decidir si la importas, la corriges o la omites."
+                            : "Select a row from the table to inspect the booking and decide whether to import, skip, or fix it."}
                       </p>
 
                       {selectedTableRow ? (
                         <div className="mt-5 space-y-4">
                           <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Overview
+                              {isSpanish ? "Vista rápida" : "Overview"}
                             </p>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                               <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getPreviewStatusPill(selectedTableRow.status)}`}>
-                                {getPreviewStatusLabel(selectedTableRow.status)}
+                                {getPreviewStatusLabel(selectedTableRow.status, isSpanish)}
                               </span>
                               <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] ${getDecisionPillClass(selectedTableRow.decisionStatus)}`}>
-                                {getDecisionLabel(selectedTableRow.decisionStatus)}
+                                {getDecisionLabel(selectedTableRow.decisionStatus, isSpanish)}
                               </span>
                               <p className={`text-sm font-medium ${getMatchTone(selectedTableRow.matchType)}`}>
-                                {selectedTableRow.matchLabel}
+                                {getMatchHeadline(selectedTableRow.matchType, isSpanish)}
                               </p>
                             </div>
+                            <p className="mt-2 text-xs text-[var(--workspace-muted)]">
+                              {selectedTableRow.matchLabel}
+                            </p>
 
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                               <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4">
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
-                                  Imported booking
+                                  {isSpanish ? "Desde tu archivo" : "From your file"}
                                 </p>
                                 <div className="mt-3 space-y-3 text-sm">
                                   <div>
-                                    <p className="text-[var(--workspace-muted)]">Guest</p>
+                                    <p className="text-[var(--workspace-muted)]">{isSpanish ? "Huésped" : "Guest"}</p>
                                     <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.guestName}</p>
                                   </div>
                                   <div>
-                                    <p className="text-[var(--workspace-muted)]">Stay</p>
-                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">{formatDateRange(selectedTableRow.checkIn, selectedTableRow.checkOut)}</p>
+                                    <p className="text-[var(--workspace-muted)]">{isSpanish ? "Estancia" : "Stay"}</p>
+                                    <p className="mt-1 font-medium text-[var(--workspace-text)]">{formatDateRange(selectedTableRow.checkIn, selectedTableRow.checkOut, isSpanish)}</p>
                                   </div>
                                   <div>
-                                    <p className="text-[var(--workspace-muted)]">Property</p>
+                                    <p className="text-[var(--workspace-muted)]">{isSpanish ? "Propiedad" : "Property"}</p>
                                     <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.propertyName}</p>
                                   </div>
                                   <div>
-                                    <p className="text-[var(--workspace-muted)]">Gross / payout</p>
+                                    <p className="text-[var(--workspace-muted)]">{isSpanish ? "Bruto / payout" : "Gross / payout"}</p>
                                     <p className="mt-1 font-medium text-[var(--workspace-text)]">
                                       {formatCurrency(selectedTableRow.grossRevenue)} · {formatCurrency(selectedTableRow.payout)}
                                     </p>
@@ -2075,37 +2112,52 @@ export function UploadPanel({
 
                               <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4">
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-muted)]">
-                                  Synced calendar event
+                                  {isSpanish ? "Desde calendario sincronizado" : "From synced calendar"}
                                 </p>
                                 {selectedTableRow.calendarMatch ? (
                                   <div className="mt-3 space-y-3 text-sm">
                                     <div>
-                                      <p className="text-[var(--workspace-muted)]">Source</p>
+                                      <p className="text-[var(--workspace-muted)]">{isSpanish ? "Origen" : "Source"}</p>
                                       <p className="mt-1 font-medium text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.source}</p>
                                     </div>
                                     <div>
-                                      <p className="text-[var(--workspace-muted)]">Dates</p>
+                                      <p className="text-[var(--workspace-muted)]">{isSpanish ? "Fechas" : "Dates"}</p>
                                       <p className="mt-1 font-medium text-[var(--workspace-text)]">
                                         {formatDateRange(
                                           selectedTableRow.calendarMatch.startDate,
                                           selectedTableRow.calendarMatch.endDate,
+                                          isSpanish,
                                         )}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-[var(--workspace-muted)]">Type</p>
-                                      <p className="mt-1 font-medium capitalize text-[var(--workspace-text)]">{selectedTableRow.calendarMatch.eventType}</p>
+                                      <p className="text-[var(--workspace-muted)]">{isSpanish ? "Tipo" : "Type"}</p>
+                                      <p className="mt-1 font-medium capitalize text-[var(--workspace-text)]">
+                                        {selectedTableRow.calendarMatch.eventType === "booking"
+                                          ? isSpanish
+                                            ? "reserva"
+                                            : "booking"
+                                          : selectedTableRow.calendarMatch.eventType === "blocked"
+                                            ? isSpanish
+                                              ? "bloqueado"
+                                              : "blocked"
+                                            : isSpanish
+                                              ? "otro"
+                                              : "other"}
+                                      </p>
                                     </div>
                                     <div>
-                                      <p className="text-[var(--workspace-muted)]">Summary</p>
+                                      <p className="text-[var(--workspace-muted)]">{isSpanish ? "Resumen" : "Summary"}</p>
                                       <p className="mt-1 font-medium text-[var(--workspace-text)]">
-                                        {selectedTableRow.calendarMatch.summary || "No summary"}
+                                        {selectedTableRow.calendarMatch.summary || (isSpanish ? "Sin resumen" : "No summary")}
                                       </p>
                                     </div>
                                   </div>
                                 ) : (
                                   <div className="mt-3 rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3 text-sm text-[var(--workspace-muted)]">
-                                    No synced calendar event was close enough to link this booking.
+                                    {isSpanish
+                                      ? "Todavía no encontramos un evento sincronizado con suficiente confianza para enlazar esta reserva."
+                                      : "We could not confidently link this booking to a synced calendar event yet."}
                                   </div>
                                 )}
                               </div>
@@ -2114,7 +2166,7 @@ export function UploadPanel({
 
                           <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Why Hostlyx decided this
+                              {isSpanish ? "Por qué Hostlyx decidió esto" : "Why Hostlyx decided this"}
                             </p>
                             <p className="mt-3 text-sm text-[var(--workspace-text)]">
                               {selectedTableRow.decisionReason}
@@ -2132,7 +2184,7 @@ export function UploadPanel({
                                 ))
                               ) : (
                                 <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-3 py-3 text-sm text-[var(--workspace-muted)]">
-                                  No matching signals were found.
+                                  {isSpanish ? "No encontramos señales de cruce suficientes." : "No matching signals were found."}
                                 </div>
                               )}
                             </div>
@@ -2141,7 +2193,7 @@ export function UploadPanel({
                           {selectedTableRow.autoFixesApplied.length > 0 ? (
                             <div className="rounded-[20px] border border-[var(--workspace-accent)]/16 bg-[rgba(125,211,197,0.06)] p-4">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                                Auto-fixes applied
+                                {isSpanish ? "Ajustes automáticos aplicados" : "Auto-fixes applied"}
                               </p>
                               <div className="mt-3 space-y-2">
                                 {selectedTableRow.autoFixesApplied.map((fix) => (
@@ -2159,7 +2211,7 @@ export function UploadPanel({
 
                           <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--workspace-muted)]">
-                              Actions
+                              {isSpanish ? "Qué quieres hacer" : "What you want to do"}
                             </p>
                             <div className="mt-4 flex flex-col gap-3">
                               <button
@@ -2176,10 +2228,16 @@ export function UploadPanel({
                                 className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-55"
                               >
                                 {selectedTableRow.isDisabled
-                                  ? "Blocked"
+                                  ? isSpanish
+                                    ? "Bloqueada"
+                                    : "Blocked"
                                   : approvedRowIds.includes(selectedTableRow.id)
-                                    ? "Approved for import"
-                                    : "Approve booking"}
+                                    ? isSpanish
+                                      ? "Lista para importar"
+                                      : "Ready to import"
+                                    : isSpanish
+                                      ? "Importar esta reserva"
+                                      : "Import this booking"}
                               </button>
                               {selectedTableRow.decisionStatus === "needs-review" ? (
                                 <button
@@ -2187,7 +2245,7 @@ export function UploadPanel({
                                   onClick={openSelectedRowFix}
                                   className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
                                 >
-                                  Fix row
+                                  {isSpanish ? "Editar esta reserva" : "Edit this booking"}
                                 </button>
                               ) : null}
                               <button
@@ -2195,14 +2253,14 @@ export function UploadPanel({
                                 onClick={() => void skipBookingRow(selectedTableRow.rowIndex)}
                                 className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition"
                               >
-                                Skip row
+                                {isSpanish ? "Omitir esta reserva" : "Skip this booking"}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setSelectedTableRowId(null)}
                                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
                               >
-                                Review later
+                                {isSpanish ? "Dejar para después" : "Leave for later"}
                               </button>
                             </div>
                           </div>
@@ -2218,18 +2276,20 @@ export function UploadPanel({
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                       <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center">
                         <div className="rounded-full border border-teal-300/18 bg-teal-300/[0.08] px-3 py-2 text-sm text-teal-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} auto-approved
+                          {preview.tableRows.filter((row) => row.decisionStatus === "auto-approved").length} {isSpanish ? "listas" : "ready"}
                         </div>
                         <div className="rounded-full border border-amber-300/18 bg-amber-300/[0.08] px-3 py-2 text-sm text-amber-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} need review
+                          {preview.tableRows.filter((row) => row.decisionStatus === "needs-review").length} {isSpanish ? "por revisar" : "quick checks"}
                         </div>
                         <div className="rounded-full border border-rose-300/18 bg-rose-300/[0.08] px-3 py-2 text-sm text-rose-100">
-                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} blocked
+                          {preview.tableRows.filter((row) => row.decisionStatus === "blocked").length} {isSpanish ? "bloqueadas" : "blocked"}
                         </div>
                       </div>
 
                       <p className="text-sm text-[var(--workspace-muted)]">
-                        {actionableRows} rows ready to import
+                        {isSpanish
+                          ? `${actionableRows} fila${actionableRows === 1 ? "" : "s"} lista${actionableRows === 1 ? "" : "s"} para importar`
+                          : `${actionableRows} rows ready to import`}
                       </p>
 
                       <div className="flex flex-col gap-3 sm:flex-row">
@@ -2243,10 +2303,10 @@ export function UploadPanel({
                           {phase === "importing" ? (
                             <>
                               <LoaderCircle className="h-4 w-4 animate-spin" />
-                              Import approved rows
+                              {isSpanish ? "Importando filas confirmadas" : "Importing confirmed rows"}
                             </>
                           ) : (
-                            "Import approved rows"
+                            isSpanish ? "Importar filas confirmadas" : "Import confirmed rows"
                           )}
                         </button>
                         <button
@@ -2254,7 +2314,7 @@ export function UploadPanel({
                           onClick={handleCancel}
                           className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
                         >
-                          Cancel
+                          {isSpanish ? "Cancelar" : "Cancel"}
                         </button>
                       </div>
                     </div>
@@ -2273,7 +2333,15 @@ export function UploadPanel({
 
       <Modal
         open={Boolean(bookingFixDraft)}
-        title={bookingFixDraft ? `Fix row ${bookingFixDraft.rowIndex}` : "Fix row"}
+        title={
+          bookingFixDraft
+            ? isSpanish
+              ? `Editar fila ${bookingFixDraft.rowIndex}`
+              : `Fix row ${bookingFixDraft.rowIndex}`
+            : isSpanish
+              ? "Editar fila"
+              : "Fix row"
+        }
         onClose={() => setBookingFixDraft(null)}
       >
         {bookingFixDraft ? (
@@ -2281,7 +2349,9 @@ export function UploadPanel({
             <div className="rounded-[22px] border border-[var(--workspace-border)] bg-white/[0.03] p-4">
               <p className="text-sm font-medium text-[var(--workspace-text)]">{bookingFixDraft.title}</p>
               <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-                Edit the fields that look wrong, then re-check this row. If the row is not a real booking, skip it.
+                {isSpanish
+                  ? "Corrige los campos que se vean mal y vuelve a revisar esta fila. Si no es una reserva real, puedes omitirla."
+                  : "Edit the fields that look wrong, then re-check this row. If the row is not a real booking, skip it."}
               </p>
               {bookingFixDraft.reasons.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -2299,17 +2369,17 @@ export function UploadPanel({
 
             <div className="grid gap-4 md:grid-cols-2">
               {([
-                ["guestName", "Guest name", "text"],
-                ["channel", "Channel", "text"],
-                ["checkIn", "Check-in", "date"],
-                ["checkOut", "Check-out", "date"],
-                ["bookingReference", "Booking reference", "text"],
-                ["propertyName", "Property", "text"],
-                ["guests", "Guests", "number"],
-                ["grossRevenue", "Gross revenue", "number"],
-                ["platformFee", "Platform fee", "number"],
-                ["taxAmount", "Taxes", "number"],
-                ["cleaningFee", "Cleaning fee", "number"],
+                ["guestName", isSpanish ? "Huésped" : "Guest name", "text"],
+                ["channel", isSpanish ? "Canal" : "Channel", "text"],
+                ["checkIn", isSpanish ? "Check-in" : "Check-in", "date"],
+                ["checkOut", isSpanish ? "Check-out" : "Check-out", "date"],
+                ["bookingReference", isSpanish ? "Referencia" : "Booking reference", "text"],
+                ["propertyName", isSpanish ? "Propiedad" : "Property", "text"],
+                ["guests", isSpanish ? "Huéspedes" : "Guests", "number"],
+                ["grossRevenue", isSpanish ? "Ingreso bruto" : "Gross revenue", "number"],
+                ["platformFee", isSpanish ? "Fee de plataforma" : "Platform fee", "number"],
+                ["taxAmount", isSpanish ? "Impuestos" : "Taxes", "number"],
+                ["cleaningFee", isSpanish ? "Limpieza" : "Cleaning fee", "number"],
                 ["payout", "Payout", "number"],
               ] as Array<[keyof ImportEditableBooking, string, "text" | "date" | "number"]>).map(
                 ([field, label, type]) => (
@@ -2340,7 +2410,7 @@ export function UploadPanel({
                 onClick={() => void skipBookingRow(bookingFixDraft.rowIndex)}
                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--workspace-muted)] transition hover:bg-white/[0.06]"
               >
-                Skip this row
+                {isSpanish ? "Omitir esta fila" : "Skip this row"}
               </button>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
@@ -2348,14 +2418,14 @@ export function UploadPanel({
                   onClick={() => setBookingFixDraft(null)}
                   className="workspace-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
                 >
-                  Cancel
+                  {isSpanish ? "Cancelar" : "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={() => void saveBookingFix()}
                   className="workspace-button-primary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition"
                 >
-                  Re-check this row
+                  {isSpanish ? "Volver a revisar esta fila" : "Re-check this row"}
                 </button>
               </div>
             </div>
