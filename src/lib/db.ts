@@ -7,6 +7,7 @@ import type {
   AdminUserSummary,
   BookingRecord,
   BookingMatchStatus,
+  BookingReviewStatus,
   CalendarEventRecord,
   CalendarEventSource,
   CalendarEventType,
@@ -315,7 +316,9 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
       booking_number TEXT NOT NULL DEFAULT '',
       overbooking_status TEXT NOT NULL DEFAULT '',
       match_status TEXT NOT NULL DEFAULT 'unmatched',
-      matched_calendar_event_id INTEGER
+      matched_calendar_event_id INTEGER,
+      review_status TEXT NOT NULL DEFAULT 'ready',
+      review_reason TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS expenses (
@@ -584,6 +587,14 @@ function initializeSQLiteSchema(db: SQLiteDatabase) {
 
   if (!hasColumn(db, "bookings", "matched_calendar_event_id")) {
     db.exec("ALTER TABLE bookings ADD COLUMN matched_calendar_event_id INTEGER;");
+  }
+
+  if (!hasColumn(db, "bookings", "review_status")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN review_status TEXT NOT NULL DEFAULT 'ready';");
+  }
+
+  if (!hasColumn(db, "bookings", "review_reason")) {
+    db.exec("ALTER TABLE bookings ADD COLUMN review_reason TEXT NOT NULL DEFAULT '';");
   }
 
   if (!hasColumn(db, "imports", "imported_source")) {
@@ -943,7 +954,9 @@ async function initializePostgresSchema() {
           booking_number TEXT NOT NULL DEFAULT '',
           overbooking_status TEXT NOT NULL DEFAULT '',
           match_status TEXT NOT NULL DEFAULT 'unmatched',
-          matched_calendar_event_id BIGINT
+          matched_calendar_event_id BIGINT,
+          review_status TEXT NOT NULL DEFAULT 'ready',
+          review_reason TEXT NOT NULL DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS expenses (
@@ -1232,6 +1245,14 @@ async function initializePostgresSchema() {
       await pool.query(`
         ALTER TABLE bookings
         ADD COLUMN IF NOT EXISTS matched_calendar_event_id BIGINT
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'ready'
+      `);
+      await pool.query(`
+        ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS review_reason TEXT NOT NULL DEFAULT ''
       `);
       await pool.query(`
         ALTER TABLE expenses
@@ -1525,6 +1546,10 @@ function mapBookingRecord(row: Record<string, unknown>): BookingRecord {
     ) as BookingMatchStatus,
     matchedCalendarEventId:
       Number(getRowValue(row, "matchedCalendarEventId", "matchedcalendareventid")) || null,
+    reviewStatus: String(
+      getRowValue(row, "reviewStatus", "reviewstatus") ?? "ready",
+    ) as BookingReviewStatus,
+    reviewReason: String(getRowValue(row, "reviewReason", "reviewreason") ?? ""),
   };
 }
 
@@ -2411,9 +2436,9 @@ export async function appendImportData({
               owner_email, import_id, source, property_id, property_name, unit_name, check_in, checkout, guest_name, guest_count,
               guest_contact, booked_at, adults_count, children_count, infants_count, imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
               cleaning_fee, tax_amount, total_revenue, host_fee, payout, nights, booking_number, overbooking_status,
-              match_status, matched_calendar_event_id
+              match_status, matched_calendar_event_id, review_status, review_reason
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
             RETURNING id
           `,
           [
@@ -2449,6 +2474,8 @@ export async function appendImportData({
             booking.overbookingStatus,
             booking.matchStatus ?? "unmatched",
             booking.matchedCalendarEventId ?? null,
+            booking.reviewStatus ?? "ready",
+            booking.reviewReason ?? "",
           ],
         );
 
@@ -2612,6 +2639,8 @@ export async function appendImportData({
         infantsCount: booking.infantsCount ?? 0,
         matchStatus: booking.matchStatus ?? "unmatched",
         matchedCalendarEventId: booking.matchedCalendarEventId ?? null,
+        reviewStatus: booking.reviewStatus ?? "ready",
+        reviewReason: booking.reviewReason ?? "",
       });
 
       if (booking.matchedCalendarEventId) {
@@ -2790,9 +2819,9 @@ export async function appendImportData({
         owner_email, import_id, source, property_id, property_name, unit_name, check_in, checkout, guest_name, guest_count,
         guest_contact, booked_at, adults_count, children_count, infants_count, imported_source, channel, rental_period, price_per_night, extra_fee, discount, rental_revenue,
         cleaning_fee, tax_amount, total_revenue, host_fee, payout, nights, booking_number, overbooking_status,
-        match_status, matched_calendar_event_id
+        match_status, matched_calendar_event_id, review_status, review_reason
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertExpense = db.prepare(`
@@ -2842,6 +2871,8 @@ export async function appendImportData({
         booking.overbookingStatus,
         booking.matchStatus ?? "unmatched",
         booking.matchedCalendarEventId ?? null,
+        booking.reviewStatus ?? "ready",
+        booking.reviewReason ?? "",
       );
 
       if (booking.matchedCalendarEventId) {
@@ -3572,7 +3603,9 @@ export async function getBookings(ownerEmail: string): Promise<BookingRecord[]> 
           booking_number AS bookingNumber,
           overbooking_status AS overbookingStatus,
           match_status AS matchStatus,
-          matched_calendar_event_id AS matchedCalendarEventId
+          matched_calendar_event_id AS matchedCalendarEventId,
+          review_status AS reviewStatus,
+          review_reason AS reviewReason
         FROM bookings
         WHERE owner_email = $1
         ORDER BY check_in ASC
@@ -3628,7 +3661,9 @@ export async function getBookings(ownerEmail: string): Promise<BookingRecord[]> 
           booking_number AS bookingNumber,
           overbooking_status AS overbookingStatus,
           match_status AS matchStatus,
-          matched_calendar_event_id AS matchedCalendarEventId
+          matched_calendar_event_id AS matchedCalendarEventId,
+          review_status AS reviewStatus,
+          review_reason AS reviewReason
         FROM bookings
         WHERE owner_email = ?
         ORDER BY check_in ASC
@@ -5316,6 +5351,8 @@ export async function insertManualBooking({
       infantsCount: booking.infantsCount ?? 0,
       matchStatus: booking.matchStatus ?? "unmatched",
       matchedCalendarEventId: booking.matchedCalendarEventId ?? null,
+      reviewStatus: booking.reviewStatus ?? "ready",
+      reviewReason: booking.reviewReason ?? "",
     });
 
     return id;
@@ -5471,7 +5508,9 @@ export async function updateBookingRecord({
           payout = $19,
           nights = $20,
           booking_number = $21,
-          overbooking_status = $22
+          overbooking_status = $22,
+          review_status = 'ready',
+          review_reason = ''
         WHERE id = $1 AND owner_email = $2
       `,
       [
@@ -5520,6 +5559,8 @@ export async function updateBookingRecord({
       importId: store.bookings[index].importId,
       ownerEmail: normalizedEmail,
       source: store.bookings[index].source,
+      reviewStatus: "ready",
+      reviewReason: "",
     };
 
     return true;
@@ -5549,7 +5590,9 @@ export async function updateBookingRecord({
         payout = ?,
         nights = ?,
         booking_number = ?,
-        overbooking_status = ?
+        overbooking_status = ?,
+        review_status = 'ready',
+        review_reason = ''
       WHERE id = ? AND owner_email = ?
     `,
   ).run(
@@ -5576,6 +5619,66 @@ export async function updateBookingRecord({
     bookingId,
     normalizedEmail,
   );
+
+  return result.changes > 0;
+}
+
+export async function updateBookingReviewState({
+  ownerEmail,
+  bookingId,
+  reviewStatus,
+  reviewReason,
+}: {
+  ownerEmail: string;
+  bookingId: number;
+  reviewStatus: BookingReviewStatus;
+  reviewReason?: string;
+}) {
+  await ensureDatabase();
+  const normalizedEmail = normalizeOwnerEmail(ownerEmail);
+  const normalizedReason = reviewStatus === "needs_review" ? (reviewReason ?? "").trim() : "";
+
+  if (isPostgresConfigured()) {
+    const pool = getPostgresPool();
+    const result = await pool.query(
+      `
+        UPDATE bookings
+        SET review_status = $3, review_reason = $4
+        WHERE id = $1 AND owner_email = $2
+      `,
+      [bookingId, normalizedEmail, reviewStatus, normalizedReason],
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  if (shouldUseMemoryFallback()) {
+    const store = getMemoryStore();
+    const index = store.bookings.findIndex(
+      (entry) => entry.id === bookingId && entry.ownerEmail === normalizedEmail,
+    );
+
+    if (index < 0) {
+      return false;
+    }
+
+    store.bookings[index] = {
+      ...store.bookings[index],
+      reviewStatus,
+      reviewReason: normalizedReason,
+    };
+
+    return true;
+  }
+
+  const db = getSQLiteDatabase();
+  const result = db.prepare(
+    `
+      UPDATE bookings
+      SET review_status = ?, review_reason = ?
+      WHERE id = ? AND owner_email = ?
+    `,
+  ).run(reviewStatus, normalizedReason, bookingId, normalizedEmail);
 
   return result.changes > 0;
 }

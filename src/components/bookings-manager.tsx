@@ -47,11 +47,13 @@ export function BookingsManager({
   currencyCode,
   properties,
   highlightedBookingKey,
+  initialReviewFilter = "all",
 }: {
   bookings: BookingRecord[];
   currencyCode: CurrencyCode;
   properties: PropertyDefinition[];
   highlightedBookingKey?: string | null;
+  initialReviewFilter?: "all" | "needs-review" | "ready";
 }) {
   const { locale } = useLocale();
   const isSpanish = locale === "es";
@@ -61,6 +63,7 @@ export function BookingsManager({
   const [isPending, startTransition] = useTransition();
   const [editingBooking, setEditingBooking] = useState<BookingRecord | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<BookingRecord | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "needs-review" | "ready">(initialReviewFilter);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeHighlightedBookingKey, setActiveHighlightedBookingKey] = useState<string | null>(
@@ -112,6 +115,72 @@ export function BookingsManager({
 
     return () => window.clearTimeout(timeoutId);
   }, [activeHighlightedBookingKey, pathname, router, searchParams]);
+
+  const reviewCounts = useMemo(
+    () => ({
+      all: bookings.length,
+      needsReview: bookings.filter((booking) => booking.reviewStatus === "needs_review").length,
+      ready: bookings.filter((booking) => booking.reviewStatus !== "needs_review").length,
+    }),
+    [bookings],
+  );
+
+  const visibleBookings = useMemo(() => {
+    const filtered =
+      reviewFilter === "needs-review"
+        ? bookings.filter((booking) => booking.reviewStatus === "needs_review")
+        : reviewFilter === "ready"
+          ? bookings.filter((booking) => booking.reviewStatus !== "needs_review")
+          : [...bookings];
+
+    return filtered.sort((left, right) => {
+      const leftNeedsReview = left.reviewStatus === "needs_review" ? 0 : 1;
+      const rightNeedsReview = right.reviewStatus === "needs_review" ? 0 : 1;
+
+      if (leftNeedsReview !== rightNeedsReview) {
+        return leftNeedsReview - rightNeedsReview;
+      }
+
+      return left.checkIn.localeCompare(right.checkIn);
+    });
+  }, [bookings, reviewFilter]);
+
+  function markBookingReady(booking: BookingRecord) {
+    if (!booking.id) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+
+    startTransition(() => {
+      void (async () => {
+        try {
+          const response = await fetch(`/api/bookings/${booking.id}/review`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              reviewStatus: "ready",
+            }),
+          });
+
+          const payload = (await response.json()) as { error?: string; message?: string };
+
+          if (!response.ok) {
+            setError(payload.error ?? (isSpanish ? "No se pudo actualizar la revisión." : "The review status could not be updated."));
+            return;
+          }
+
+          setMessage(payload.message ?? (isSpanish ? "Reserva marcada como revisada." : "Booking marked as reviewed."));
+          router.refresh();
+        } catch {
+          setError(isSpanish ? "No se pudo actualizar la revisión." : "The review status could not be updated.");
+        }
+      })();
+    });
+  }
 
   function submitUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -186,6 +255,50 @@ export function BookingsManager({
       <div className="space-y-4">
         {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
         {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setReviewFilter("all")}
+            className={`rounded-full border px-3 py-2 text-sm font-medium transition ${
+              reviewFilter === "all"
+                ? "border-[var(--workspace-accent)]/28 bg-[rgba(125,211,197,0.12)] text-[var(--workspace-text)]"
+                : "border-[var(--workspace-border)] bg-white/[0.03] text-[var(--workspace-muted)]"
+            }`}
+          >
+            {isSpanish ? "Todas" : "All"} · {formatNumber(reviewCounts.all, locale)}
+          </button>
+          <button
+            type="button"
+            onClick={() => setReviewFilter("needs-review")}
+            className={`rounded-full border px-3 py-2 text-sm font-medium transition ${
+              reviewFilter === "needs-review"
+                ? "border-amber-300/28 bg-amber-300/[0.12] text-amber-100"
+                : "border-[var(--workspace-border)] bg-white/[0.03] text-[var(--workspace-muted)]"
+            }`}
+          >
+            {isSpanish ? "Necesitan revisión" : "Need review"} · {formatNumber(reviewCounts.needsReview, locale)}
+          </button>
+          <button
+            type="button"
+            onClick={() => setReviewFilter("ready")}
+            className={`rounded-full border px-3 py-2 text-sm font-medium transition ${
+              reviewFilter === "ready"
+                ? "border-teal-300/28 bg-teal-300/[0.12] text-teal-100"
+                : "border-[var(--workspace-border)] bg-white/[0.03] text-[var(--workspace-muted)]"
+            }`}
+          >
+            {isSpanish ? "Listas" : "Ready"} · {formatNumber(reviewCounts.ready, locale)}
+          </button>
+        </div>
+
+        {reviewCounts.needsReview > 0 ? (
+          <div className="rounded-[20px] border border-amber-300/18 bg-amber-300/[0.08] px-4 py-3 text-sm text-amber-100">
+            {isSpanish
+              ? "Las reservas con revisión pendiente ya están dentro de Hostlyx. Puedes corregirlas aquí y marcarlas como revisadas sin volver al modal de importación."
+              : "Bookings that need review are already inside Hostlyx. You can fix them here and mark them as reviewed without going back to the import modal."}
+          </div>
+        ) : null}
+
         {highlightedBooking ? (
           <div className="rounded-[20px] border border-[var(--accent-soft-strong)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent-text)]">
             {isSpanish ? (
@@ -216,7 +329,7 @@ export function BookingsManager({
               </tr>
             </thead>
             <tbody>
-              {bookings.map((booking) => {
+              {visibleBookings.map((booking) => {
                 const bookingKey = getBookingSelectionKey(booking);
                 const isHighlighted = activeHighlightedBookingKey === bookingKey;
                 const bookingStatus = getBookingStatusState(booking);
@@ -249,8 +362,18 @@ export function BookingsManager({
                       {booking.guestContact ? (
                         <p className="mt-1 text-xs text-slate-400">{booking.guestContact}</p>
                       ) : null}
+                      {booking.reviewStatus === "needs_review" && booking.reviewReason ? (
+                        <p className="mt-2 rounded-2xl border border-amber-300/18 bg-amber-300/[0.08] px-3 py-2 text-xs leading-5 text-amber-100">
+                          {booking.reviewReason}
+                        </p>
+                      ) : null}
                       <div className="mt-2">
                         <BookingStatusBadge status={bookingStatus} />
+                        {booking.reviewStatus === "needs_review" ? (
+                          <span className="ml-2 inline-flex rounded-full border border-amber-300/18 bg-amber-300/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">
+                            {isSpanish ? "Revisión" : "Review"}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </td>
@@ -283,13 +406,29 @@ export function BookingsManager({
                   <td className="py-4 pr-4">{formatCurrency(booking.payout, false, currencyCode)}</td>
                   <td className="py-4">
                     <div className="flex flex-wrap gap-2">
+                      {booking.reviewStatus === "needs_review" ? (
+                        <button
+                          type="button"
+                          onClick={() => markBookingReady(booking)}
+                          disabled={isPending}
+                          className="inline-flex items-center gap-2 rounded-xl border border-teal-300/18 bg-teal-300/[0.08] px-3 py-2 text-xs font-semibold text-teal-100 transition hover:bg-teal-300/[0.16] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSpanish ? "Marcar revisada" : "Mark reviewed"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => setEditingBooking(booking)}
                         className="workspace-button-secondary inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
-                        {isSpanish ? "Editar" : "Edit"}
+                        {booking.reviewStatus === "needs_review"
+                          ? isSpanish
+                            ? "Revisar y editar"
+                            : "Review and edit"
+                          : isSpanish
+                            ? "Editar"
+                            : "Edit"}
                       </button>
                       <button
                         type="button"
@@ -307,6 +446,22 @@ export function BookingsManager({
             </tbody>
           </table>
         </div>
+
+        {visibleBookings.length === 0 ? (
+          <div className="rounded-[20px] border border-[var(--workspace-border)] bg-white/[0.03] px-4 py-6 text-sm text-[var(--workspace-muted)]">
+            {reviewFilter === "needs-review"
+              ? isSpanish
+                ? "No hay reservas pendientes de revisión con los filtros actuales."
+                : "There are no bookings waiting for review under the current filters."
+              : reviewFilter === "ready"
+                ? isSpanish
+                  ? "No hay reservas listas con los filtros actuales."
+                  : "There are no ready bookings under the current filters."
+                : isSpanish
+                  ? "No hay reservas para mostrar con los filtros actuales."
+                  : "There are no bookings to show under the current filters."}
+          </div>
+        ) : null}
       </div>
 
       <Modal
@@ -324,6 +479,21 @@ export function BookingsManager({
       >
         {editingBooking ? (
           <form key={editingBooking.id ?? editingBooking.checkIn} onSubmit={submitUpdate} className="grid gap-4 sm:grid-cols-2">
+            {editingBooking.reviewStatus === "needs_review" ? (
+              <div className="rounded-[20px] border border-amber-300/18 bg-amber-300/[0.08] px-4 py-4 text-sm leading-6 text-amber-100 sm:col-span-2">
+                <p className="font-medium text-[var(--workspace-text)]">
+                  {isSpanish ? "Esta reserva necesita una revisión rápida." : "This booking needs a quick review."}
+                </p>
+                {editingBooking.reviewReason ? (
+                  <p className="mt-2">{editingBooking.reviewReason}</p>
+                ) : null}
+                <p className="mt-2 text-amber-100/85">
+                  {isSpanish
+                    ? "Cuando guardes los cambios, Hostlyx la marcará como revisada."
+                    : "When you save your changes, Hostlyx will mark it as reviewed."}
+                </p>
+              </div>
+            ) : null}
             <PropertyUnitFieldGroup
               properties={properties}
               initialPropertyName={editingBooking.propertyName}

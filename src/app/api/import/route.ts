@@ -185,31 +185,13 @@ export async function POST(request: Request) {
       });
     }
 
-    const approvedRowIndexes = (() => {
-      const value = formData.get("approvedRowIndexes");
-      if (!value) {
-        return [];
-      }
-
-      try {
-        const parsed = JSON.parse(String(value));
-        return Array.isArray(parsed)
-          ? parsed.filter((entry): entry is number => typeof entry === "number")
-          : [];
-      } catch {
-        return [];
-      }
-    })();
-
-    const mapped = mapPreviewToHostlyxRecords(preview, targetPropertyName, {
-      approvedRowIndexes,
-    });
+    const mapped = mapPreviewToHostlyxRecords(preview, targetPropertyName);
 
     if (mapped.bookings.length === 0 && mapped.expenses.length === 0) {
       return NextResponse.json(
         {
           error:
-            "Everything in this file is currently blocked or still unapproved. Review the preview and approve the rows you want Hostlyx to import.",
+            "Everything in this file is blocked, duplicated, canceled, or still missing key data. Fix the source file or use Bookings to review imported rows after the next attempt.",
         },
         { status: 400 },
       );

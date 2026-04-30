@@ -55,6 +55,7 @@ export function OperationalImportLauncher({
     params.set("range", "all-time");
     params.delete("start");
     params.delete("end");
+    params.delete("review");
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
@@ -99,8 +100,21 @@ export function OperationalImportLauncher({
           subtitle={copy.subtitle}
           appearance="compact"
           onCancel={() => setIsOpen(false)}
-          onImportComplete={() => {
+          onImportComplete={(payload) => {
             resetRangeToAllTime();
+
+            if (context === "bookings" && payload.reviewBookingsImported > 0) {
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete("year");
+              params.delete("month");
+              params.set("range", "all-time");
+              params.delete("start");
+              params.delete("end");
+              params.set("review", "needs-review");
+              const query = params.toString();
+              router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            }
+
             setIsOpen(false);
           }}
         />

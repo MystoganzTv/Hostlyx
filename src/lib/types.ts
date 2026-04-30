@@ -9,6 +9,7 @@ export type BookingMatchStatus =
   | "unmatched"
   | "matched_to_calendar"
   | "conflict_blocked_calendar";
+export type BookingReviewStatus = "ready" | "needs_review";
 export type CalendarEventSource = "airbnb" | "booking" | "vrbo" | "other";
 export type CalendarEventType = "booking" | "blocked" | "unknown";
 export type IcalFeedSyncStatus = "never" | "pending" | "success" | "error";
@@ -62,6 +63,8 @@ export type BookingRecord = {
   overbookingStatus: string;
   matchStatus?: BookingMatchStatus;
   matchedCalendarEventId?: number | null;
+  reviewStatus?: BookingReviewStatus;
+  reviewReason?: string;
 };
 
 export type ExpenseRecord = {

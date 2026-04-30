@@ -82,8 +82,15 @@ export default async function BookingsPage({
   });
   const highlightedBookingKey =
     typeof resolvedSearchParams.booking === "string" ? resolvedSearchParams.booking : null;
+  const initialReviewFilter =
+    resolvedSearchParams.review === "needs-review"
+      ? "needs-review"
+      : resolvedSearchParams.review === "ready"
+        ? "ready"
+        : "all";
 
   const propertyCount = new Set(filteredBookings.map((booking) => booking.propertyName)).size;
+  const reviewCount = filteredBookings.filter((booking) => booking.reviewStatus === "needs_review").length;
 
   return (
     <WorkspaceShell
@@ -148,6 +155,16 @@ export default async function BookingsPage({
               </p>
             </div>
           </SectionCard>
+          <SectionCard title={isSpanish ? "Necesitan revisión" : "Need review"}>
+            <div className="flex items-center gap-3">
+              <div className="workspace-icon-chip rounded-2xl p-3">
+                <BookOpenText className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-semibold text-[var(--workspace-text)]">
+                {formatNumber(reviewCount)}
+              </p>
+            </div>
+          </SectionCard>
           <SectionCard title={isSpanish ? "Propiedades en vista" : "Properties in view"}>
             <div className="flex items-center gap-3">
               <div className="workspace-icon-chip rounded-2xl p-3">
@@ -157,13 +174,6 @@ export default async function BookingsPage({
                 {formatNumber(propertyCount)}
               </p>
             </div>
-          </SectionCard>
-          <SectionCard title={isSpanish ? "Edición" : "Editing"}>
-            <p className="text-sm leading-6 text-[var(--workspace-muted)]">
-              {isSpanish
-                ? "Usa esta página para revisar estancias importadas, corregir datos del huésped y mantener las reservas precisas dentro de Hostlyx."
-                : "Use this page to review imported stays, correct guest data, and keep bookings accurate directly inside Hostlyx."}
-            </p>
           </SectionCard>
         </div>
 
@@ -180,6 +190,7 @@ export default async function BookingsPage({
             currencyCode={view.displayCurrencyCode}
             properties={properties}
             highlightedBookingKey={highlightedBookingKey}
+            initialReviewFilter={initialReviewFilter}
           />
         </SectionCard>
       </div>

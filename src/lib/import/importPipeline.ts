@@ -131,7 +131,7 @@ export function classifyImportRow(
   if (isConflict) {
     return {
       status: "needs-review",
-      reason: "This booking overlaps a blocked calendar event and needs review before import.",
+      reason: "The stay dates conflict with a blocked calendar event, so it should be reviewed after import.",
       matchScore,
       matchType,
       isConflict: true,
@@ -142,7 +142,7 @@ export function classifyImportRow(
   if (missingKeyData) {
     return {
       status: "needs-review",
-      reason: "Some key booking details are missing, so this row should be reviewed before import.",
+      reason: "Some key booking details are missing, so this row should be reviewed after import.",
       matchScore,
       matchType,
       isConflict: false,
@@ -175,7 +175,7 @@ export function classifyImportRow(
   if (matchScore >= 40 && matchScore < 70) {
     return {
       status: "needs-review",
-      reason: "This row has a partial calendar match, so Hostlyx is asking for a quick review.",
+      reason: "This row looks close to a synced calendar stay, so Hostlyx will import it and mark it for review.",
       matchScore,
       matchType,
       isConflict: false,
@@ -196,7 +196,7 @@ export function classifyImportRow(
 
   return {
     status: "needs-review",
-    reason: "This row needs a quick review before Hostlyx includes it.",
+    reason: "This row should be reviewed after import before you rely on it.",
     matchScore,
     matchType,
     isConflict,
@@ -289,21 +289,22 @@ function getTableRowStatus(candidate: ImportBookingCandidate): ImportPreviewTabl
 
 function getMatchLabel(candidate: ImportBookingCandidate) {
   if (!candidate.calendarMatch || candidate.calendarMatch.matchType === "none") {
-    return "No match";
+    return "No calendar match";
   }
 
   if (candidate.calendarMatch.isConflict) {
-    return "Conflict";
+    return "Calendar conflict";
   }
 
-  const typeLabel =
-    candidate.calendarMatch.matchType === "exact"
-      ? "Exact match"
-      : candidate.calendarMatch.matchType === "probable"
-        ? "Probable match"
-        : "Weak match";
+  if (candidate.calendarMatch.matchType === "exact") {
+    return "Strong calendar match";
+  }
 
-  return `${typeLabel} · ${candidate.calendarMatch.score}`;
+  if (candidate.calendarMatch.matchType === "probable") {
+    return "Likely calendar match";
+  }
+
+  return "Possible calendar match";
 }
 
 function categorizeBookingCandidate(candidate: ImportBookingCandidate): ImportReviewSection {
@@ -1027,20 +1028,14 @@ export function mapDetectedSourceToStoredSource(source: ImportDetectedSource): I
 export function mapPreviewToHostlyxRecords(
   preview: ImportPreview,
   propertyName: string,
-  options?: {
-    approvedRowIndexes?: number[];
-  },
 ): {
   importedSource: ImportedFileSource;
   bookings: BookingRecord[];
   expenses: ExpenseRecord[];
 } {
-  const approvedRowIndexSet = new Set(options?.approvedRowIndexes ?? []);
-
   return {
     importedSource: mapDetectedSourceToStoredSource(preview.source),
     bookings: preview.bookings
-      .filter((row) => approvedRowIndexSet.size === 0 || approvedRowIndexSet.has(row.rowIndex))
       .filter((row) => !hasBlockingIssues(row.warnings))
       .filter((row) => row.rowStatus !== "conflict")
       .filter((row) => !row.duplicate)
@@ -1082,6 +1077,8 @@ export function mapPreviewToHostlyxRecords(
               ? "matched_to_calendar"
               : "unmatched",
         matchedCalendarEventId: row.calendarMatch?.calendarEventId ?? null,
+        reviewStatus: row.decision?.status === "needs-review" ? "needs_review" : "ready",
+        reviewReason: row.decision?.status === "needs-review" ? row.decision.reason : "",
       })),
     expenses: preview.expenses
       .filter((row) => !hasBlockingIssues(row.warnings))
