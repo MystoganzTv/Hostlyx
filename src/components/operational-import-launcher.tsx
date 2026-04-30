@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpFromLine } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { UploadPanel } from "@/components/upload-panel";
@@ -8,6 +9,7 @@ import { useLocale } from "@/components/locale-provider";
 import type { PropertyDefinition } from "@/lib/types";
 
 type OperationalImportContext = "bookings" | "expenses";
+const rangeFilterStorageKey = "hostlyx:filters:range";
 
 function getContextCopy(context: OperationalImportContext, isSpanish: boolean) {
   if (context === "bookings") {
@@ -40,8 +42,36 @@ export function OperationalImportLauncher({
 }) {
   const { locale } = useLocale();
   const isSpanish = locale === "es";
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const copy = getContextCopy(context, isSpanish);
+
+  function resetRangeToAllTime() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("year");
+    params.delete("month");
+    params.set("range", "all-time");
+    params.delete("start");
+    params.delete("end");
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        rangeFilterStorageKey,
+        JSON.stringify({
+          range: "all-time",
+          start: "",
+          end: "",
+          channel: params.get("channel") ?? "all",
+          country: params.get("country") ?? "all",
+        }),
+      );
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   return (
     <>
@@ -69,7 +99,10 @@ export function OperationalImportLauncher({
           subtitle={copy.subtitle}
           appearance="compact"
           onCancel={() => setIsOpen(false)}
-          onImportComplete={() => setIsOpen(false)}
+          onImportComplete={() => {
+            resetRangeToAllTime();
+            setIsOpen(false);
+          }}
         />
       </Modal>
     </>
